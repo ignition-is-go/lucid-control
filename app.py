@@ -48,7 +48,8 @@ def create():
         response_url = request.form.get('response_url')
         text = request.form.get('text')
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        create_slack_channel(text, token)
+        r = create_slack_channel(text, token)
+        print r
     json_results = json.dumps(results)
     return json_results
 
