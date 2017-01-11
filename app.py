@@ -9,6 +9,18 @@ app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
 
+def create_mindmeister_project(text):
+    url = 'https://www.mindmeister.com/api/projects'
+    payload = {
+        'name': text
+    }
+    headers = {
+        'content-type': 'application/json',
+        'authorization': 'Bearer {}'.format(os.environ['MEISTERTASK_API_TOKEN'])
+    }
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    return response
+
 def create_meistertask_project(text):
     url = 'https://www.meistertask.com/api/projects'
     payload = {
@@ -68,6 +80,8 @@ def hello():
 def create():
     results = {'msg': ''}
     if request.method == "POST":
+        response_url = request.form.get('response_url')
+        text = request.form.get('text')
         token = request.form.get('token')
         if token != app.config['INTEGRATION_TOKEN']:
             message = (
@@ -78,11 +92,9 @@ def create():
 
         else:
             message = (
-                'Successfully Create New Project!'
+                'Successfully Created New Project: {}'.format(text)
             )
         results['msg'] = message
-        response_url = request.form.get('response_url')
-        text = request.form.get('text')
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
         slack_response = create_slack_channel(text, token)
         print 'Create channel returns: {}'.format(slack_response)
@@ -90,6 +102,8 @@ def create():
         print 'Create airtable entry returns: {}'.format(airtable_response)
         meistertask_response = create_meistertask_project(text)
         print 'Create meistertask project returns: {}'.format(meistertask_response)
+        mindmeister_response = create_mindmeister_project(text)
+        print 'Create mindmeister project returns: {}'.format(mindmeister_response)
 
     return results['msg']
 
