@@ -3,11 +3,26 @@ from flask import Flask, request, render_template
 import requests
 import json
 from slackclient import SlackClient
-
+import datetime
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
+def create_airtable_entry(text):
+    date_now = datetime.datetime.now().strftime("%Y-%m-%d")
+    url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table'
+    payload = {
+        "fields": {
+            "Unique ID": "P-1111",
+            "Created on": date_now,
+            "Summary": "Coming soon...",
+            "Title": text,
+            "Slack Channel": 'https://lucidslack.slack.com/messages/{}'.format(text)
+        }
+    }
+    headers = {'content-type': 'application/json'}
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    return response
 
 def create_slack_channel(text, token):
     slack_token = os.environ["SLACK_API_TOKEN"]
@@ -50,8 +65,9 @@ def create():
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
         slack_response = create_slack_channel(text, token)
         print 'Create channel returns: {}'.format(slack_response)
+        airtable_response = create_airtable_entry(text)
+        print 'Create airtable entry returns: {}'.format(airtable_response)
 
-    # json_results = json.dumps(results)
     return results['msg']
 
 if __name__ == '__main__':
