@@ -8,6 +8,20 @@ import datetime
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
+
+def create_meistertask_project(text):
+    url = 'https://www.meistertask.com/api/projects'
+    payload = {
+        'name': text
+    }
+    headers = {
+        'content-type': 'application/json',
+        'authorization': 'Bearer {}'.format(os.environ['MEISTERTASK_API_TOKEN'])
+    }
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    return response
+
+
 def create_airtable_entry(text):
     date_now = datetime.datetime.now().strftime("%Y-%m-%d")
     url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table'
@@ -17,7 +31,9 @@ def create_airtable_entry(text):
             "Created on": date_now,
             "Summary": "Coming soon...",
             "Title": text,
-            "Slack Channel": 'https://lucidslack.slack.com/messages/{}'.format(text)
+            "Slack Channel": 'https://lucidslack.slack.com/messages/{}'.format(
+                text
+            )
         }
     }
     headers = {
@@ -26,6 +42,7 @@ def create_airtable_entry(text):
     }
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
+
 
 def create_slack_channel(text, token):
     slack_token = os.environ["SLACK_API_TOKEN"]
@@ -38,6 +55,7 @@ def create_slack_channel(text, token):
         name=text
     )
     return output
+
 
 @app.route('/')
 def hello():
@@ -70,6 +88,8 @@ def create():
         print 'Create channel returns: {}'.format(slack_response)
         airtable_response = create_airtable_entry(text)
         print 'Create airtable entry returns: {}'.format(airtable_response)
+        meistertask_response = create_meistertask_project(text)
+        print 'Create meistertask project returns: {}'.format(meistertask_response)
 
     return results['msg']
 
