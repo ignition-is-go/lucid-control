@@ -1,6 +1,5 @@
 import os
 from flask import Flask, request, render_template
-from config import INTEGRATION_TOKEN
 import requests
 import json
 
@@ -22,7 +21,7 @@ def create():
     results = {'msg': 'yay!', 'errors': errors}
     if request.method == "POST":
         token = request.form.get('token')
-        if token != INTEGRATION_TOKEN:
+        if token != app.config['INTEGRATION_TOKEN']:
             message = (
                 'Invalid Slack Integration Token. Commands disabled '
                 'until token is corrected. Try setting the '
