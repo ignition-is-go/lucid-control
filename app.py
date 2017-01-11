@@ -4,21 +4,45 @@ import requests
 import json
 from slackclient import SlackClient
 import datetime
+import hashlib
+
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
 
 def create_mindmeister_project(text):
-    url = 'https://www.mindmeister.com/api/projects'
+    url = 'http://www.mindmeister.com/services/rest/'
+    secret = os.environ['MINDMEISTER_SECRET']
     payload = {
-        'name': text
-    }
-    headers = {
-        'content-type': 'application/json',
-        'authorization': 'Bearer {}'.format(os.environ['MEISTERTASK_API_TOKEN'])
-    }
-    response = requests.post(url, data=json.dumps(payload), headers=headers)
+        'api_key': os.environ['MINDMEISTER_API_KEY'],
+        'auth_token': os.environ['MINDMEISTER_AUTH_TOKEN'],
+        'method': 'mm.folders.add',
+        'name': text,
+        'response_format': 'xml',
+        }
+    hash_string = '{}api_key{}auth_token{}method{}name{}response_format{}'.format(
+        secret,
+        os.environ['MINDMEISTER_API_KEY'],
+        os.environ['MINDMEISTER_AUTH_TOKEN'],
+        'mm.folders.add',
+        text,
+        'xml'
+    )
+    print hash_string
+    hash_object = hashlib.md5(bytes(hash_string))
+
+    api_sig = hash_object.hexdigest()
+    print api_sig
+    payload['api_sig'] = api_sig
+
+    # headers = {
+    #     'content-type': 'application/xml'
+    #
+    # }
+    response = requests.get(url, params=payload)
+    print response.text
+    # response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
 
 def create_meistertask_project(text):
