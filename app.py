@@ -20,7 +20,10 @@ def create_airtable_entry(text):
             "Slack Channel": 'https://lucidslack.slack.com/messages/{}'.format(text)
         }
     }
-    headers = {'content-type': 'application/json'}
+    headers = {
+        'content-type': 'application/json',
+        'authorization': 'Bearer {}'.format(os.environ['AIRTABLE_API_TOKEN'])
+    }
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
 
