@@ -7,6 +7,7 @@ class Config(object):
     TESTING = False
     CSRF_ENABLED = True
     SECRET_KEY = 'this-really-needs-to-be-changed'
+    INTEGRATION_TOKEN = 'o8fI8r8rMfqgvgxLguStdsQg'
 
 
 class ProductionConfig(Config):
