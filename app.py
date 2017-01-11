@@ -20,7 +20,7 @@ def index():
     errors = []
     results = {'msg': 'yay!', 'errors': errors}
     if request.method == "POST":
-        data = request.text
+        data = request.data
         print 'This is the data: {}'.format(data)
     json_results = json.dumps(results)
     return json_results
