@@ -9,11 +9,13 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 
 def create_slack_channel(text, token):
+    headers = {'content-type': 'application/json'}
     url = 'https://slack.com/api/channels.create'
-    payload = {"token": token, "name": text}
-    r = requests.post(url, json=json.dumps(payload))
-    print r.status_code
 
+    data = {"name": text}
+    params = {'token': token}
+
+    requests.post(url, params=params, data=json.dumps(data), headers=headers)
 
 @app.route('/')
 def hello():
