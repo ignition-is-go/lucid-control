@@ -15,10 +15,11 @@ def create_slack_channel(text, token):
 
     # url = 'https://slack.com/api/channels.create'
 
-    sc.api_call(
+    output = sc.api_call(
         "channels.create",
         name=text
     )
+    return output
 
 @app.route('/')
 def hello():
@@ -48,8 +49,9 @@ def create():
         response_url = request.form.get('response_url')
         text = request.form.get('text')
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        r = create_slack_channel(text, token)
-        print r
+        slack_response = create_slack_channel(text, token)
+        print slack_response
+        results['response': slack_response]
     json_results = json.dumps(results)
     return json_results
 
