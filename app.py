@@ -23,12 +23,12 @@ def create():
     if request.method == "POST":
         token = request.form.get('token')
         if token != INTEGRATION_TOKEN:
-        message = (
-            'Invalid Slack Integration Token. Commands disabled '
-            'until token is corrected. Try setting the '
-            'SLACK_INTEGRATION_TOKEN environment variable'
-        )
-        results['msg'] = message
+            message = (
+                'Invalid Slack Integration Token. Commands disabled '
+                'until token is corrected. Try setting the '
+                'SLACK_INTEGRATION_TOKEN environment variable'
+            )
+            results['msg'] = message
 
         response_url = request.form.get('response_url')
         text = request.form.get('text')
