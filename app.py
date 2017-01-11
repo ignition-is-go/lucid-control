@@ -30,8 +30,7 @@ def hello():
 
 @app.route('/create', methods=['GET', 'POST'])
 def create():
-    errors = []
-    results = {'msg': '', 'errors': errors}
+    results = {'msg': ''}
     if request.method == "POST":
         token = request.form.get('token')
         if token != app.config['INTEGRATION_TOKEN']:
@@ -50,10 +49,10 @@ def create():
         text = request.form.get('text')
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
         slack_response = create_slack_channel(text, token)
-        print slack_response
-        results['response': slack_response]
-    json_results = json.dumps(results)
-    return json_results
+        print 'Create channel returns: {}'.format(slack_response)
+
+    # json_results = json.dumps(results)
+    return results['msg']
 
 if __name__ == '__main__':
     app.run()
