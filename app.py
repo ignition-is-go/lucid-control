@@ -2,6 +2,7 @@ import os
 from flask import Flask, request, render_template
 import requests
 import json
+from slackclient import SlackClient
 
 
 app = Flask(__name__)
@@ -9,13 +10,15 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 
 def create_slack_channel(text, token):
-    headers = {'content-type': 'application/json'}
-    url = 'https://slack.com/api/channels.create'
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
 
-    data = {"name": text}
-    params = {'token': token}
+    # url = 'https://slack.com/api/channels.create'
 
-    requests.post(url, params=params, data=json.dumps(data), headers=headers)
+    sc.api_call(
+        "channels.create",
+        name="text"
+    )
 
 @app.route('/')
 def hello():
