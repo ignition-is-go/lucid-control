@@ -16,8 +16,8 @@ def create_slack_channel(text, token):
     # url = 'https://slack.com/api/channels.create'
 
     sc.api_call(
-        "channels.join",
-        channel=text
+        "channels.create",
+        name=text
     )
 
 @app.route('/')
