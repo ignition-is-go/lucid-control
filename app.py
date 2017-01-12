@@ -5,13 +5,83 @@ import json
 from slackclient import SlackClient
 import datetime
 import hashlib
-
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
 
-def create_mindmeister_project(text):
+def move_mindmeister_map(folder_id, map_id):
+    url = 'http://www.mindmeister.com/services/rest/'
+    secret = os.environ['MINDMEISTER_SECRET']
+    payload = {
+        'api_key': os.environ['MINDMEISTER_API_KEY'],
+        'auth_token': os.environ['MINDMEISTER_AUTH_TOKEN'],
+        'folder_id': folder_id,
+        'map_id': map_id,
+        'method': 'mm.maps.move',
+        'response_format': 'xml',
+        }
+    hash_string = '{}api_key{}auth_token{}folder_id{}map_id{}method{}response_format{}'.format(
+        secret,
+        os.environ['MINDMEISTER_API_KEY'],
+        os.environ['MINDMEISTER_AUTH_TOKEN'],
+        folder_id,
+        map_id,
+        'mm.maps.move',
+        'xml'
+    )
+    print hash_string
+    hash_object = hashlib.md5(bytes(hash_string))
+
+    api_sig = hash_object.hexdigest()
+    print api_sig
+    payload['api_sig'] = api_sig
+
+    # headers = {
+    #     'content-type': 'application/xml'
+    #
+    # }
+    response = requests.get(url, params=payload)
+    print response.text
+    # response = requests.post(url, data=json.dumps(payload), headers=headers)
+    return response
+
+
+def create_mindmeister_map(text):
+    url = 'http://www.mindmeister.com/services/rest/'
+    secret = os.environ['MINDMEISTER_SECRET']
+    payload = {
+        'api_key': os.environ['MINDMEISTER_API_KEY'],
+        'auth_token': os.environ['MINDMEISTER_AUTH_TOKEN'],
+        'method': 'mm.maps.add',
+        'response_format': 'xml'
+        }
+    hash_string = '{}api_key{}auth_token{}method{}response_format{}'.format(
+        secret,
+        os.environ['MINDMEISTER_API_KEY'],
+        os.environ['MINDMEISTER_AUTH_TOKEN'],
+        'mm.maps.add',
+        'xml'
+    )
+    print hash_string
+    hash_object = hashlib.md5(bytes(hash_string))
+
+    api_sig = hash_object.hexdigest()
+    print api_sig
+    payload['api_sig'] = api_sig
+
+    # headers = {
+    #     'content-type': 'application/xml'
+    #
+    # }
+    response = requests.get(url, params=payload)
+    print response.text
+    # response = requests.post(url, data=json.dumps(payload), headers=headers)
+    return response
+
+
+def create_mindmeister_folder(text):
     url = 'http://www.mindmeister.com/services/rest/'
     secret = os.environ['MINDMEISTER_SECRET']
     payload = {
@@ -126,8 +196,16 @@ def create():
         print 'Create airtable entry returns: {}'.format(airtable_response)
         meistertask_response = create_meistertask_project(text)
         print 'Create meistertask project returns: {}'.format(meistertask_response)
-        mindmeister_response = create_mindmeister_project(text)
-        print 'Create mindmeister project returns: {}'.format(mindmeister_response)
+        mindmeister_response = create_mindmeister_folder(text)
+        print 'Create mindmeister folder returns: {}'.format(mindmeister_response)
+        root = ET.fromstring(mindmeister_response.content)
+        folder_id = root[0].attrib['id']
+        mindmeister_response2 = create_mindmeister_map(text)
+        print 'Create mindmeister map returns: {}'.format(mindmeister_response2)
+        root = ET.fromstring(mindmeister_response2.content)
+        map_id = root[0].attrib['id']
+        mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
+        print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
 
     return results['msg']
 
