@@ -17,9 +17,7 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 
 def connect_to_xero():
-    with open('private.key') as keyfile:
-        rsa_key = keyfile.read()
-    credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, rsa_key)
+    credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, constants.XERO_API_PRIVATE_KEY)
     xero = Xero(credentials)
     return xero
 
