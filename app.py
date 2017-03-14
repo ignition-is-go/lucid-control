@@ -8,10 +8,26 @@ import hashlib
 import xml.etree.ElementTree as ET
 import dropbox
 import constants
+from xero import Xero
+from xero.auth import PrivateCredentials
 
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
+
+
+def connect_to_xero():
+    with open('private.key') as keyfile:
+        rsa_key = keyfile.read()
+    credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, rsa_key)
+    xero = Xero(credentials)
+    return xero
+
+
+def create_xero_tracking_category(text):
+    xero = connect_to_xero()
+    response = xero.trackingcategories.put({'Name': text})
+    return response
 
 
 def connect_to_dropbox():
@@ -23,6 +39,7 @@ def create_dropbox_folder(text):
     dbx = connect_to_dropbox()
     response = dbx.files_create_folder(os.path.join('/', text))
     return response
+
 
 def move_mindmeister_map(folder_id, map_id):
     url = 'http://www.mindmeister.com/services/rest/'
@@ -128,6 +145,7 @@ def create_mindmeister_folder(text):
     # response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
 
+
 def create_meistertask_project(text):
     url = 'https://www.meistertask.com/api/projects'
     payload = {
@@ -221,6 +239,8 @@ def create():
         print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
         create_dropbox_folder_response = create_dropbox_folder(text)
         print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
+        xero_trackingcategory_response = create_xero_tracking_category(text)
+        print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
 
     return results['msg']
 
