@@ -6,10 +6,23 @@ from slackclient import SlackClient
 import datetime
 import hashlib
 import xml.etree.ElementTree as ET
+import dropbox
+import constants
+
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
+
+def connect_to_dropbox():
+    dbx = dropbox.Dropbox(constants.DROPBOX_ACCESS_TOKEN)
+    return dbx
+
+
+def create_dropbox_folder(text):
+    dbx = connect_to_dropbox()
+    response = dbx.files_create_folder(os.path.join('/', text))
+    return response
 
 def move_mindmeister_map(folder_id, map_id):
     url = 'http://www.mindmeister.com/services/rest/'
@@ -206,6 +219,8 @@ def create():
         map_id = root[0].attrib['id']
         mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
         print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+        create_dropbox_folder_response = create_dropbox_folder(text)
+        print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
 
     return results['msg']
 
