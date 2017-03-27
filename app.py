@@ -206,7 +206,7 @@ def rename():
         response_url = request.form.get('response_url')
         text = request.form.get('text')
         token = request.form.get('token')
-        if token != app.config['INTEGRATION_TOKEN']:
+        if token != app.config['INTEGRATION_TOKEN_RENAME']:
             message = (
                 'Invalid Slack Integration Token. Commands disabled '
                 'until token is corrected. Try setting the '

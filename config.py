@@ -8,6 +8,7 @@ class Config(object):
     CSRF_ENABLED = True
     SECRET_KEY = 'this-really-needs-to-be-changed'
     INTEGRATION_TOKEN = 'o8fI8r8rMfqgvgxLguStdsQg'
+    INTEGRATION_TOKEN_RENAME = 'bx6xdqYRbKfMJlgBSU7U36el'
 
 
 class ProductionConfig(Config):
