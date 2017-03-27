@@ -143,6 +143,25 @@ def create_mindmeister_folder(text):
     # response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
 
+def rename_meistertask_project(text, name):
+    url = 'https://www.meistertask.com/api/projects'
+
+    headers = {
+        'content-type': 'application/json',
+        'authorization': 'Bearer {}'.format(os.environ['MEISTERTASK_API_TOKEN'])
+    }
+    response = requests.get(url, headers=headers)
+    result = json.loads(response)
+    project_id = None
+    for item in result:
+        if item['name'] == name:
+            project_id = item['id']
+    payload = {
+        'name': text
+    }
+    url += '/' + project_id + '/'
+    response = requests.get(url, data=json.dumps(payload), headers=headers)
+    return response
 
 def create_meistertask_project(text):
     url = 'https://www.meistertask.com/api/projects'
