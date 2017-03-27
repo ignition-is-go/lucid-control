@@ -163,7 +163,7 @@ def rename_airtable_entry(text, name):
         'content-type': 'application/json',
         'authorization': 'Bearer {}'.format(os.environ['AIRTABLE_API_TOKEN'])
     }
-    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    response = requests.get(url, headers=headers)
     result = json.loads(response.content)
     entry_id = result['records'][0]['id']
     url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table/' + entry_id
