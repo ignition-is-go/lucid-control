@@ -165,7 +165,9 @@ def rename_airtable_entry(text, name):
     }
     response = requests.get(url, headers=headers)
     result = json.loads(response.content)
-    entry_id = result['records'][0]['id']
+    entry_id = None
+    if result['records']:
+        entry_id = result['records'][0]['id']
     url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table/' + entry_id
     payload = {
         "fields": {
