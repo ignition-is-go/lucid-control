@@ -156,6 +156,25 @@ def create_meistertask_project(text):
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
 
+def rename_airtable_entry(text, name):
+    url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table?filterByFormula={Title}="' + name + '"'
+
+    headers = {
+        'content-type': 'application/json',
+        'authorization': 'Bearer {}'.format(os.environ['AIRTABLE_API_TOKEN'])
+    }
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    result = json.loads(response.content)
+    entry_id = result['records'][0]['id']
+    url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table/' + entry_id
+    payload = {
+        "fields": {
+            "Abbreviated Title": text
+        }
+    }
+    response = requests.patch(url, data=json.dumps(payload), headers=headers)
+    return response
+
 
 def create_airtable_entry(text):
     date_now = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -175,8 +194,20 @@ def create_airtable_entry(text):
         'content-type': 'application/json',
         'authorization': 'Bearer {}'.format(os.environ['AIRTABLE_API_TOKEN'])
     }
+
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
+
+def rename_slack_channel(text, token, channel_id):
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
+
+    output = sc.api_call(
+        "channels.rename",
+        channel=channel_id,
+        name=text
+    )
+    return output
 
 
 def create_slack_channel(text, token):
@@ -206,7 +237,8 @@ def rename():
         response_url = request.form.get('response_url')
         text = request.form.get('text')
         token = request.form.get('token')
-        channel = request.form.get('channel_name')
+        channel_name = request.form.get('channel_name')
+        channel_id = request.form.get('channel_id')
         if token != app.config['INTEGRATION_TOKEN_RENAME']:
             message = (
                 'Invalid Slack Integration Token. Commands disabled '
@@ -216,9 +248,31 @@ def rename():
 
         else:
             message = (
-                'Successfully Renamed {} to: {}'.format(channel, text)
+                'Successfully Renamed {} to: {}'.format(channel_name, text)
             )
         results['msg'] = message
+        print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
+        slack_response = rename_slack_channel(text, token, channel_id)
+        print 'Rename channel returns: {}'.format(slack_response)
+        airtable_response = rename_airtable_entry(text, channel_name)
+        print 'Rename airtable entry returns: {}'.format(airtable_response)
+        meistertask_response = rename_meistertask_project(text)
+        print 'Rename meistertask project returns: {}'.format(meistertask_response)
+        mindmeister_response = rename_mindmeister_folder(text)
+        print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
+        root = ET.fromstring(mindmeister_response.content)
+        folder_id = root[0].attrib['id']
+        mindmeister_response2 = rename_mindmeister_map(text)
+        print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
+        root = ET.fromstring(mindmeister_response2.content)
+        map_id = root[0].attrib['id']
+        mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
+        print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+        rename_dropbox_folder_response = rename_dropbox_folder(text)
+        print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
+        xero_trackingcategory_response = rename_xero_tracking_category(text)
+        print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
+
 
     return results['msg']
 
