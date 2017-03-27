@@ -199,6 +199,28 @@ def hello():
     return render_template('index.html', errors=errors, results=results)
 
 
+@app.route('/rename', methods=['GET', 'POST'])
+def create():
+    results = {'msg': ''}
+    if request.method == "POST":
+        response_url = request.form.get('response_url')
+        text = request.form.get('text')
+        token = request.form.get('token')
+        if token != app.config['INTEGRATION_TOKEN']:
+            message = (
+                'Invalid Slack Integration Token. Commands disabled '
+                'until token is corrected. Try setting the '
+                'SLACK_INTEGRATION_TOKEN environment variable'
+            )
+
+        else:
+            message = (
+                'Successfully Created New Project: {}'.format(text)
+            )
+        results['msg'] = message
+
+    return results['msg']
+
 @app.route('/create', methods=['GET', 'POST'])
 def create():
     results = {'msg': ''}
