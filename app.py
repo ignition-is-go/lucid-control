@@ -206,6 +206,7 @@ def rename():
         response_url = request.form.get('response_url')
         text = request.form.get('text')
         token = request.form.get('token')
+        channel = request.form.get('channel_name')
         if token != app.config['INTEGRATION_TOKEN_RENAME']:
             message = (
                 'Invalid Slack Integration Token. Commands disabled '
@@ -215,7 +216,7 @@ def rename():
 
         else:
             message = (
-                'Successfully Created New Project: {}'.format(text)
+                'Successfully Renamed {} to: {}'.format(channel, text)
             )
         results['msg'] = message
 
