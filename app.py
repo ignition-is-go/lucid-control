@@ -200,7 +200,7 @@ def hello():
 
 
 @app.route('/rename', methods=['GET', 'POST'])
-def create():
+def rename():
     results = {'msg': ''}
     if request.method == "POST":
         response_url = request.form.get('response_url')
