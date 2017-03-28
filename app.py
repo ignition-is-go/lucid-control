@@ -160,7 +160,7 @@ def rename_meistertask_project(text, name):
     payload = {
         'name': text
     }
-    url += '/' + project_id + '/'
+    url += '/' + str(project_id) + '/'
     response = requests.get(url, data=json.dumps(payload), headers=headers)
     return response
 
