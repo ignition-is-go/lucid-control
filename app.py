@@ -278,7 +278,7 @@ def rename():
         print 'Rename channel returns: {}'.format(slack_response)
         airtable_response = rename_airtable_entry(text, channel_name)
         print 'Rename airtable entry returns: {}'.format(airtable_response)
-        meistertask_response = rename_meistertask_project(text)
+        meistertask_response = rename_meistertask_project(text, channel_name)
         print 'Rename meistertask project returns: {}'.format(meistertask_response)
         mindmeister_response = rename_mindmeister_folder(text)
         print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
