@@ -186,6 +186,7 @@ def rename_airtable_entry(text, name):
     result = json.loads(response.content)
     entry_id = None
     if result['records']:
+        print result['records']
         entry_id = result['records'][0]['id']
         url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table/' + entry_id
         payload = {
