@@ -187,13 +187,13 @@ def rename_airtable_entry(text, name):
     entry_id = None
     if result['records']:
         entry_id = result['records'][0]['id']
-    url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table/' + entry_id
-    payload = {
-        "fields": {
-            "Abbreviated Title": text
+        url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table/' + entry_id
+        payload = {
+            "fields": {
+                "Abbreviated Title": text
+            }
         }
-    }
-    response = requests.patch(url, data=json.dumps(payload), headers=headers)
+        response = requests.patch(url, data=json.dumps(payload), headers=headers)
     return response
 
 
