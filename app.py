@@ -155,6 +155,7 @@ def rename_meistertask_project(text, name):
     project_id = None
     for item in result:
         print item
+        print name
         if item['name'] == name:
             project_id = item['id']
     payload = {
