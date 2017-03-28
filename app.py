@@ -154,6 +154,7 @@ def rename_meistertask_project(text, name):
     result = json.loads(response.content)
     project_id = None
     for item in result:
+        print item
         if item['name'] == name:
             project_id = item['id']
     payload = {
