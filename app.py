@@ -161,7 +161,7 @@ def rename_meistertask_project(text, name):
         'name': text
     }
     url += '/' + str(project_id) + '/'
-    response = requests.get(url, data=json.dumps(payload), headers=headers)
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
 
 def create_meistertask_project(text):
