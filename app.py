@@ -151,7 +151,7 @@ def rename_meistertask_project(text, name):
         'authorization': 'Bearer {}'.format(os.environ['MEISTERTASK_API_TOKEN'])
     }
     response = requests.get(url, headers=headers)
-    result = json.loads(response)
+    result = json.loads(response.content)
     project_id = None
     for item in result:
         if item['name'] == name:
