@@ -253,16 +253,31 @@ def rename_slack_channel(text, token, channel_id):
     )
     return output
 
-def create_slack_pin(channel_id):
+def create_slack_message(channel_id, text):
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
 
     # url = 'https://slack.com/api/channels.create'
 
     output = sc.api_call(
+        "chat.postMessage",
+        channel=channel_id,
+        text=text
+    )
+
+    return output
+
+def create_slack_pin(channel_id):
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
+
+    # url = 'https://slack.com/api/channels.create'
+    message = create_slack_message(channel_id, 'woooo this is important')
+    ts = message['ts']
+    output = sc.api_call(
         "pins.add",
         channel=channel_id,
-        file_comment='woooooohoooo!'
+        timestamp=ts
     )
 
     return output
