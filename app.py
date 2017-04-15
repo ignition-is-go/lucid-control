@@ -27,6 +27,20 @@ def create_xero_tracking_category(text):
     response = xero.trackingcategories.put({'Name': text})
     return response
 
+def get_xero_tracking_id(text):
+    xero = connect_to_xero()
+    response = xero.trackingcategories.filter(Name__startswith=text)
+    tracking_id = response[0]['TrackingCategoryID']
+    return tracking_id
+
+def rename_xero_tracking_category(name, text):
+    tracking_id = get_xero_tracking_id(name)
+    xero = connect_to_xero()
+    category = xero.trackingcategories.get(tracking_id)
+    category['Name'] = text
+    response = xero.trackingcategories.save(category)
+    return response
+
 
 def connect_to_dropbox():
     dbx = dropbox.Dropbox(constants.DROPBOX_ACCESS_TOKEN)
@@ -36,6 +50,12 @@ def connect_to_dropbox():
 def create_dropbox_folder(text):
     dbx = connect_to_dropbox()
     response = dbx.files_create_folder(os.path.join('/', text))
+    return response
+
+
+def rename_dropbox_folder(channel_name, text):
+    dbx = connect_to_dropbox()
+    response = dbx.files_move(os.path.join('/', channel_name), os.path.join('/', text))
     return response
 
 
@@ -162,7 +182,7 @@ def rename_meistertask_project(text, name):
         'name': text
     }
     url += '/' + str(project_id) + '/'
-    response = requests.post(url, data=json.dumps(payload), headers=headers)
+    response = requests.get(url, params=payload, headers=headers)
     return response
 
 def create_meistertask_project(text):
@@ -233,6 +253,19 @@ def rename_slack_channel(text, token, channel_id):
     )
     return output
 
+def create_slack_pin(channel_id):
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
+
+    # url = 'https://slack.com/api/channels.create'
+
+    output = sc.api_call(
+        "pins.add",
+        channel=channel_id,
+        file_comment='woooooohoooo!'
+    )
+
+    return output
 
 def create_slack_channel(text, token):
     slack_token = os.environ["SLACK_API_TOKEN"]
@@ -244,6 +277,7 @@ def create_slack_channel(text, token):
         "channels.create",
         name=text
     )
+
     return output
 
 
@@ -278,23 +312,23 @@ def rename():
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
         slack_response = rename_slack_channel(text, token, channel_id)
         print 'Rename channel returns: {}'.format(slack_response)
-        airtable_response = rename_airtable_entry(text, channel_name)
-        print 'Rename airtable entry returns: {}'.format(airtable_response)
-        meistertask_response = rename_meistertask_project(text, channel_name)
-        print 'Rename meistertask project returns: {}'.format(meistertask_response)
-        mindmeister_response = rename_mindmeister_folder(text)
-        print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
-        root = ET.fromstring(mindmeister_response.content)
-        folder_id = root[0].attrib['id']
-        mindmeister_response2 = rename_mindmeister_map(text)
-        print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
-        root = ET.fromstring(mindmeister_response2.content)
-        map_id = root[0].attrib['id']
-        mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
-        print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-        rename_dropbox_folder_response = rename_dropbox_folder(text)
+        # airtable_response = rename_airtable_entry(text, channel_name)
+        # print 'Rename airtable entry returns: {}'.format(airtable_response)
+        # meistertask_response = rename_meistertask_project(text, channel_name)
+        # print 'Rename meistertask project returns: {}'.format(meistertask_response)
+        # mindmeister_response = rename_mindmeister_folder(text)
+        # print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
+        # root = ET.fromstring(mindmeister_response.content)
+        # folder_id = root[0].attrib['id']
+        # mindmeister_response2 = rename_mindmeister_map(text)
+        # print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
+        # root = ET.fromstring(mindmeister_response2.content)
+        # map_id = root[0].attrib['id']
+        # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
+        # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+        rename_dropbox_folder_response = rename_dropbox_folder(channel_name, text)
         print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
-        xero_trackingcategory_response = rename_xero_tracking_category(text)
+        xero_trackingcategory_response = rename_xero_tracking_category(channel_name, text)
         print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
 
 
@@ -307,6 +341,7 @@ def create():
         response_url = request.form.get('response_url')
         text = request.form.get('text')
         token = request.form.get('token')
+
         if token != app.config['INTEGRATION_TOKEN']:
             message = (
                 'Invalid Slack Integration Token. Commands disabled '
@@ -322,20 +357,23 @@ def create():
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
         slack_response = create_slack_channel(text, token)
         print 'Create channel returns: {}'.format(slack_response)
-        airtable_response = create_airtable_entry(text)
-        print 'Create airtable entry returns: {}'.format(airtable_response)
-        meistertask_response = create_meistertask_project(text)
-        print 'Create meistertask project returns: {}'.format(meistertask_response)
-        mindmeister_response = create_mindmeister_folder(text)
-        print 'Create mindmeister folder returns: {}'.format(mindmeister_response)
-        root = ET.fromstring(mindmeister_response.content)
-        folder_id = root[0].attrib['id']
-        mindmeister_response2 = create_mindmeister_map(text)
-        print 'Create mindmeister map returns: {}'.format(mindmeister_response2)
-        root = ET.fromstring(mindmeister_response2.content)
-        map_id = root[0].attrib['id']
-        mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
-        print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+        channel_id = slack_response['channel']['id']
+        slack_pin_response = create_slack_pin(channel_id)
+        print 'Create pin returns: {}'.format(slack_pin_response)
+        # airtable_response = create_airtable_entry(text)
+        # print 'Create airtable entry returns: {}'.format(airtable_response)
+        # # meistertask_response = create_meistertask_project(text)
+        # print 'Create meistertask project returns: {}'.format(meistertask_response)
+        # mindmeister_response = create_mindmeister_folder(text)
+        # print 'Create mindmeister folder returns: {}'.format(mindmeister_response)
+        # root = ET.fromstring(mindmeister_response.content)
+        # folder_id = root[0].attrib['id']
+        # mindmeister_response2 = create_mindmeister_map(text)
+        # print 'Create mindmeister map returns: {}'.format(mindmeister_response2)
+        # root = ET.fromstring(mindmeister_response2.content)
+        # map_id = root[0].attrib['id']
+        # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
+        # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
         create_dropbox_folder_response = create_dropbox_folder(text)
         print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
         xero_trackingcategory_response = create_xero_tracking_category(text)
