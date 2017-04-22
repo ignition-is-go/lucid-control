@@ -10,11 +10,16 @@ import dropbox
 import constants
 from xero import Xero
 from xero.auth import PrivateCredentials
-
+import re
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
+
+def create_shortname(text):
+    dashed_text = text.replace(' ', '-')
+    shortname = ''.join(e for e in dashed_text if e.isalnum or e == '-')
+    return shortname
 
 def connect_to_xero():
     credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, constants.XERO_API_PRIVATE_KEY)
@@ -324,6 +329,8 @@ def rename():
                 'Successfully Renamed {} to: {}'.format(channel_name, text)
             )
         results['msg'] = message
+
+
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
         slack_response = rename_slack_channel(text, token, channel_id)
         print 'Rename channel returns: {}'.format(slack_response)
@@ -369,8 +376,11 @@ def create():
                 'Successfully Created New Project: {}'.format(text)
             )
         results['msg'] = message
-        print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        slack_response = create_slack_channel(text, token)
+        print "Creating Short Name from Slub"
+        shortname = create_shortname(text)
+        print "Create Short Name returns: {}".format(shortname)
+        print 'This is the response_url: {}. This is the text: {}'.format(response_url, shortname)
+        slack_response = create_slack_channel(shortname, token)
         print 'Create channel returns: {}'.format(slack_response)
         channel_id = slack_response['channel']['id']
         slack_pin_response = create_slack_pin(channel_id)
@@ -389,9 +399,9 @@ def create():
         # map_id = root[0].attrib['id']
         # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
         # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-        create_dropbox_folder_response = create_dropbox_folder(text)
+        create_dropbox_folder_response = create_dropbox_folder(shortname)
         print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
-        xero_trackingcategory_response = create_xero_tracking_category(text)
+        xero_trackingcategory_response = create_xero_tracking_category(shortname)
         print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
 
     return results['msg']
