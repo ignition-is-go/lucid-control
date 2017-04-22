@@ -15,10 +15,16 @@ import re
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
+def get_last_project_id():
+    response = requests.get('http://lucid-pro.herokuapp.com/api/project/?format=json&order_by=id&limit=1&username=admin&api_key=LucyT3st')
+    last_project_id = response.json()['objects'][0]['id']
+    return last_project_id
 
 def create_shortname(text):
     dashed_text = text.replace(' ', '-')
     shortname = ''.join(e for e in dashed_text if e.isalnum or e == '-')
+    last_project_id = get_last_project_id()
+    shortname = 'P-{}-{}'.format(last_project_id, shortname)
     return shortname
 
 def connect_to_xero():
