@@ -23,7 +23,7 @@ def get_last_project_id():
 def create_shortname(text):
     dashed_text = text.replace(' ', '-')
     shortname = ''.join(e for e in dashed_text if e.isalnum or e == '-')
-    last_project_id = get_last_project_id()
+    last_project_id = get_last_project_id() + 1
     shortname = 'P-{}-{}'.format(last_project_id, shortname)
     return shortname
 
