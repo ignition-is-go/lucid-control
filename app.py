@@ -311,6 +311,20 @@ def rename_slack_channel(text, token, channel_id):
     return output
 
 
+def send_slack_state_menu(channel_id, results):
+    slack_token = os.environ['SLACK_APP_API_TOKEN']
+    sc = SlackClient(slack_token)
+
+    output = sc.api_call(
+        "chat.postMessage",
+        channel=channel_id,
+        text=results['text'],
+        as_user="true",
+        attachments=results['attachments']
+
+    )
+    return output
+
 def create_slack_message(channel_id, text):
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
@@ -532,7 +546,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
 
-def get_status(response_url, channel_name, status):
+def get_status(response_url, channel_name, channel_id, status):
     project_id = channel_name.split('-')[1]
     field = None
     options = []
@@ -567,7 +581,8 @@ def get_status(response_url, channel_name, status):
 
         }
     ]
-    requests.post(response_url, data=json.dumps(results), headers=headers)
+    response = send_slack_state_menu(channel_id, results)
+    # requests.post(response_url, data=json.dumps(results), headers=headers)
 
 @app.route('/change_state', methods=['GET', 'POST'])
 def change_state():
@@ -599,7 +614,7 @@ def status():
                 'SLACK_INTEGRATION_TOKEN environment variable'
             )
 
-    t = Thread(target=get_status, args=(response_url, channel_name, text))
+    t = Thread(target=get_status, args=(response_url, channel_name, channel_id, text))
     t.start()
 
     return waiting
