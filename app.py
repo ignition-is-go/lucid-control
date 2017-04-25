@@ -367,7 +367,7 @@ def create_all(text, response_url, token, results):
         'xero': None
     }
     try:
-        description = 'Everything looks good!'
+
         print "Creating Slug from Title"
         slug = create_slug(text)
         message = (
@@ -430,9 +430,13 @@ def create_all(text, response_url, token, results):
 
     except Exception as e:
         print "Woops! Looks like we got an exception! {}".format(e)
-        description = "Woops! Looks like we got an exception! {}".format(e)
+
         pass
     print "These are the codes: {}".format(codes)
+    description = ''
+    for code in codes:
+        description += '{}: {},'.format(code.upper(), codes[code])
+    description = description.strip(',')
     results['attachments'][0]['text'] = description
     headers = {'Content-Type': 'application/json'}
     requests.post(response_url, data=json.dumps(results), headers=headers)
