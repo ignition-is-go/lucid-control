@@ -11,6 +11,8 @@ import constants
 from xero import Xero
 from xero.auth import PrivateCredentials
 import re
+from threading import Thread
+
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
@@ -320,6 +322,39 @@ def create_slack_channel(text, token):
 
     return output
 
+def create_all(text, response_url, token, results):
+    print "Creating Short Name from Slug"
+    shortname = create_shortname(text)
+    print "Create Short Name returns: {}".format(shortname)
+    project_entry_response = create_project_entry(text, shortname)
+    print "Create Project Entry returns: {}".format(project_entry_response)
+    print 'This is the response_url: {}. This is the text: {}'.format(response_url, shortname)
+    slack_response = create_slack_channel(shortname, token)
+    print 'Create channel returns: {}'.format(slack_response)
+    channel_id = slack_response['channel']['id']
+    slack_pin_response = create_slack_pin(channel_id)
+    print 'Create pin returns: {}'.format(slack_pin_response)
+    # airtable_response = create_airtable_entry(text)
+    # print 'Create airtable entry returns: {}'.format(airtable_response)
+    # # meistertask_response = create_meistertask_project(text)
+    # print 'Create meistertask project returns: {}'.format(meistertask_response)
+    # mindmeister_response = create_mindmeister_folder(text)
+    # print 'Create mindmeister folder returns: {}'.format(mindmeister_response)
+    # root = ET.fromstring(mindmeister_response.content)
+    # folder_id = root[0].attrib['id']
+    # mindmeister_response2 = create_mindmeister_map(text)
+    # print 'Create mindmeister map returns: {}'.format(mindmeister_response2)
+    # root = ET.fromstring(mindmeister_response2.content)
+    # map_id = root[0].attrib['id']
+    # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
+    # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+    create_dropbox_folder_response = create_dropbox_folder(shortname)
+    print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
+    xero_trackingcategory_response = create_xero_tracking_category(shortname)
+    print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
+    headers = {'Content-Type': 'application/json'}
+    requests.post(response_url, data=json.dumps(results), headers=headers)
+
 
 @app.route('/')
 def hello():
@@ -397,6 +432,15 @@ def create():
             }
         ]
     }
+    waiting = {
+        'text': 'Request Received!',
+        'response_type': 'in_channel',
+        'attachments': [
+            {
+                'text': 'Attempting to Create Project...'
+            }
+        ]
+    }
     if request.method == "POST":
         response_url = request.form.get('response_url')
         text = request.form.get('text')
@@ -415,39 +459,11 @@ def create():
             )
         results['text'] = message
         results['attachments'][0]['text'] = message
-        print "Creating Short Name from Slub"
-        shortname = create_shortname(text)
-        print "Create Short Name returns: {}".format(shortname)
-        project_entry_response = create_project_entry(text, shortname)
-        print "Create Project Entry returns: {}".format(project_entry_response)
-        print 'This is the response_url: {}. This is the text: {}'.format(response_url, shortname)
-        slack_response = create_slack_channel(shortname, token)
-        print 'Create channel returns: {}'.format(slack_response)
-        channel_id = slack_response['channel']['id']
-        slack_pin_response = create_slack_pin(channel_id)
-        print 'Create pin returns: {}'.format(slack_pin_response)
-        # airtable_response = create_airtable_entry(text)
-        # print 'Create airtable entry returns: {}'.format(airtable_response)
-        # # meistertask_response = create_meistertask_project(text)
-        # print 'Create meistertask project returns: {}'.format(meistertask_response)
-        # mindmeister_response = create_mindmeister_folder(text)
-        # print 'Create mindmeister folder returns: {}'.format(mindmeister_response)
-        # root = ET.fromstring(mindmeister_response.content)
-        # folder_id = root[0].attrib['id']
-        # mindmeister_response2 = create_mindmeister_map(text)
-        # print 'Create mindmeister map returns: {}'.format(mindmeister_response2)
-        # root = ET.fromstring(mindmeister_response2.content)
-        # map_id = root[0].attrib['id']
-        # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
-        # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-        create_dropbox_folder_response = create_dropbox_folder(shortname)
-        print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
-        xero_trackingcategory_response = create_xero_tracking_category(shortname)
-        print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
+        # create_all(text, response_url, token, results)
+        t = Thread(target=create_all, args=(text, response_url, token, results,))
+        t.start()
 
-    headers = {'Content-Type': 'application/json'}
-    requests.post(response_url, data=json.dumps(results), headers=headers)
-    return json.dumps(results)
+    return json.dumps(waiting)
 
 if __name__ == '__main__':
     app.run()
