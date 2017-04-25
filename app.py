@@ -453,6 +453,14 @@ def create_all(text, response_url, token, results):
 
 
 def rename_all(text, response_url, channel_id, channel_name, token, results):
+    issues = {}
+    codes = {
+        'entry': None,
+        'slack': None,
+        'pin': None,
+        'dropbox': None,
+        'xero': None
+    }
     try:
         description = 'Everything looks good!'
         project_id = channel_name.split('-')[1]
@@ -463,8 +471,16 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         )
         results['text'] = message
         print 'Rename project returns: {}'.format(rename_project_response)
+        if str(rename_project_response.status_code).startswith('2'):
+            codes['entry'] = 'OK'
+        else:
+            codes['entry'] = 'ISSUE'
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
         slack_response = rename_slack_channel(slug, token, channel_id)
+        if slack_response.get('ok'):
+            codes['slack'] = 'OK'
+        else:
+            codes['slack'] = 'ISSUE'
         print 'Rename channel returns: {}'.format(slack_response)
         # airtable_response = rename_airtable_entry(text, channel_name)
         # print 'Rename airtable entry returns: {}'.format(airtable_response)
@@ -480,13 +496,38 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         # map_id = root[0].attrib['id']
         # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
         # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-        rename_dropbox_folder_response = rename_dropbox_folder(channel_name, slug)
-        print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
-        xero_trackingcategory_response = rename_xero_tracking_category(channel_name, slug)
-        print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
+        try:
+            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, slug)
+            print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
+            codes['dropbox'] = 'OK'
+        except Exception as e:
+            print "Dropbox issues: {}".format(e)
+            codes['dropbox'] = 'ISSUE'
+            issues['dropbox'] = '{}'.format(e)
+            pass
+
+        try:
+            xero_trackingcategory_response = rename_xero_tracking_category(channel_name, slug)
+            print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
+            codes['xero'] = 'OK'
+        except Exception as e:
+            print "Xero issues: {}".format(e)
+            codes['xero'] = 'ISSUE'
+            issues['xero'] = '{}'.format(e)
     except Exception as e:
         print "Woops! Looks like we got an exception! {}".format(e)
         description = "Woops! Looks like we got an exception! {}".format(e)
+    print "These are the codes: {}".format(codes)
+    description = ''
+    for code in codes:
+        description += '{}: {}, '.format(code.upper(), codes[code])
+    if issues:
+        reason = ''
+        for issue in issues:
+            reason += '{}: {}, '.format(issue.upper(), issues[issue])
+        reason = reason.strip(', ')
+        results['attachments'].append({'text': reason})
+    description = description.strip(', ')
     results['attachments'][0]['text'] = description
     headers = {'Content-Type': 'application/json'}
     requests.post(response_url, data=json.dumps(results), headers=headers)
