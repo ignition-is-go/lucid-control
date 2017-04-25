@@ -17,12 +17,13 @@ from threading import Thread
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
-def create_project_entry(text, shortname):
+
+def create_project_entry(text, slug):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/?username=admin&api_key=LucyT3st'
     payload = {
         'title': text,
-        'slug': shortname
+        'slug': slug
 
     }
     r = requests.post(url, data=json.dumps(payload), headers=headers)
@@ -36,12 +37,14 @@ def get_last_project_id():
     last_project_id = response.json()['objects'][0]['id']
     return last_project_id
 
-def create_shortname(text):
+
+def create_slug(text):
     dashed_text = text.replace(' ', '-')
-    shortname = ''.join(e for e in dashed_text if e.isalnum or e == '-')
+    slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
     last_project_id = get_last_project_id() + 1
-    shortname = 'P-{}-{}'.format(last_project_id, shortname)
-    return shortname
+    slug = 'P-{}-{}'.format(last_project_id, slug)
+    return slug
+
 
 def connect_to_xero():
     credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, constants.XERO_API_PRIVATE_KEY)
@@ -59,6 +62,7 @@ def get_xero_tracking_id(text):
     response = xero.trackingcategories.filter(Name__startswith=text)
     tracking_id = response[0]['TrackingCategoryID']
     return tracking_id
+
 
 def rename_xero_tracking_category(name, text):
     tracking_id = get_xero_tracking_id(name)
@@ -190,6 +194,7 @@ def create_mindmeister_folder(text):
     # response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
 
+
 def rename_meistertask_project(text, name):
     url = 'https://www.meistertask.com/api/projects'
 
@@ -212,6 +217,7 @@ def rename_meistertask_project(text, name):
     response = requests.get(url, params=payload, headers=headers)
     return response
 
+
 def create_meistertask_project(text):
     url = 'https://www.meistertask.com/api/projects'
     payload = {
@@ -223,6 +229,7 @@ def create_meistertask_project(text):
     }
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
+
 
 def rename_airtable_entry(text, name):
     url = 'https://api.airtable.com/v0/appSGiFYbSDPJBM3k/Imported%20Table?filterByFormula={Title}="' + name + '"'
@@ -269,6 +276,7 @@ def create_airtable_entry(text):
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
 
+
 def rename_slack_channel(text, token, channel_id):
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
@@ -279,6 +287,7 @@ def rename_slack_channel(text, token, channel_id):
         name=text
     )
     return output
+
 
 def create_slack_message(channel_id, text):
     slack_token = os.environ["SLACK_API_TOKEN"]
@@ -294,8 +303,9 @@ def create_slack_message(channel_id, text):
 
     return output
 
-def create_slack_pin(shortname, channel_id):
-    project_id = shortname.split('-')[1]
+
+def create_slack_pin(slug, channel_id):
+    project_id = slug.split('-')[1]
     url = 'http://lucid-pro.herokuapp.com/admin/mission_control/project/{}/change/'.format(project_id)
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
@@ -311,6 +321,7 @@ def create_slack_pin(shortname, channel_id):
 
     return output
 
+
 def create_slack_channel(text, token):
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
@@ -324,17 +335,18 @@ def create_slack_channel(text, token):
 
     return output
 
+
 def create_all(text, response_url, token, results):
     print "Creating Short Name from Slug"
-    shortname = create_shortname(text)
-    print "Create Short Name returns: {}".format(shortname)
-    project_entry_response = create_project_entry(text, shortname)
+    slug = create_slug(text)
+    print "Create Short Name returns: {}".format(slug)
+    project_entry_response = create_project_entry(text, slug)
     print "Create Project Entry returns: {}".format(project_entry_response)
-    print 'This is the response_url: {}. This is the text: {}'.format(response_url, shortname)
-    slack_response = create_slack_channel(shortname, token)
+    print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
+    slack_response = create_slack_channel(slug, token)
     print 'Create channel returns: {}'.format(slack_response)
     channel_id = slack_response['channel']['id']
-    slack_pin_response = create_slack_pin(shortname, channel_id)
+    slack_pin_response = create_slack_pin(slug, channel_id)
     print 'Create pin returns: {}'.format(slack_pin_response)
     # airtable_response = create_airtable_entry(text)
     # print 'Create airtable entry returns: {}'.format(airtable_response)
@@ -350,10 +362,36 @@ def create_all(text, response_url, token, results):
     # map_id = root[0].attrib['id']
     # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
     # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-    create_dropbox_folder_response = create_dropbox_folder(shortname)
+    create_dropbox_folder_response = create_dropbox_folder(slug)
     print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
-    xero_trackingcategory_response = create_xero_tracking_category(shortname)
+    xero_trackingcategory_response = create_xero_tracking_category(slug)
     print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
+    headers = {'Content-Type': 'application/json'}
+    requests.post(response_url, data=json.dumps(results), headers=headers)
+
+
+def rename_all(text, response_url, channel_id, channel_name token, results):
+    print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
+    slack_response = rename_slack_channel(text, token, channel_id)
+    print 'Rename channel returns: {}'.format(slack_response)
+    # airtable_response = rename_airtable_entry(text, channel_name)
+    # print 'Rename airtable entry returns: {}'.format(airtable_response)
+    # meistertask_response = rename_meistertask_project(text, channel_name)
+    # print 'Rename meistertask project returns: {}'.format(meistertask_response)
+    # mindmeister_response = rename_mindmeister_folder(text)
+    # print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
+    # root = ET.fromstring(mindmeister_response.content)
+    # folder_id = root[0].attrib['id']
+    # mindmeister_response2 = rename_mindmeister_map(text)
+    # print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
+    # root = ET.fromstring(mindmeister_response2.content)
+    # map_id = root[0].attrib['id']
+    # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
+    # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+    rename_dropbox_folder_response = rename_dropbox_folder(channel_name, text)
+    print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
+    xero_trackingcategory_response = rename_xero_tracking_category(channel_name, text)
+    print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
     headers = {'Content-Type': 'application/json'}
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
@@ -376,6 +414,7 @@ def rename():
             }
         ]
     }
+    waiting = 'Request Received! Attempting to Rename Project...'
     if request.method == "POST":
         response_url = request.form.get('response_url')
         text = request.form.get('text')
@@ -396,32 +435,10 @@ def rename():
         results['text'] = message
         results['attachments'][0]['text'] = message
 
+        t = Thread(target=create_all, args=(text, response_url, channel_id, channel_name, token, results,))
+        t.start()
 
-        print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        slack_response = rename_slack_channel(text, token, channel_id)
-        print 'Rename channel returns: {}'.format(slack_response)
-        # airtable_response = rename_airtable_entry(text, channel_name)
-        # print 'Rename airtable entry returns: {}'.format(airtable_response)
-        # meistertask_response = rename_meistertask_project(text, channel_name)
-        # print 'Rename meistertask project returns: {}'.format(meistertask_response)
-        # mindmeister_response = rename_mindmeister_folder(text)
-        # print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
-        # root = ET.fromstring(mindmeister_response.content)
-        # folder_id = root[0].attrib['id']
-        # mindmeister_response2 = rename_mindmeister_map(text)
-        # print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
-        # root = ET.fromstring(mindmeister_response2.content)
-        # map_id = root[0].attrib['id']
-        # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
-        # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-        rename_dropbox_folder_response = rename_dropbox_folder(channel_name, text)
-        print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
-        xero_trackingcategory_response = rename_xero_tracking_category(channel_name, text)
-        print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
-
-    headers = {'Content-Type': 'application/json'}
-    requests.post(response_url, data=json.dumps(results), headers=headers)
-    return json.dumps(results)
+    return waiting
 
 @app.route('/create', methods=['GET', 'POST'])
 def create():
