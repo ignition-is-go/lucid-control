@@ -357,7 +357,7 @@ def rename():
                 'Successfully Renamed {} to: {}'.format(channel_name, text)
             )
         results['text'] = message
-        results['attachments']['text'] = message
+        results['attachments'][0]['text'] = message
 
 
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
@@ -414,7 +414,7 @@ def create():
                 'Successfully Created New Project: {}'.format(text)
             )
         results['text'] = message
-        results['attachments']['text'] = message
+        results['attachments'][0]['text'] = message
         print "Creating Short Name from Slub"
         shortname = create_shortname(text)
         print "Create Short Name returns: {}".format(shortname)
