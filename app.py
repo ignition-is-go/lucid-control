@@ -294,12 +294,14 @@ def create_slack_message(channel_id, text):
 
     return output
 
-def create_slack_pin(channel_id):
+def create_slack_pin(shortname, channel_id):
+    project_id = shortname.split('-')[1]
+    url = 'http://lucid-pro.herokuapp.com/admin/mission_control/project/{}/change/'.format(project_id)
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
 
     # url = 'https://slack.com/api/channels.create'
-    message = create_slack_message(channel_id, 'woooo this is important')
+    message = create_slack_message(channel_id, url)
     ts = message['ts']
     output = sc.api_call(
         "pins.add",
@@ -332,7 +334,7 @@ def create_all(text, response_url, token, results):
     slack_response = create_slack_channel(shortname, token)
     print 'Create channel returns: {}'.format(slack_response)
     channel_id = slack_response['channel']['id']
-    slack_pin_response = create_slack_pin(channel_id)
+    slack_pin_response = create_slack_pin(shortname, channel_id)
     print 'Create pin returns: {}'.format(slack_pin_response)
     # airtable_response = create_airtable_entry(text)
     # print 'Create airtable entry returns: {}'.format(airtable_response)
@@ -432,15 +434,8 @@ def create():
             }
         ]
     }
-    waiting = {
-        'text': 'Request Received!',
-        'response_type': 'in_channel',
-        'attachments': [
-            {
-                'text': 'Attempting to Create Project...'
-            }
-        ]
-    }
+    waiting = 'Request Received! Attempting to Create Project...'
+
     if request.method == "POST":
         response_url = request.form.get('response_url')
         text = request.form.get('text')
@@ -463,7 +458,7 @@ def create():
         t = Thread(target=create_all, args=(text, response_url, token, results,))
         t.start()
 
-    return json.dumps(waiting)
+    return waiting
 
 if __name__ == '__main__':
     app.run()
