@@ -15,6 +15,20 @@ import re
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
+def create_project_entry(text, shortname):
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+    url = 'http://lucid-pro.heokuapp.com/api/project/?username=admin&api_key=LucyT3st'
+    payload = {
+        'title': text,
+        'slug': shortname
+
+    }
+    r = requests.post(url, data=payload, headers=headers)
+    print r
+    print r.content
+    return r
+
+
 def get_last_project_id():
     response = requests.get('http://lucid-pro.herokuapp.com/api/project/?format=json&order_by=id&limit=1&username=admin&api_key=LucyT3st')
     last_project_id = response.json()['objects'][0]['id']
@@ -385,6 +399,8 @@ def create():
         print "Creating Short Name from Slub"
         shortname = create_shortname(text)
         print "Create Short Name returns: {}".format(shortname)
+        project_entry_response = create_project_entry(text, shortname)
+        print "Create Project Entry returns: {}".format(project_entry_response)
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, shortname)
         slack_response = create_slack_channel(shortname, token)
         print 'Create channel returns: {}'.format(slack_response)
