@@ -31,7 +31,7 @@ def rename_project(channel_name, text, slug, project_id):
         'title': text,
         'slug': slug
     }
-    r = requests.put(url, data=payload, headers=headers)
+    r = requests.put(url, data=json.dumps(payload), headers=headers)
     print r
     print r.content
     return r
