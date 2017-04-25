@@ -23,7 +23,7 @@ def create_project_entry(text, shortname):
         'slug': shortname
 
     }
-    r = requests.post(url, data=payload, headers=headers)
+    r = requests.post(url, data=json.dumps(payload), headers=headers)
     print r
     print r.content
     return r
