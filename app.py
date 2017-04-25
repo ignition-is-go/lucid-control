@@ -24,6 +24,7 @@ def remake_slug(project_id, text):
     slug = 'P-{}-{}'.format(project_id, slug)
     return slug
 
+
 def rename_project(channel_name, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
@@ -358,65 +359,78 @@ def create_slack_channel(text, token):
 
 
 def create_all(text, response_url, token, results):
-    print "Creating Short Name from Slug"
-    slug = create_slug(text)
-    print "Create Short Name returns: {}".format(slug)
-    project_entry_response = create_project_entry(text, slug)
-    print "Create Project Entry returns: {}".format(project_entry_response)
-    print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
-    slack_response = create_slack_channel(slug, token)
-    print 'Create channel returns: {}'.format(slack_response)
-    channel_id = slack_response['channel']['id']
-    slack_pin_response = create_slack_pin(slug, channel_id)
-    print 'Create pin returns: {}'.format(slack_pin_response)
-    # airtable_response = create_airtable_entry(text)
-    # print 'Create airtable entry returns: {}'.format(airtable_response)
-    # # meistertask_response = create_meistertask_project(text)
-    # print 'Create meistertask project returns: {}'.format(meistertask_response)
-    # mindmeister_response = create_mindmeister_folder(text)
-    # print 'Create mindmeister folder returns: {}'.format(mindmeister_response)
-    # root = ET.fromstring(mindmeister_response.content)
-    # folder_id = root[0].attrib['id']
-    # mindmeister_response2 = create_mindmeister_map(text)
-    # print 'Create mindmeister map returns: {}'.format(mindmeister_response2)
-    # root = ET.fromstring(mindmeister_response2.content)
-    # map_id = root[0].attrib['id']
-    # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
-    # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-    create_dropbox_folder_response = create_dropbox_folder(slug)
-    print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
-    xero_trackingcategory_response = create_xero_tracking_category(slug)
-    print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
+    try:
+        description = 'Everything looks good!'
+        print "Creating Short Name from Slug"
+        slug = create_slug(text)
+        print "Create Short Name returns: {}".format(slug)
+        project_entry_response = create_project_entry(text, slug)
+        print "Create Project Entry returns: {}".format(project_entry_response)
+        print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
+        slack_response = create_slack_channel(slug, token)
+        print 'Create channel returns: {}'.format(slack_response)
+        channel_id = slack_response['channel']['id']
+        slack_pin_response = create_slack_pin(slug, channel_id)
+        print 'Create pin returns: {}'.format(slack_pin_response)
+        # airtable_response = create_airtable_entry(text)
+        # print 'Create airtable entry returns: {}'.format(airtable_response)
+        # # meistertask_response = create_meistertask_project(text)
+        # print 'Create meistertask project returns: {}'.format(meistertask_response)
+        # mindmeister_response = create_mindmeister_folder(text)
+        # print 'Create mindmeister folder returns: {}'.format(mindmeister_response)
+        # root = ET.fromstring(mindmeister_response.content)
+        # folder_id = root[0].attrib['id']
+        # mindmeister_response2 = create_mindmeister_map(text)
+        # print 'Create mindmeister map returns: {}'.format(mindmeister_response2)
+        # root = ET.fromstring(mindmeister_response2.content)
+        # map_id = root[0].attrib['id']
+        # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
+        # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+        create_dropbox_folder_response = create_dropbox_folder(slug)
+        print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
+        xero_trackingcategory_response = create_xero_tracking_category(slug)
+        print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
+    except Exception as e:
+        print "Woops! Looks like we got an exception! {}".format(e)
+        description = "Woops! Looks like we got an exception! {}".format(e)
+        pass
+    results['attachments'][0]['text'] = description
     headers = {'Content-Type': 'application/json'}
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
 
 def rename_all(text, response_url, channel_id, channel_name, token, results):
-    project_id = channel_name.split('-')[1]
-    slug = remake_slug(project_id, text)
-    rename_project_response = rename_project(channel_name, text, slug, project_id)
-    print 'Rename project returns: {}'.format(rename_project_response)
-    print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-    slack_response = rename_slack_channel(slug, token, channel_id)
-    print 'Rename channel returns: {}'.format(slack_response)
-    # airtable_response = rename_airtable_entry(text, channel_name)
-    # print 'Rename airtable entry returns: {}'.format(airtable_response)
-    # meistertask_response = rename_meistertask_project(text, channel_name)
-    # print 'Rename meistertask project returns: {}'.format(meistertask_response)
-    # mindmeister_response = rename_mindmeister_folder(text)
-    # print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
-    # root = ET.fromstring(mindmeister_response.content)
-    # folder_id = root[0].attrib['id']
-    # mindmeister_response2 = rename_mindmeister_map(text)
-    # print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
-    # root = ET.fromstring(mindmeister_response2.content)
-    # map_id = root[0].attrib['id']
-    # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
-    # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-    rename_dropbox_folder_response = rename_dropbox_folder(channel_name, slug)
-    print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
-    xero_trackingcategory_response = rename_xero_tracking_category(channel_name, slug)
-    print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
+    try:
+        description = 'Everything looks good!'
+        project_id = channel_name.split('-')[1]
+        slug = remake_slug(project_id, text)
+        rename_project_response = rename_project(channel_name, text, slug, project_id)
+        print 'Rename project returns: {}'.format(rename_project_response)
+        print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
+        slack_response = rename_slack_channel(slug, token, channel_id)
+        print 'Rename channel returns: {}'.format(slack_response)
+        # airtable_response = rename_airtable_entry(text, channel_name)
+        # print 'Rename airtable entry returns: {}'.format(airtable_response)
+        # meistertask_response = rename_meistertask_project(text, channel_name)
+        # print 'Rename meistertask project returns: {}'.format(meistertask_response)
+        # mindmeister_response = rename_mindmeister_folder(text)
+        # print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
+        # root = ET.fromstring(mindmeister_response.content)
+        # folder_id = root[0].attrib['id']
+        # mindmeister_response2 = rename_mindmeister_map(text)
+        # print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
+        # root = ET.fromstring(mindmeister_response2.content)
+        # map_id = root[0].attrib['id']
+        # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
+        # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+        rename_dropbox_folder_response = rename_dropbox_folder(channel_name, slug)
+        print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
+        xero_trackingcategory_response = rename_xero_tracking_category(channel_name, slug)
+        print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
+    except Exception as e:
+        print "Woops! Looks like we got an exception! {}".format(e)
+        description = "Woops! Looks like we got an exception! {}".format(e)
+    results['attachments'][0]['text'] = description
     headers = {'Content-Type': 'application/json'}
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
