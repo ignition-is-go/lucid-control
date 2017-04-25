@@ -569,6 +569,14 @@ def get_status(response_url, channel_name, status):
     ]
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
+@app.route('/change_state', methods=['GET', 'POST'])
+def change_state():
+    waiting = 'Request Received! Attempting to Change Project State'
+    if request.method == "POST":
+        print request.form
+
+    return waiting
+
 @app.route('/')
 def hello():
     errors = []
