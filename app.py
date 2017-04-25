@@ -370,7 +370,7 @@ def create_all(text, response_url, token, results):
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
 
-def rename_all(text, response_url, channel_id, channel_name token, results):
+def rename_all(text, response_url, channel_id, channel_name, token, results):
     print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
     slack_response = rename_slack_channel(text, token, channel_id)
     print 'Rename channel returns: {}'.format(slack_response)
