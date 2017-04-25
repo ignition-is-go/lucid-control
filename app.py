@@ -18,6 +18,25 @@ app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
 
+def remake_slug(project_id, text):
+    dashed_text = text.replace(' ', '-')
+    slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
+    slug = 'P-{}-{}'.format(project_id, slug)
+    return slug
+
+def rename_project(channel_name, text, slug, project_id):
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+    url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
+    payload = {
+        'title': text,
+        'slug': slug
+    }
+    r = requests.put(url, data=payload, headers=headers)
+    print r
+    print r.content
+    return r
+
+
 def create_project_entry(text, slug):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/?username=admin&api_key=LucyT3st'
@@ -56,6 +75,7 @@ def create_xero_tracking_category(text):
     xero = connect_to_xero()
     response = xero.trackingcategories.put({'Name': text})
     return response
+
 
 def get_xero_tracking_id(text):
     xero = connect_to_xero()
@@ -371,6 +391,10 @@ def create_all(text, response_url, token, results):
 
 
 def rename_all(text, response_url, channel_id, channel_name, token, results):
+    project_id = channel_name.split('-')[1]
+    slug = remake_slug(project_id, text)
+    rename_project_response = rename_project(channel_name, text, slug, project_id)
+    print 'Rename project returns: {}'.format(rename_project_response)
     print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
     slack_response = rename_slack_channel(text, token, channel_id)
     print 'Rename channel returns: {}'.format(slack_response)
