@@ -376,9 +376,8 @@ def create_all(text, response_url, token, results):
         results['text'] = message
         print "Create Slug returns: {}".format(slug)
         project_entry_response = create_project_entry(text, slug)
-        print "status code: {}".format(project_entry_response.status_code)
-        print "codes ok: {}".format(requests.codes.ok)
-        if project_entry_response.status_code == requests.codes.ok:
+
+        if str(project_entry_response.status_code).startswith('2'):
             codes['entry'] = 'OK'
         else:
             codes['entry'] = 'ISSUE'
@@ -437,7 +436,7 @@ def create_all(text, response_url, token, results):
     print "These are the codes: {}".format(codes)
     description = ''
     for code in codes:
-        description += '{}: {},'.format(code.upper(), codes[code])
+        description += '{}: {}, '.format(code.upper(), codes[code])
     description = description.strip(',')
     results['attachments'][0]['text'] = description
     headers = {'Content-Type': 'application/json'}
