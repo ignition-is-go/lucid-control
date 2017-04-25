@@ -544,7 +544,7 @@ def get_status(response_url, channel_name, status):
         field = 'invoice_state'
     response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
     options_response = requests.get('http://lucid-pro.herokuapp.com/api/project/schema/?format=json&username=admin&api_key=LucyT3st')
-    choices = options_response['fields'][field]['choices']
+    choices = options_response.json()['fields'][field]['choices']
     for choice in choices:
         options.append({'text': choice[1], 'value': choice[0]})
     status_value = response.json()[field]
