@@ -376,6 +376,8 @@ def create_all(text, response_url, token, results):
         results['text'] = message
         print "Create Slug returns: {}".format(slug)
         project_entry_response = create_project_entry(text, slug)
+        print "status code: {}".format(project_entry_response.status_code)
+        print "codes ok: {}".format(requests.codes.ok)
         if project_entry_response.status_code == requests.codes.ok:
             codes['entry'] = 'OK'
         else:
