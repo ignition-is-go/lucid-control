@@ -459,7 +459,7 @@ def rename():
         results['text'] = message
         results['attachments'][0]['text'] = message
 
-        t = Thread(target=create_all, args=(text, response_url, channel_id, channel_name, token, results,))
+        t = Thread(target=rename_all, args=(text, response_url, channel_id, channel_name, token, results,))
         t.start()
 
     return waiting
