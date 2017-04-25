@@ -535,7 +535,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
 def get_status(response_url, channel_name, status):
     project_id = channel_name.split('-')[1]
     field = None
-    options = {}
+    options = []
     if status.lower() == 'p':
         field = 'production_state'
     if status.lower() == 's':
@@ -543,6 +543,10 @@ def get_status(response_url, channel_name, status):
     if status.lower() == 'i':
         field = 'invoice_state'
     response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
+    options_response = requests.get('http://lucid-pro.herokuapp.com/api/project/schema/?format=json&username=admin&api_key=LucyT3st')
+    choices = options_response['fields'][field]['choices']
+    for choice in choices:
+        options.append({'text': choice[1], 'value': choice[0]})
     status_value = response.json()[field]
     results = {'text': 'Current {}: {}'.format(field.replace('_', ' ').upper(), status_value)}
     headers = {'Content-Type': 'application/json'}
