@@ -359,6 +359,7 @@ def create_slack_channel(text, token):
 
 
 def create_all(text, response_url, token, results):
+    issues = {}
     codes = {
         'entry': None,
         'slack': None,
@@ -418,6 +419,7 @@ def create_all(text, response_url, token, results):
         except Exception as e:
             print "Dropbox issues: {}".format(e)
             codes['dropbox'] = 'ISSUE'
+            issues['dropbox'] = '{}'.format(e)
             pass
 
 
@@ -427,6 +429,7 @@ def create_all(text, response_url, token, results):
             codes['xero'] = 'OK'
         except Exception as e:
             print "Xero issues: {}".format(e)
+            issues['xero'] = '{}'.format(e)
             codes['xero'] = 'ISSUE'
 
     except Exception as e:
@@ -437,7 +440,13 @@ def create_all(text, response_url, token, results):
     description = ''
     for code in codes:
         description += '{}: {}, '.format(code.upper(), codes[code])
-    description = description.strip(',')
+    if issues:
+        reason = ''
+        for issue in issues:
+            reason += '{}: {}, '.format(issue.upper(), issues[issue])
+        reason = reason.strip(', ')
+        results['attachments'].append({'text': reason})
+    description = description.strip(', ')
     results['attachments'][0]['text'] = description
     headers = {'Content-Type': 'application/json'}
     requests.post(response_url, data=json.dumps(results), headers=headers)
