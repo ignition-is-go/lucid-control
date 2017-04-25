@@ -359,22 +359,32 @@ def create_slack_channel(text, token):
 
 
 def create_all(text, response_url, token, results):
+    codes = {
+        'entry': None,
+        'slack': None,
+        'pin': None,
+        'dropbox': None,
+        'xero': None
+    }
     try:
         description = 'Everything looks good!'
-        print "Creating Short Name from Slug"
+        print "Creating Slug from Title"
         slug = create_slug(text)
         message = (
             'Successfully Created New Project: {}'.format(slug)
         )
         results['text'] = message
-        print "Create Short Name returns: {}".format(slug)
+        print "Create Slug returns: {}".format(slug)
         project_entry_response = create_project_entry(text, slug)
+        codes['entry'] = project_entry_response
         print "Create Project Entry returns: {}".format(project_entry_response)
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
         slack_response = create_slack_channel(slug, token)
+        codes['slack'] = slack_response
         print 'Create channel returns: {}'.format(slack_response)
         channel_id = slack_response['channel']['id']
         slack_pin_response = create_slack_pin(slug, channel_id)
+        codes['pin'] = slack_pin_response
         print 'Create pin returns: {}'.format(slack_pin_response)
         # airtable_response = create_airtable_entry(text)
         # print 'Create airtable entry returns: {}'.format(airtable_response)
@@ -391,13 +401,16 @@ def create_all(text, response_url, token, results):
         # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
         # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
         create_dropbox_folder_response = create_dropbox_folder(slug)
+        codes['dropbox'] = create_dropbox_folder_response
         print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
         xero_trackingcategory_response = create_xero_tracking_category(slug)
+        codes['xero'] = xero_trackingcategory_response
         print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
     except Exception as e:
         print "Woops! Looks like we got an exception! {}".format(e)
         description = "Woops! Looks like we got an exception! {}".format(e)
         pass
+    print "These are the codes: {}".format(codes)
     results['attachments'][0]['text'] = description
     headers = {'Content-Type': 'application/json'}
     requests.post(response_url, data=json.dumps(results), headers=headers)
