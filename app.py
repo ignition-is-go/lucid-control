@@ -19,7 +19,7 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 
 def remake_slug(project_id, text):
-    dashed_text = text.replace(' ', '-')
+    dashed_text = text.lower().replace(' ', '-')
     slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
     slug = 'P-{}-{}'.format(project_id, slug)
     return slug
@@ -58,7 +58,7 @@ def get_last_project_id():
 
 
 def create_slug(text):
-    dashed_text = text.replace(' ', '-')
+    dashed_text = text.lower().replace(' ', '-')
     slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
     last_project_id = get_last_project_id() + 1
     slug = 'P-{}-{}'.format(last_project_id, slug)
@@ -396,7 +396,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     rename_project_response = rename_project(channel_name, text, slug, project_id)
     print 'Rename project returns: {}'.format(rename_project_response)
     print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-    slack_response = rename_slack_channel(text, token, channel_id)
+    slack_response = rename_slack_channel(slug, token, channel_id)
     print 'Rename channel returns: {}'.format(slack_response)
     # airtable_response = rename_airtable_entry(text, channel_name)
     # print 'Rename airtable entry returns: {}'.format(airtable_response)
@@ -412,9 +412,9 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     # map_id = root[0].attrib['id']
     # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
     # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-    rename_dropbox_folder_response = rename_dropbox_folder(channel_name, text)
+    rename_dropbox_folder_response = rename_dropbox_folder(channel_name, slug)
     print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
-    xero_trackingcategory_response = rename_xero_tracking_category(channel_name, text)
+    xero_trackingcategory_response = rename_xero_tracking_category(channel_name, slug)
     print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
     headers = {'Content-Type': 'application/json'}
     requests.post(response_url, data=json.dumps(results), headers=headers)
@@ -443,7 +443,7 @@ def rename():
         response_url = request.form.get('response_url')
         text = request.form.get('text')
         token = request.form.get('token')
-        channel_name = request.form.get('channel_name')
+        channel_name = request.form.get('channel_name').capitalize()
         channel_id = request.form.get('channel_id')
         if token != app.config['INTEGRATION_TOKEN_RENAME']:
             message = (
