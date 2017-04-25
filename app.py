@@ -87,7 +87,8 @@ def get_xero_tracking_id(text):
 def rename_xero_tracking_category(name, text):
     tracking_id = get_xero_tracking_id(name)
     xero = connect_to_xero()
-    category = xero.trackingcategories.get(tracking_id)
+    category = xero.trackingcategories.get(tracking_id)[0]
+
     category['Name'] = text
     response = xero.trackingcategories.save(category)
     return response
