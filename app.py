@@ -17,7 +17,7 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 def create_project_entry(text, shortname):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = 'http://lucid-pro.heokuapp.com/api/project/?username=admin&api_key=LucyT3st'
+    url = 'http://lucid-pro.herokuapp.com/api/project/?username=admin&api_key=LucyT3st'
     payload = {
         'title': text,
         'slug': shortname
