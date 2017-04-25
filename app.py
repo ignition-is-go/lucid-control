@@ -562,7 +562,7 @@ def status():
         token = request.form.get('token')
         channel_name = request.form.get('channel_name').capitalize()
         channel_id = request.form.get('channel_id')
-        if token != app.config['INTEGRATION_TOKEN_RENAME']:
+        if token != app.config['INTEGRATION_TOKEN_STATE']:
             waiting = (
                 'Invalid Slack Integration Token. Commands disabled '
                 'until token is corrected. Try setting the '

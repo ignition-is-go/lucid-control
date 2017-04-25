@@ -9,6 +9,7 @@ class Config(object):
     SECRET_KEY = 'this-really-needs-to-be-changed'
     INTEGRATION_TOKEN = 'o8fI8r8rMfqgvgxLguStdsQg'
     INTEGRATION_TOKEN_RENAME = 'bx6xdqYRbKfMJlgBSU7U36el'
+    INTEGRATION_TOKEN_STATE = 'tGtQScfIATvdJk249yMDcrK1'
 
 
 class ProductionConfig(Config):
