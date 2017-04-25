@@ -535,6 +535,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
 def get_status(response_url, channel_name, status):
     project_id = channel_name.split('-')[1]
     field = None
+    options = {}
     if status.lower() == 'p':
         field = 'production_state'
     if status.lower() == 's':
@@ -543,8 +544,25 @@ def get_status(response_url, channel_name, status):
         field = 'invoice_state'
     response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
     status_value = response.json()[field]
-    results = {'text': '{}: {}'.format(field.replace('_', ' ').upper(), status_value)}
+    results = {'text': 'Current {}: {}'.format(field.replace('_', ' ').upper(), status_value)}
     headers = {'Content-Type': 'application/json'}
+    results['attachments'] = [
+        {
+            'text': 'Change {}'.format(field.replace('_', ' ').upper()),
+            "color": "#3AA3E3",
+            "attachment_type": "default",
+            "callback_id": field,
+            "actions": [
+                {
+                    "name": "{}_choice".format(field),
+                    "text": "Set New State...",
+                    "type": "select",
+                    "options": options
+                }
+            ]
+
+        }
+    ]
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
 @app.route('/')
@@ -555,7 +573,7 @@ def hello():
 
 @app.route('/status', methods=['GET', 'POST'])
 def status():
-    waiting = 'Request Received! Attempting to Rename Project...'
+    waiting = 'Request Received! Checking Project State...'
     if request.method == "POST":
         response_url = request.form.get('response_url')
         text = request.form.get('text')
