@@ -30,7 +30,7 @@ def create_project_entry(text, shortname):
 
 
 def get_last_project_id():
-    response = requests.get('http://lucid-pro.herokuapp.com/api/project/?format=json&order_by=id&limit=1&username=admin&api_key=LucyT3st')
+    response = requests.get('http://lucid-pro.herokuapp.com/api/lastproject/?format=json&username=admin&api_key=LucyT3st')
     last_project_id = response.json()['objects'][0]['id']
     return last_project_id
 
