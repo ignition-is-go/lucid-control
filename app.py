@@ -330,7 +330,15 @@ def hello():
 
 @app.route('/rename', methods=['GET', 'POST'])
 def rename():
-    results = {'msg': ''}
+    results = {
+        'text': '',
+        'response_type': 'in_channel',
+        'attachments': [
+            {
+                'text': ''
+            }
+        ]
+    }
     if request.method == "POST":
         response_url = request.form.get('response_url')
         text = request.form.get('text')
@@ -348,7 +356,8 @@ def rename():
             message = (
                 'Successfully Renamed {} to: {}'.format(channel_name, text)
             )
-        results['msg'] = message
+        results['text'] = message
+        results['attachments']['text'] = message
 
 
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
@@ -373,12 +382,21 @@ def rename():
         xero_trackingcategory_response = rename_xero_tracking_category(channel_name, text)
         print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
 
-
-    return results['msg']
+    headers = {'Content-Type': 'application/json'}
+    requests.post(response_url, data=json.dumps(results), headers=headers)
+    return json.dumps(results)
 
 @app.route('/create', methods=['GET', 'POST'])
 def create():
-    results = {'msg': ''}
+    results = {
+        'text': '',
+        'response_type': 'in_channel',
+        'attachments': [
+            {
+                'text': ''
+            }
+        ]
+    }
     if request.method == "POST":
         response_url = request.form.get('response_url')
         text = request.form.get('text')
@@ -395,7 +413,8 @@ def create():
             message = (
                 'Successfully Created New Project: {}'.format(text)
             )
-        results['msg'] = message
+        results['text'] = message
+        results['attachments']['text'] = message
         print "Creating Short Name from Slub"
         shortname = create_shortname(text)
         print "Create Short Name returns: {}".format(shortname)
@@ -426,7 +445,9 @@ def create():
         xero_trackingcategory_response = create_xero_tracking_category(shortname)
         print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
 
-    return results['msg']
+    headers = {'Content-Type': 'application/json'}
+    requests.post(response_url, data=json.dumps(results), headers=headers)
+    return json.dumps(results)
 
 if __name__ == '__main__':
     app.run()
