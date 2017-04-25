@@ -457,7 +457,6 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     codes = {
         'entry': None,
         'slack': None,
-        'pin': None,
         'dropbox': None,
         'xero': None
     }
@@ -533,11 +532,48 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
 
+def get_status(response_url, channel_name, status):
+    project_id = channel_name.split('-')[1]
+    field = None
+    if status.lower() == 'p':
+        field = 'production_state'
+    if status.lower() == 's':
+        field = 'sales_state'
+    if status.lower() == 'i':
+        field = 'invoice_state'
+    response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
+    status_value = response.json()[field]
+    results = {'text': '{}: {}'.format(field.replace('_', ' ').upper(), status_value)}
+    headers = {'Content-Type': 'application/json'}
+    requests.post(response_url, data=json.dumps(results), headers=headers)
+
 @app.route('/')
 def hello():
     errors = []
     results = {}
     return render_template('index.html', errors=errors, results=results)
+
+@app.route('/status', methods=['GET', 'POST'])
+def status():
+    waiting = 'Request Received! Attempting to Rename Project...'
+    if request.method == "POST":
+        response_url = request.form.get('response_url')
+        text = request.form.get('text')
+        token = request.form.get('token')
+        channel_name = request.form.get('channel_name').capitalize()
+        channel_id = request.form.get('channel_id')
+        if token != app.config['INTEGRATION_TOKEN_RENAME']:
+            waiting = (
+                'Invalid Slack Integration Token. Commands disabled '
+                'until token is corrected. Try setting the '
+                'SLACK_INTEGRATION_TOKEN environment variable'
+            )
+
+    t = Thread(target=get_status, args=(response_url, channel_name, text))
+    t.start()
+
+    return waiting
+
 
 
 @app.route('/rename', methods=['GET', 'POST'])
