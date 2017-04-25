@@ -376,15 +376,25 @@ def create_all(text, response_url, token, results):
         results['text'] = message
         print "Create Slug returns: {}".format(slug)
         project_entry_response = create_project_entry(text, slug)
-        codes['entry'] = project_entry_response
+        if project_entry_response.status_code == requests.codes.ok:
+            codes['entry'] = 'OK'
+        else:
+            codes['entry'] = 'ISSUE'
+
         print "Create Project Entry returns: {}".format(project_entry_response)
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
         slack_response = create_slack_channel(slug, token)
-        codes['slack'] = slack_response
+        if slack_response.get('ok'):
+            codes['slack'] = 'OK'
+        else:
+            codes['slack'] = 'ISSUE'
         print 'Create channel returns: {}'.format(slack_response)
         channel_id = slack_response['channel']['id']
         slack_pin_response = create_slack_pin(slug, channel_id)
-        codes['pin'] = slack_pin_response
+        if slack_pin_response.get('ok'):
+            codes['pin'] = 'OK'
+        else:
+            codes['pin'] = 'ISSUE'
         print 'Create pin returns: {}'.format(slack_pin_response)
         # airtable_response = create_airtable_entry(text)
         # print 'Create airtable entry returns: {}'.format(airtable_response)
@@ -400,12 +410,24 @@ def create_all(text, response_url, token, results):
         # map_id = root[0].attrib['id']
         # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
         # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
-        create_dropbox_folder_response = create_dropbox_folder(slug)
-        codes['dropbox'] = create_dropbox_folder_response
-        print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
-        xero_trackingcategory_response = create_xero_tracking_category(slug)
-        codes['xero'] = xero_trackingcategory_response
-        print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
+        try:
+            create_dropbox_folder_response = create_dropbox_folder(slug)
+            print 'Crete dropbox folder returns: {}'.format(create_dropbox_folder_response)
+            codes['dropbox'] = 'OK'
+        except Exception as e:
+            print "Dropbox issues: {}".format(e)
+            codes['dropbox'] = 'ISSUE'
+            pass
+
+
+        try:
+            xero_trackingcategory_response = create_xero_tracking_category(slug)
+            print 'Create xero tracking category returns: {}'.format(xero_trackingcategory_response)
+            codes['xero'] = 'OK'
+        except Exception as e:
+            print "Xero issues: {}".format(e)
+            codes['xero'] = 'ISSUE'
+
     except Exception as e:
         print "Woops! Looks like we got an exception! {}".format(e)
         description = "Woops! Looks like we got an exception! {}".format(e)
