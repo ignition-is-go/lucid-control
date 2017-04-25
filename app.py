@@ -363,6 +363,10 @@ def create_all(text, response_url, token, results):
         description = 'Everything looks good!'
         print "Creating Short Name from Slug"
         slug = create_slug(text)
+        message = (
+            'Successfully Created New Project: {}'.format(slug)
+        )
+        results['text'] = message
         print "Create Short Name returns: {}".format(slug)
         project_entry_response = create_project_entry(text, slug)
         print "Create Project Entry returns: {}".format(project_entry_response)
@@ -405,6 +409,10 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         project_id = channel_name.split('-')[1]
         slug = remake_slug(project_id, text)
         rename_project_response = rename_project(channel_name, text, slug, project_id)
+        message = (
+            'Successfully Renamed {} to: {}'.format(channel_name, slug)
+        )
+        results['text'] = message
         print 'Rename project returns: {}'.format(rename_project_response)
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
         slack_response = rename_slack_channel(slug, token, channel_id)
