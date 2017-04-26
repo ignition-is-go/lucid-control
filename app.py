@@ -583,6 +583,7 @@ def get_status(response_url, channel_name, channel_id, status):
     ]
     response = send_slack_state_menu(channel_id, results)
     print response
+    print "whoa made it here"
     # requests.post(response_url, data=json.dumps(results), headers=headers)
 
 @app.route('/change_state', methods=['GET', 'POST'])
