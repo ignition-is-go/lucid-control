@@ -587,10 +587,23 @@ def get_status(response_url, channel_name, channel_id, status):
 
 @app.route('/change_state', methods=['GET', 'POST'])
 def change_state():
+    results = {
+        'text': 'woot'
+
+    }
     waiting = 'Request Received! Attempting to Change Project State'
     if request.method == "POST":
-        print request.form
-
+        response_url = request.form.get('response_url')
+        token = request.form.get('token')
+        if token != app.config['INTEGRATION_TOKEN_STATE']:
+            waiting = (
+                'Invalid Slack Integration Token. Commands disabled '
+                'until token is corrected. Try setting the '
+                'SLACK_INTEGRATION_TOKEN environment variable'
+            )
+    print waiting
+    headers = {'Content-Type': 'application/json'}
+    requests.post(response_url, data=json.dumps(results), headers=headers)
     return waiting
 
 @app.route('/')
