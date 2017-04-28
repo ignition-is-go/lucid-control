@@ -595,7 +595,7 @@ def change_state():
     if request.method == "POST":
         response_url = request.form.get('response_url')
         token = request.form.get('token')
-        if token != os.environ('INTEGRATION_TOKEN_STATE'):
+        if token != os.environ['INTEGRATION_TOKEN_STATE']:
             waiting = (
                 'Invalid Slack Integration Token. Commands disabled '
                 'until token is corrected. Try setting the '
@@ -621,7 +621,7 @@ def status():
         token = request.form.get('token')
         channel_name = request.form.get('channel_name').capitalize()
         channel_id = request.form.get('channel_id')
-        if token != os.environ('INTEGRATION_TOKEN_STATE'):
+        if token != os.environ['INTEGRATION_TOKEN_STATE']:
             waiting = (
                 'Invalid Slack Integration Token. Commands disabled '
                 'until token is corrected. Try setting the '
@@ -653,7 +653,7 @@ def rename():
         token = request.form.get('token')
         channel_name = request.form.get('channel_name').capitalize()
         channel_id = request.form.get('channel_id')
-        if token != os.environ('INTEGRATION_TOKEN_RENAME'):
+        if token != os.environ['INTEGRATION_TOKEN_RENAME']:
             message = (
                 'Invalid Slack Integration Token. Commands disabled '
                 'until token is corrected. Try setting the '
@@ -690,7 +690,7 @@ def create():
         text = request.form.get('text')
         token = request.form.get('token')
 
-        if token != os.environ('INTEGRATION_TOKEN'):
+        if token != os.environ['INTEGRATION_TOKEN_CREATE']:
             message = (
                 'Invalid Slack Integration Token. Commands disabled '
                 'until token is corrected. Try setting the '
