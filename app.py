@@ -324,6 +324,7 @@ def send_slack_state_menu(channel_id, results):
         attachments=results['attachments']
 
     )
+    print output
     return output
 
 def create_slack_message(channel_id, text):
