@@ -598,7 +598,7 @@ def set_status(response_url, channel_name, channel_id, selection, status_type):
     r = requests.put(url, data=json.dumps(payload), headers=headers)
 
 
-    results = {'text': 'Successfully Changed State'}
+    results = {'text': 'Successfully Changed State', 'attachments': [{'text': 'Hooray!'}]}
     headers = {'Content-Type': 'application/json'}
 
     response = send_slack_state_menu(channel_id, results)
