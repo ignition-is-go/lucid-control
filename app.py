@@ -329,7 +329,7 @@ def send_slack_state_menu(channel_id, results):
         channel=channel_id,
         text=results['text'],
         as_user="true",
-        response_type="in_channel",
+        response_type="ephemeral",
         attachments=results['attachments']
 
     )
@@ -681,7 +681,7 @@ def state():
 def rename():
     results = {
         'text': '',
-        'response_type': 'in_channel',
+        'response_type': 'ephemeral',
         'attachments': [
             {
                 'text': ''
@@ -718,7 +718,7 @@ def rename():
 def create():
     results = {
         'text': '',
-        'response_type': 'in_channel',
+        'response_type': 'ephemeral',
         'attachments': [
             {
                 'text': ''
