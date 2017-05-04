@@ -612,8 +612,8 @@ def hello():
     results = {}
     return render_template('index.html', errors=errors, results=results)
 
-@app.route('/status', methods=['GET', 'POST'])
-def status():
+@app.route('/state', methods=['GET', 'POST'])
+def state():
     waiting = 'Request Received! Checking Project State...'
     if request.method == "POST":
         response_url = request.form.get('response_url')
