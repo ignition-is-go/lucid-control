@@ -628,6 +628,7 @@ def state():
                 'Invalid Slack Integration Token. Commands disabled '
                 'until token is corrected. Try setting the '
                 'SLACK_INTEGRATION_TOKEN environment variable'
+                'we got this token: {}'.format(token)
             )
 
     t = Thread(target=get_status, args=(response_url, channel_name, channel_id, text))
