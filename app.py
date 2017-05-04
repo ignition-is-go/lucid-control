@@ -314,7 +314,7 @@ def rename_slack_channel(text, token, channel_id):
 def send_slack_state_menu(channel_id, results):
     slack_token = os.environ['SLACK_API_TOKEN']
     sc = SlackClient(slack_token)
-    results['attachments'].append({'text': '<a href="https://slack.com/oauth/authorize?scope=incoming-webhook,commands,bot&client_id=126700618215.173749013504"><img alt="Add to Slack" height="40" width="139" src="https://platform.slack-edge.com/img/add_to_slack.png" srcset="https://platform.slack-edge.com/img/add_to_slack.png 1x, https://platform.slack-edge.com/img/add_to_slack@2x.png 2x" /></a>'})
+    results['attachments'].append({'text': '', 'callback_id': 'status'})
     output = sc.api_call(
         "chat.postMessage",
         channel=channel_id,
