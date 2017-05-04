@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, make_response
 import requests
 import json
 from slackclient import SlackClient
@@ -594,20 +594,25 @@ def change_state():
         'text': 'woot'
 
     }
-    waiting = 'Request Received! Attempting to Change Project State'
+    # waiting = 'Request Received! Attempting to Change Project State'
     if request.method == "POST":
-        response_url = request.form.get('response_url')
-        token = request.form.get('token')
-        if token != os.environ['INTEGRATION_TOKEN_STATE']:
-            waiting = (
-                'Invalid Slack Integration Token. Commands disabled '
-                'until token is corrected. Try setting the '
-                'SLACK_INTEGRATION_TOKEN environment variable'
-            )
-    print waiting
-    headers = {'Content-Type': 'application/json'}
-    requests.post(response_url, data=json.dumps(results), headers=headers)
-    return waiting
+        form_json = json.loads(request.form['payload'])
+        selection = form_json['actions'][0]['selected_options'][0]['value']
+        print "selection:"
+        print selection
+    return make_response("", 200)
+    #     response_url = request.form.get('response_url')
+    #     token = request.form.get('token')
+    #     if token != os.environ['INTEGRATION_TOKEN_STATE']:
+    #         waiting = (
+    #             'Invalid Slack Integration Token. Commands disabled '
+    #             'until token is corrected. Try setting the '
+    #             'SLACK_INTEGRATION_TOKEN environment variable'
+    #         )
+    # print waiting
+    # headers = {'Content-Type': 'application/json'}
+    # requests.post(response_url, data=json.dumps(results), headers=headers)
+    # return waiting
 
 @app.route('/')
 def hello():
