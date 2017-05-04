@@ -312,7 +312,7 @@ def rename_slack_channel(text, token, channel_id):
 
 
 def send_slack_state_menu(channel_id, results):
-    slack_token = os.environ['SLACK_API_TOKEN']
+    slack_token = os.environ['INTEGRATION_TOKEN_STATE']
     sc = SlackClient(slack_token)
 
     output = sc.api_call(
