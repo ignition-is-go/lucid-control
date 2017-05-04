@@ -314,13 +314,7 @@ def rename_slack_channel(text, token, channel_id):
 def send_slack_state_menu(channel_id, results):
     slack_token = os.environ['SLACK_API_TOKEN']
     sc = SlackClient(slack_token)
-    results['attachments'].append({
-        'text': 'Choose a New State',
-        'callback_id': 'status',
-        'fallback': "If you could read this message, you'd be choosing a new state right now.",
-        "color": "#3AA3E3",
-        "attachment_type": "default"
-    })
+
     output = sc.api_call(
         "chat.postMessage",
         channel=channel_id,
@@ -577,6 +571,7 @@ def get_status(response_url, channel_name, channel_id, status):
             "color": "#3AA3E3",
             "attachment_type": "default",
             "callback_id": field,
+            'fallback': "If you could read this message, you'd be choosing a new state right now.",
             "actions": [
                 {
                     "name": "{}_choice".format(field),
