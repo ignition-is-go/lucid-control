@@ -585,6 +585,23 @@ def get_status(response_url, channel_name, channel_id, status):
         }
     ]
     response = send_slack_state_menu(channel_id, results)
+
+
+def set_status(response_url, channel_name, channel_id, selection, status_type):
+    project_id = channel_name.split('-')[1]
+
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+    url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
+    payload = {
+        str(status_type): selection
+    }
+    r = requests.put(url, data=json.dumps(payload), headers=headers)
+
+
+    results = {'text': 'Successfully Changed State'}
+    headers = {'Content-Type': 'application/json'}
+
+    response = send_slack_state_menu(channel_id, results)
     # if response.json()['message']['attachments'][0]['actions'][0]['']
     # requests.post(response_url, data=json.dumps(results), headers=headers)
 
@@ -598,10 +615,16 @@ def change_state():
     if request.method == "POST":
         form_json = json.loads(request.form['payload'])
         print form_json
+        state_type = form_json['callback_id']
+        channel_name = form_json['channel']['name']
+        channel_id = form_json['channel']['id']
         selection = form_json['actions'][0]['selected_options'][0]['value']
+        response_url = form_json['response_url']
         print "selection:"
         print selection
-    return make_response("", 200)
+        t = Thread(target=set_status, args=(response_url, channel_name, channel_id, selection, state_type))
+        t.start()
+    return make_response("Changing State...", 200)
     #     response_url = request.form.get('response_url')
     #     token = request.form.get('token')
     #     if token != os.environ['INTEGRATION_TOKEN_STATE']:
