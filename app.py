@@ -103,10 +103,15 @@ def connect_to_dropbox():
 def create_dropbox_folder(text):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    print "schema: {}".format(schema)
     for folder in schema['folders']:
+        print 'folder: {}'.format(folder)
+        print 'attempting to make: {}'.format(os.path.join(folder['root'], text))
         response = dbx.files_create_folder(os.path.join(folder['root'], text))
         print response
         for subfolder in folder['subfolders']:
+            print 'subfolder: {}'.format(subfolder)
+            print 'attempting to make: {}'.format(os.path.join(folder['root'], text, subfolder))
             response = dbx.files_create_folder(os.path.join(folder['root'], text, subfolder))
             print response
     return response
