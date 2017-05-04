@@ -597,6 +597,7 @@ def change_state():
     # waiting = 'Request Received! Attempting to Change Project State'
     if request.method == "POST":
         form_json = json.loads(request.form['payload'])
+        print form_json
         selection = form_json['actions'][0]['selected_options'][0]['value']
         print "selection:"
         print selection
