@@ -104,6 +104,9 @@ def create_dropbox_folder(text):
     dbx = connect_to_dropbox()
     print "dropbox_folder_schema: {}".format(os.environ['DROPBOX_FOLDER_SCHEMA'])
     dfs = os.environ['DROPBOX_FOLDER_SCHEMA']
+    print dfs
+    print type(dfs)
+    dfs = dfs.strip()
     schema = json.loads(dfs)
     print "schema: {}".format(schema)
     for folder in schema['folders']:
