@@ -102,13 +102,13 @@ def connect_to_dropbox():
 
 def create_dropbox_folder(text):
     dbx = connect_to_dropbox()
-    response = dbx.files_create_folder(os.path.join('/', text))
+    response = dbx.files_create_folder(os.path.join(constants.DROPBOX_APP_FOLDER, text))
     return response
 
 
 def rename_dropbox_folder(channel_name, text):
     dbx = connect_to_dropbox()
-    response = dbx.files_move(os.path.join('/', channel_name), os.path.join('/', text))
+    response = dbx.files_move(os.path.join(constants.DROPBOX_APP_FOLDER, channel_name), os.path.join(constants.DROPBOX_APP_FOLDER, text))
     return response
 
 
