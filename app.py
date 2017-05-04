@@ -102,13 +102,22 @@ def connect_to_dropbox():
 
 def create_dropbox_folder(text):
     dbx = connect_to_dropbox()
-    response = dbx.files_create_folder(os.path.join(constants.DROPBOX_APP_FOLDER, text))
+    schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    for folder in schema['folders']:
+        response = dbx.files_create_folder(os.path.join(folder['root'], text))
+        print response
+        for subfolder in folder['subfolders']:
+            response = dbx.files_create_folder(os.path.join(folder['root'], text, subfolder))
+            print response
     return response
 
 
 def rename_dropbox_folder(channel_name, text):
     dbx = connect_to_dropbox()
-    response = dbx.files_move(os.path.join(constants.DROPBOX_APP_FOLDER, channel_name), os.path.join(constants.DROPBOX_APP_FOLDER, text))
+    schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    for folder in schema['folders']:
+        response = dbx.files_move(os.path.join(folder['root'], channel_name), os.path.join(folder['root'], text))
+        print response
     return response
 
 
