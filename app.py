@@ -400,9 +400,10 @@ def create_slack_channel(text, token):
     Creates a slack channel
     '''
     #check to see if there's 'P-00..' on the front of text, and remove it
-    if text[0:2] == "P-":
-        m = re.search('P-0*-(.*)',text)
-        text = m.group(0)
+    if text.lower()[0:2] == "p-":
+        text = text.lower().split('-')[2]
+        # m = re.search('p-0*-(.*)',text)
+        # text = m.group(0)
 
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
