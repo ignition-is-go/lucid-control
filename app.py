@@ -18,10 +18,18 @@ app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
 
-def remake_slug(project_id, text):
-    dashed_text = text.lower().replace(' ', '-')
+def format_slug(project_id, text):
+    '''
+    Handles the formatting to create a slug from a project_id number and text
+    @param project_id: the project's id number
+    @param text: the project's short title
+    @returns the formatted slug
+    '''
+
+    #removed lower case on slug text (only necessary for slack)
+    dashed_text = text.replace(' ', '-')
     slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
-    slug = 'P-{}-{}'.format(project_id, slug)
+    slug = 'P-{04d}-{}'.format(project_id, slug)
     return slug
 
 
@@ -59,10 +67,13 @@ def get_last_project_id():
 
 
 def create_slug(text):
-    dashed_text = text.lower().replace(' ', '-')
-    slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
-    last_project_id = get_last_project_id() + 1
-    slug = 'P-{}-{}'.format(last_project_id, slug)
+    '''
+    Used to create a slug for a new project
+    @params text: the short title of the project
+    @returns the slug for the project
+    '''
+    next_project_id = get_last_project_id() + 1
+    slug = format_slug(next_project_id, text)
     return slug
 
 
@@ -385,6 +396,14 @@ def create_slack_pin(slug, channel_id):
 
 
 def create_slack_channel(text, token):
+    '''
+    Creates a slack channel
+    '''
+    #check to see if there's 'P-00..' on the front of text, and remove it
+    if text[0:2] == "P-":
+        m = re.search('P-0*-(.*)',text)
+        text = m.group(0)
+
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
 
@@ -503,7 +522,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     try:
         description = 'Everything looks good!'
         project_id = channel_name.split('-')[1]
-        slug = remake_slug(project_id, text)
+        slug = format_slug(project_id, text)
         rename_project_response = rename_project(channel_name, text, slug, project_id)
         message = (
             'Successfully Renamed {} to: {}'.format(channel_name, slug)
