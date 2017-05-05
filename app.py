@@ -33,7 +33,7 @@ def format_slug(project_id, text):
     return slug
 
 
-def rename_project(channel_name, text, slug, project_id):
+def rename_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
     payload = {
@@ -144,11 +144,11 @@ def create_dropbox_folder(text):
     return response
 
 
-def rename_dropbox_folder(channel_name, text):
+def rename_dropbox_folder(channel_name, project_id, text):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
     for folder in schema['folders']:
-        response = dbx.files_move(os.path.join(folder['root'], channel_name), os.path.join(folder['root'], text))
+        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], format_slug(project_id, text)))
         print response
     return response
 
@@ -531,7 +531,8 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         description = 'Everything looks good!'
         project_id = get_project_id_from_channel(channel_id)
         slug = format_slug(project_id, text)
-        rename_project_response = rename_project(channel_name, text, slug, project_id)
+        print slug
+        rename_project_response = rename_project(channel_id, text, slug, project_id)
         message = (
             'Successfully Renamed {} to: {}'.format(channel_name, slug)
         )
@@ -542,7 +543,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         else:
             codes['entry'] = 'ISSUE'
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        slack_response = rename_slack_channel(slug, token, channel_id)
+        slack_response = rename_slack_channel(text, token, channel_id)
         if slack_response.get('ok'):
             codes['slack'] = 'OK'
         else:
@@ -563,7 +564,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
         # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
         try:
-            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, slug)
+            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, channel_id, slug)
             print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
             codes['dropbox'] = 'OK'
         except Exception as e:
