@@ -401,7 +401,7 @@ def create_slack_channel(text, token):
     '''
     #check to see if there's 'P-00..' on the front of text, and remove it
     if text.lower()[0:2] == "p-":
-        text = text.lower().split('-')[2]
+        text = text.lower().split('-', 2)[2]
         # m = re.search('p-0*-(.*)',text)
         # text = m.group(0)
 
