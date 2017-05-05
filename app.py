@@ -29,7 +29,11 @@ def format_slug(project_id, text):
     #removed lower case on slug text (only necessary for slack)
     dashed_text = text.replace(' ', '-')
     slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
+<<<<<<< HEAD
     slug = 'P-{:04d}-{}'.format(project_id, slug)
+=======
+    slug = 'P-{}-{}'.format("%04d" % project_id, slug)
+>>>>>>> refs/remotes/origin/master
     return slug
 
 
@@ -85,24 +89,29 @@ def connect_to_xero():
 
 def create_xero_tracking_category(text):
     xero = connect_to_xero()
-    response = xero.trackingcategories.put({'Name': text})
+    xero.populate_tracking_categories()
+    response = xero.TCShow.options.put({'Name': text})
     return response
 
 
 def get_xero_tracking_id(text):
     xero = connect_to_xero()
-    response = xero.trackingcategories.filter(Name__startswith=text)
-    tracking_id = response[0]['TrackingCategoryID']
-    return tracking_id
+    xero.populate_tracking_categories()
+    option_id = None
+    for option in xero.TCShow.options.all():
+        if option['Name'] == text:
+            option_id = option['TrackingOptionID']
+    return option_id
 
 
 def rename_xero_tracking_category(name, text):
     tracking_id = get_xero_tracking_id(name)
     xero = connect_to_xero()
-    category = xero.trackingcategories.get(tracking_id)[0]
+    xero.populate_tracking_categories()
+    option = xero.TCShow.options.get(tracking_id)[0]
 
-    category['Name'] = text
-    response = xero.trackingcategories.save(category)
+    option['Name'] = text
+    response = xero.TCShow.options.save_or_put(option)
     return response
 
 
