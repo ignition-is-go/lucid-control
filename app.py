@@ -46,12 +46,13 @@ def rename_project(channel_name, text, slug, project_id):
     return r
 
 
-def create_project_entry(text, slug):
+def create_project_entry(text, slug, channel_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/?username=admin&api_key=LucyT3st'
     payload = {
         'title': text,
-        'slug': slug
+        'slug': slug,
+        'slack_channel': channel_id
 
     }
     r = requests.post(url, data=json.dumps(payload), headers=headers)
@@ -59,6 +60,11 @@ def create_project_entry(text, slug):
     print r.content
     return r
 
+
+def get_project_id_from_channel(channel_id):
+    response = requests.get('http://lucid-pro.herokuapp.com/api/project/?format=json&username=admin&api_key=LucyT3st&channel_id={}'.format(channel_id))
+    project_id = response.json()['objects'][0]['id']
+    return project_id
 
 def get_last_project_id():
     response = requests.get('http://lucid-pro.herokuapp.com/api/lastproject/?format=json&username=admin&api_key=LucyT3st')
@@ -436,14 +442,7 @@ def create_all(text, response_url, token, results):
         )
         results['text'] = message
         print "Create Slug returns: {}".format(slug)
-        project_entry_response = create_project_entry(text, slug)
 
-        if str(project_entry_response.status_code).startswith('2'):
-            codes['entry'] = 'OK'
-        else:
-            codes['entry'] = 'ISSUE'
-
-        print "Create Project Entry returns: {}".format(project_entry_response)
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
         slack_response = create_slack_channel(slug, token)
         if slack_response.get('ok'):
@@ -452,6 +451,14 @@ def create_all(text, response_url, token, results):
             codes['slack'] = 'ISSUE'
         print 'Create channel returns: {}'.format(slack_response)
         channel_id = slack_response['channel']['id']
+        project_entry_response = create_project_entry(text, slug, channel_id)
+
+        if str(project_entry_response.status_code).startswith('2'):
+            codes['entry'] = 'OK'
+        else:
+            codes['entry'] = 'ISSUE'
+
+        print "Create Project Entry returns: {}".format(project_entry_response)
         slack_pin_response = create_slack_pin(slug, channel_id)
         if slack_pin_response.get('ok'):
             codes['pin'] = 'OK'
@@ -522,7 +529,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     }
     try:
         description = 'Everything looks good!'
-        project_id = channel_name.split('-')[1]
+        project_id = get_project_id_from_channel(channel_id)
         slug = format_slug(project_id, text)
         rename_project_response = rename_project(channel_name, text, slug, project_id)
         message = (
