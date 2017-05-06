@@ -404,6 +404,11 @@ def create_slack_channel(text, token):
         m = re.search('P-0*-(.*)',text)
         text = m.group(0)
 
+    #get rid of any dangling - from the slack character cutoff (21 chars)
+    if len(text) > 21:
+        text = text[0:21]
+        if text[-1:] == "-":
+            text = text[0:-1]
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
 
