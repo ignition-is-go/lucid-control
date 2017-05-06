@@ -33,7 +33,7 @@ def format_slug(project_id, text):
     return slug
 
 
-def rename_project(channel_name, text, slug, project_id):
+def rename_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
     payload = {
@@ -46,12 +46,13 @@ def rename_project(channel_name, text, slug, project_id):
     return r
 
 
-def create_project_entry(text, slug):
+def create_project_entry(text, slug, channel_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/?username=admin&api_key=LucyT3st'
     payload = {
         'title': text,
-        'slug': slug
+        'slug': slug,
+        'slack_channel': channel_id
 
     }
     r = requests.post(url, data=json.dumps(payload), headers=headers)
@@ -59,6 +60,11 @@ def create_project_entry(text, slug):
     print r.content
     return r
 
+
+def get_project_id_from_channel(channel_id):
+    response = requests.get('http://lucid-pro.herokuapp.com/api/project/?format=json&username=admin&api_key=LucyT3st&channel_id={}'.format(channel_id))
+    project_id = response.json()['objects'][0]['id']
+    return project_id
 
 def get_last_project_id():
     response = requests.get('http://lucid-pro.herokuapp.com/api/lastproject/?format=json&username=admin&api_key=LucyT3st')
@@ -138,11 +144,11 @@ def create_dropbox_folder(text):
     return response
 
 
-def rename_dropbox_folder(channel_name, text):
+def rename_dropbox_folder(channel_name, project_id, text):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
     for folder in schema['folders']:
-        response = dbx.files_move(os.path.join(folder['root'], channel_name), os.path.join(folder['root'], text))
+        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], format_slug(project_id, text)))
         print response
     return response
 
@@ -400,9 +406,10 @@ def create_slack_channel(text, token):
     Creates a slack channel
     '''
     #check to see if there's 'P-00..' on the front of text, and remove it
-    if text[0:2] == "P-":
-        m = re.search('P-0*-(.*)',text)
-        text = m.group(0)
+    if text.lower()[0:2] == "p-":
+        text = text.lower().split('-', 2)[2]
+        # m = re.search('p-0*-(.*)',text)
+        # text = m.group(0)
 
     #get rid of any dangling - from the slack character cutoff (21 chars)
     if len(text) > 21:
@@ -440,14 +447,7 @@ def create_all(text, response_url, token, results):
         )
         results['text'] = message
         print "Create Slug returns: {}".format(slug)
-        project_entry_response = create_project_entry(text, slug)
 
-        if str(project_entry_response.status_code).startswith('2'):
-            codes['entry'] = 'OK'
-        else:
-            codes['entry'] = 'ISSUE'
-
-        print "Create Project Entry returns: {}".format(project_entry_response)
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
         slack_response = create_slack_channel(slug, token)
         if slack_response.get('ok'):
@@ -456,6 +456,14 @@ def create_all(text, response_url, token, results):
             codes['slack'] = 'ISSUE'
         print 'Create channel returns: {}'.format(slack_response)
         channel_id = slack_response['channel']['id']
+        project_entry_response = create_project_entry(text, slug, channel_id)
+
+        if str(project_entry_response.status_code).startswith('2'):
+            codes['entry'] = 'OK'
+        else:
+            codes['entry'] = 'ISSUE'
+
+        print "Create Project Entry returns: {}".format(project_entry_response)
         slack_pin_response = create_slack_pin(slug, channel_id)
         if slack_pin_response.get('ok'):
             codes['pin'] = 'OK'
@@ -526,9 +534,10 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     }
     try:
         description = 'Everything looks good!'
-        project_id = channel_name.split('-')[1]
+        project_id = get_project_id_from_channel(channel_id)
         slug = format_slug(project_id, text)
-        rename_project_response = rename_project(channel_name, text, slug, project_id)
+        print slug
+        rename_project_response = rename_project(channel_id, text, slug, project_id)
         message = (
             'Successfully Renamed {} to: {}'.format(channel_name, slug)
         )
@@ -539,7 +548,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         else:
             codes['entry'] = 'ISSUE'
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        slack_response = rename_slack_channel(slug, token, channel_id)
+        slack_response = rename_slack_channel(text, token, channel_id)
         if slack_response.get('ok'):
             codes['slack'] = 'OK'
         else:
@@ -560,7 +569,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
         # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
         try:
-            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, slug)
+            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, channel_id, slug)
             print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
             codes['dropbox'] = 'OK'
         except Exception as e:
