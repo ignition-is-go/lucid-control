@@ -601,7 +601,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
 
 
 def get_status(response_url, channel_name, channel_id, status):
-    project_id = channel_name.split('-')[1]
+    project_id = get_project_id_from_channel(channel_id)
     field = None
     options = []
     if status.lower() == 'p':
