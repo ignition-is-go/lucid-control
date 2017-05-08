@@ -29,7 +29,9 @@ def format_slug(project_id, text):
     #removed lower case on slug text (only necessary for slack)
     dashed_text = text.replace(' ', '-')
     slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
-    slug = 'P-{}-{}'.format("%04d" % project_id, slug)
+    print 'slug: {}'.format(slug)
+    print 'project_id: {}'.format(project_id)
+    slug = 'P-{}-{}'.format("%04d" % int(project_id), slug)
     return slug
 
 
