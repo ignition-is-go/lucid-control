@@ -611,6 +611,7 @@ def get_status(response_url, channel_name, channel_id, status):
     if status.lower() == 'i':
         field = 'invoice_state'
     response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
+    print "this is the response: {}".format(response)
     options_response = requests.get('http://lucid-pro.herokuapp.com/api/project/schema/?format=json&username=admin&api_key=LucyT3st')
     choices = options_response.json()['fields'][field]['choices']
     for choice in choices:
