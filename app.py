@@ -108,13 +108,13 @@ def get_xero_tracking_id(text):
     return option_id
 
 
-def rename_xero_tracking_category(name, text):
-    tracking_id = get_xero_tracking_id(name)
+def rename_xero_tracking_category(name, project_id, text):
+    tracking_id = get_xero_tracking_id(format_slug(project_id, channel_name))
     xero = connect_to_xero()
     xero.populate_tracking_categories()
     option = xero.TCShow.options.get(tracking_id)[0]
 
-    option['Name'] = text
+    option['Name'] = format_slug(project_id, text)
     response = xero.TCShow.options.save_or_put(option)
     return response
 
@@ -566,7 +566,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
         # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
         try:
-            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, channel_id, slug)
+            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, project_id, slug)
             print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
             codes['dropbox'] = 'OK'
         except Exception as e:
@@ -576,7 +576,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
             pass
 
         try:
-            xero_trackingcategory_response = rename_xero_tracking_category(channel_name, slug)
+            xero_trackingcategory_response = rename_xero_tracking_category(channel_name, project_id, slug)
             print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
             codes['xero'] = 'OK'
         except Exception as e:
