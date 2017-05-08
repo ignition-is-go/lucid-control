@@ -109,7 +109,7 @@ def get_xero_tracking_id(text):
 
 
 def rename_xero_tracking_category(name, project_id, text):
-    tracking_id = get_xero_tracking_id(format_slug(project_id, channel_name))
+    tracking_id = get_xero_tracking_id(format_slug(project_id, name))
     xero = connect_to_xero()
     xero.populate_tracking_categories()
     option = xero.TCShow.options.get(tracking_id)[0]
