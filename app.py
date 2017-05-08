@@ -610,6 +610,7 @@ def get_status(response_url, channel_name, channel_id, status):
         field = 'sales_state'
     if status.lower() == 'i':
         field = 'invoice_state'
+    print "this is project_id: {}".format(project_id)
     response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
     print "this is the response: {}".format(response)
     options_response = requests.get('http://lucid-pro.herokuapp.com/api/project/schema/?format=json&username=admin&api_key=LucyT3st')
