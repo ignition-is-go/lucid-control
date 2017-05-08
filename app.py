@@ -647,7 +647,7 @@ def get_status(response_url, channel_name, channel_id, status):
 
 
 def set_status(response_url, channel_name, channel_id, selection, status_type):
-    project_id = channel_name.split('-')[1]
+    project_id = get_project_id_from_channel(channel_id)
 
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
