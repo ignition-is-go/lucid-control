@@ -110,6 +110,7 @@ def get_xero_tracking_id(text):
 
 def rename_xero_tracking_category(name, project_id, text):
     tracking_id = get_xero_tracking_id(format_slug(project_id, name))
+    print 'tracking_id: {}'.format(tracking_id)
     xero = connect_to_xero()
     xero.populate_tracking_categories()
     option = xero.TCShow.options.get(tracking_id)[0]
@@ -150,6 +151,8 @@ def rename_dropbox_folder(channel_name, project_id, text):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
     for folder in schema['folders']:
+        print 'from: {}'.format(format_slug(project_id, channel_name))
+        print 'to: {}'.format(format_slug(project_id, text))
         response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], format_slug(project_id, text)))
         print response
     return response
