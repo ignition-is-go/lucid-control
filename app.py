@@ -94,7 +94,7 @@ def connect_to_xero():
 def create_xero_tracking_category(text):
     xero = connect_to_xero()
     xero.populate_tracking_categories()
-    response = xero.TCShow.options.put({'Name': text})
+    response = xero.TCShow.options.put({'Name': text.lower()})
     return response
 
 
