@@ -109,6 +109,10 @@ def get_xero_tracking_id(text):
 
 
 def rename_xero_tracking_category(name, project_id, text):
+    print 'name: {}'.format(name)
+    print 'project_id: {}'.format(project_id)
+    print 'text: {}'.format(text)
+    print 'format_slug: {}'.format(format_slug(project_id, name))
     tracking_id = get_xero_tracking_id(format_slug(project_id, name))
     print 'tracking_id: {}'.format(tracking_id)
     xero = connect_to_xero()
