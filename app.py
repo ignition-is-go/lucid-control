@@ -121,7 +121,10 @@ def get_xero_tracking_id(text):
         print 'option: {}'.format(option)
         print 'option name: {}'.format(option['Name'])
         if option['Name'] == text:
+            print 'match'
             option_id = option['TrackingOptionID']
+        else:
+            print 'no match'
     return option_id
 
 
