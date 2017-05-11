@@ -35,6 +35,20 @@ def format_slug(project_id, text):
     return slug
 
 
+def archive_project(channel_id, text, slug, project_id):
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+    url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
+    payload = {
+        'production_state': 'archived',
+        'sales_state': 'changes complete',
+        'invoice_state': 'closed'
+    }
+    r = requests.put(url, data=json.dumps(payload), headers=headers)
+    print r
+    print r.content
+    return r
+
+
 def rename_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
@@ -111,6 +125,22 @@ def get_xero_tracking_id(text):
     return option_id
 
 
+def archive_xero_tracking_category(name, project_id, text):
+    print 'name: {}'.format(name)
+    print 'project_id: {}'.format(project_id)
+    print 'text: {}'.format(text)
+    print 'format_slug: {}'.format(format_slug(project_id, name).lower())
+    tracking_id = get_xero_tracking_id(format_slug(project_id, name).lower())
+    print 'tracking_id: {}'.format(tracking_id)
+    xero = connect_to_xero()
+    xero.populate_tracking_categories()
+    option = xero.TCShow.options.get(tracking_id)[0]
+
+    option['IsArchived'] = True
+    response = xero.TCShow.options.save_or_put(option)
+    return response
+
+
 def rename_xero_tracking_category(name, project_id, text):
     print 'name: {}'.format(name)
     print 'project_id: {}'.format(project_id)
@@ -154,11 +184,24 @@ def create_dropbox_folder(text):
     return response
 
 
+def archive_dropbox_folder(channel_name, project_id, text):
+    dbx = connect_to_dropbox()
+    schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    for folder in schema['folders']:
+        print 'from: {}'.format(format_slug(project_id, channel_name))
+        print 'text: {}'.format(text)
+        print 'to: {}'.format(format_slug(project_id, text))
+        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], 'Archive', format_slug(project_id, text)))
+        print response
+    return response
+
+
 def rename_dropbox_folder(channel_name, project_id, text):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
     for folder in schema['folders']:
         print 'from: {}'.format(format_slug(project_id, channel_name))
+        print 'text: {}'.format(text)
         print 'to: {}'.format(format_slug(project_id, text))
         response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], format_slug(project_id, text)))
         print response
@@ -350,6 +393,17 @@ def create_airtable_entry(text):
 
     response = requests.post(url, data=json.dumps(payload), headers=headers)
     return response
+
+
+def archive_slack_channel(text, token, channel_id):
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
+
+    output = sc.api_call(
+        "channels.archive",
+        channel=channel_id
+    )
+    return output
 
 
 def rename_slack_channel(text, token, channel_id):
@@ -544,27 +598,27 @@ def archive_all(text, response_url, channel_id, channel_name, token, results):
         project_id = get_project_id_from_channel(channel_id)
         slug = format_slug(project_id, text)
         print slug
-        rename_project_response = rename_project(channel_id, text, slug, project_id)
+        archive_project_response = archive_project(channel_id, text, slug, project_id)
         message = (
-            'Successfully Renamed {} to: {}'.format(channel_name, slug)
+            'Successfully Archived Project in Database'
         )
         results['text'] = message
-        print 'Rename project returns: {}'.format(rename_project_response)
-        if str(rename_project_response.status_code).startswith('2'):
+        print 'Archive project returns: {}'.format(archive_project_response)
+        if str(archive_project_response.status_code).startswith('2'):
             codes['entry'] = 'OK'
         else:
             codes['entry'] = 'ISSUE'
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        slack_response = rename_slack_channel(text, token, channel_id)
+        slack_response = archive_slack_channel(text, token, channel_id)
         if slack_response.get('ok'):
             codes['slack'] = 'OK'
         else:
             codes['slack'] = 'ISSUE'
-        print 'Rename channel returns: {}'.format(slack_response)
+        print 'Archive channel returns: {}'.format(slack_response)
 
         try:
-            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, project_id, slug)
-            print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
+            archive_dropbox_folder_response = archive_dropbox_folder(channel_name, project_id, slug)
+            print 'Rename dropbox folder returns: {}'.format(archive_dropbox_folder_response)
             codes['dropbox'] = 'OK'
         except Exception as e:
             print "Dropbox issues: {}".format(e)
@@ -573,7 +627,7 @@ def archive_all(text, response_url, channel_id, channel_name, token, results):
             pass
 
         try:
-            xero_trackingcategory_response = rename_xero_tracking_category(channel_name, project_id, slug)
+            xero_trackingcategory_response = archive_xero_tracking_category(channel_name, project_id, slug)
             print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
             codes['xero'] = 'OK'
         except Exception as e:
@@ -629,20 +683,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         else:
             codes['slack'] = 'ISSUE'
         print 'Rename channel returns: {}'.format(slack_response)
-        # airtable_response = rename_airtable_entry(text, channel_name)
-        # print 'Rename airtable entry returns: {}'.format(airtable_response)
-        # meistertask_response = rename_meistertask_project(text, channel_name)
-        # print 'Rename meistertask project returns: {}'.format(meistertask_response)
-        # mindmeister_response = rename_mindmeister_folder(text)
-        # print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
-        # root = ET.fromstring(mindmeister_response.content)
-        # folder_id = root[0].attrib['id']
-        # mindmeister_response2 = rename_mindmeister_map(text)
-        # print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
-        # root = ET.fromstring(mindmeister_response2.content)
-        # map_id = root[0].attrib['id']
-        # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
-        # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+
         try:
             rename_dropbox_folder_response = rename_dropbox_folder(channel_name, project_id, slug)
             print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
