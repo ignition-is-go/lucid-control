@@ -103,6 +103,7 @@ def get_xero_tracking_id(text):
     xero.populate_tracking_categories()
     option_id = None
     for option in xero.TCShow.options.all():
+        print 'option name: {}'.format(option['Name'])
         if option['Name'] == text:
             option_id = option['TrackingOptionID']
     return option_id
@@ -528,6 +529,16 @@ def create_all(text, response_url, token, results):
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
 
+def archive_all(text, response_url, channel_id, channel_name, token, results):
+    issues = {}
+    codes = {
+        'entry': None,
+        'slack': None,
+        'dropbox': None,
+        'xero': None
+    }
+
+
 def rename_all(text, response_url, channel_id, channel_name, token, results):
     issues = {}
     codes = {
@@ -732,6 +743,43 @@ def state():
 
     return waiting
 
+
+@app.route('/archive', methods=['GET', 'POST'])
+def archive():
+    results = {
+        'text': '',
+        'response_type': 'ephemeral',
+        'attachments': [
+            {
+                'text': ''
+            }
+        ]
+    }
+    waiting = 'Request Received! Attempting to Archive Project...'
+    if request.method == "POST":
+        response_url = request.form.get('response_url')
+        text = request.form.get('text')
+        token = request.form.get('token')
+        channel_name = request.form.get('channel_name').capitalize()
+        channel_id = request.form.get('channel_id')
+        if token != os.environ['INTEGRATION_TOKEN_RENAME']:
+            message = (
+                'Invalid Slack Integration Token. Commands disabled '
+                'until token is corrected. Try setting the '
+                'SLACK_INTEGRATION_TOKEN environment variable'
+            )
+
+        else:
+            message = (
+                'Successfully Renamed {} to: {}'.format(channel_name, text)
+            )
+        results['text'] = message
+        results['attachments'][0]['text'] = message
+
+        t = Thread(target=archive_all, args=(text, response_url, channel_id, channel_name, token, results,))
+        t.start()
+
+    return waiting
 
 
 @app.route('/rename', methods=['GET', 'POST'])
