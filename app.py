@@ -648,14 +648,17 @@ def get_status(response_url, channel_name, channel_id, status):
 
 def set_status(response_url, channel_name, channel_id, selection, status_type):
     project_id = get_project_id_from_channel(channel_id)
-
+    print 'project_id: {}'.format(project_id)
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
     url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
     payload = {
         str(status_type): selection
     }
+    print 'url: {}'.format(url)
+    print 'payload: {}'.format(payload)
     r = requests.put(url, data=json.dumps(payload), headers=headers)
-
+    print 'r: {}'.format(r)
+    print 'r.content: {}'.format(r.content)
 
     results = {'text': 'Successfully Changed State', 'attachments': [{'text': 'Hooray!'}]}
     headers = {'Content-Type': 'application/json'}
