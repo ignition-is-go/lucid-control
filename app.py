@@ -155,7 +155,7 @@ def rename_xero_tracking_category(name, project_id, text):
     xero.populate_tracking_categories()
     option = xero.TCShow.options.get(tracking_id)[0]
 
-    option['Name'] = format_slug(project_id, text)
+    option['Name'] = text
     response = xero.TCShow.options.save_or_put(option)
     return response
 
