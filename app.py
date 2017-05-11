@@ -190,8 +190,8 @@ def archive_dropbox_folder(channel_name, project_id, text):
     for folder in schema['folders']:
         print 'from: {}'.format(format_slug(project_id, channel_name))
         print 'text: {}'.format(text)
-        print 'to: {}'.format(format_slug(project_id, text))
-        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], 'Archive', format_slug(project_id, text)))
+        print 'to: {}'.format(text)
+        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], 'Archive', text))
         print response
     return response
 
@@ -202,8 +202,8 @@ def rename_dropbox_folder(channel_name, project_id, text):
     for folder in schema['folders']:
         print 'from: {}'.format(format_slug(project_id, channel_name))
         print 'text: {}'.format(text)
-        print 'to: {}'.format(format_slug(project_id, text))
-        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], format_slug(project_id, text)))
+        print 'to: {}'.format(text)
+        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], text))
         print response
     return response
 
