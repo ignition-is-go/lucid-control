@@ -194,7 +194,7 @@ def archive_dropbox_folder(channel_name, project_id, text):
         print 'from: {}'.format(format_slug(project_id, channel_name))
         print 'text: {}'.format(text)
         print 'to: {}'.format(text)
-        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], 'Archive', text))
+        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], 'Archive', format_slug(project_id, channel_name)))
         print response
     return response
 
@@ -621,7 +621,7 @@ def archive_all(text, response_url, channel_id, channel_name, token, results):
 
         try:
             archive_dropbox_folder_response = archive_dropbox_folder(channel_name, project_id, slug)
-            print 'Rename dropbox folder returns: {}'.format(archive_dropbox_folder_response)
+            print 'Archive dropbox folder returns: {}'.format(archive_dropbox_folder_response)
             codes['dropbox'] = 'OK'
         except Exception as e:
             print "Dropbox issues: {}".format(e)
@@ -631,7 +631,7 @@ def archive_all(text, response_url, channel_id, channel_name, token, results):
 
         try:
             xero_trackingcategory_response = archive_xero_tracking_category(channel_name, project_id, slug)
-            print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
+            print 'Archive xero tracking category returns: {}'.format(xero_trackingcategory_response)
             codes['xero'] = 'OK'
         except Exception as e:
             print "Xero issues: {}".format(e)
