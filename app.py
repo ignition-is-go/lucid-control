@@ -140,7 +140,7 @@ def archive_xero_tracking_category(name, project_id, text):
     option = xero.TCShow.options.get(tracking_id)[0]
 
     option['IsArchived'] = True
-    response = xero.TCShow.options.save_or_put(option)
+    response = xero.TCShow.options.save(option)
     return response
 
 
@@ -156,7 +156,7 @@ def rename_xero_tracking_category(name, project_id, text):
     option = xero.TCShow.options.get(tracking_id)[0]
 
     option['Name'] = text.lower()
-    response = xero.TCShow.options.save_or_put(option)
+    response = xero.TCShow.options.save(option)
     return response
 
 
