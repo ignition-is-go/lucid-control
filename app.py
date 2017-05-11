@@ -64,7 +64,7 @@ def create_project_entry(text, slug, channel_id):
 
 
 def get_project_id_from_channel(channel_id):
-    response = requests.get('http://lucid-pro.herokuapp.com/api/project/?format=json&username=admin&api_key=LucyT3st&channel_id={}'.format(channel_id))
+    response = requests.get('http://lucid-pro.herokuapp.com/api/project/?format=json&username=admin&api_key=LucyT3st&slack_channel={}'.format(channel_id))
     project_id = response.json()['objects'][0]['id']
     return project_id
 
