@@ -140,7 +140,7 @@ def archive_xero_tracking_category(name, project_id, text):
     option = xero.TCShow.options.get(tracking_id)[0]
 
     option['IsArchived'] = True
-    response = xero.TCShow.options.delete({'TrackingOptionID': option['TrackingOptionID']})
+    response = xero.TCShow.options.delete(option['TrackingOptionID'])
     # response = xero.TCShow.options.save({'TrackingOptionID': option['TrackingOptionID'], 'IsArchived': option['IsArchived']})
     return response
 
