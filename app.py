@@ -137,10 +137,11 @@ def archive_xero_tracking_category(name, project_id, text):
     print 'tracking_id: {}'.format(tracking_id)
     xero = connect_to_xero()
     xero.populate_tracking_categories()
-    option = xero.TCShow.options.get(tracking_id)[0]
+    option = xero.TCShow.options.get(tracking_id)
 
     option['IsArchived'] = True
-    response = xero.TCShow.options.save({'TrackingOptionID': option['TrackingOptionID'], 'IsArchived': option['IsArchived']})
+    response = xero.TCShow.options.save(option)
+    # response = xero.TCShow.options.save({'TrackingOptionID': option['TrackingOptionID'], 'IsArchived': option['IsArchived']})
     return response
 
 
