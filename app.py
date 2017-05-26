@@ -516,8 +516,9 @@ def invite_slack_channel( channel_id, token ):
         group = usergroup_list.get(invite_group)
         channel_list = group['prefs']['channels']
 
-        print( "Group has these channels: "+channel_list)
-        
+        print( "Group has these channels: ")
+        print( channel_list )
+
         #add the new channel and call usergroups.update
         channel_list.append(channel_id)
 
