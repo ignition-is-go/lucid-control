@@ -505,44 +505,18 @@ def invite_slack_channel( channel_id, token ):
         invite_group = os.environ["SLACK_INVITE_USERGROUP"]
         sc = SlackClient(slack_token)
 
-        
-        # first we get the current channels for our group by getting the group list
-        usergroup_list = sc.api_call(
-            "usergroups.list"
+        # turns out we didn't need to get the group list and update it, just call update with the channel id and it adds everyone
+
+        output = sc.api_call(
+            "usergroups.update",
+            usergroup = invite_group,
+            channels = channel_id
         )
 
-        if usergroup_list.get('ok'):
-            print( "Got the current group list" )
-
-            # iterate through the ids and find the one we want
-            for group in usergroup_list['usergroups']:
-                if group.get('id') == invite_group:
-               
-                    channel_list = group['prefs']['channels']
-
-                    print( "Group has these channels: ")
-                    print( channel_list )
-
-                    #add the new channel and call usergroups.update
-                    channel_list.append(channel_id)
-
-                    output = sc.api_call(
-                        "usergroups.update",
-                        usergroup = invite_group,
-                        channels = channel_list
-                    )
-
-                    return output
-
-            print( "never found the usergroup we wanted..." )
-            return False
-
-        else:
-            print( "Error getting the usergroups" )
-            raise Exception
-
+        return output
+    
     except Exception as e:
-        print(e)
+        raise e
 
 def create_all(text, response_url, token, results):
     issues = {}
