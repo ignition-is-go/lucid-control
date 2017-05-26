@@ -478,7 +478,7 @@ def create_slack_channel(text, token):
     #check to see if there's 'P-00..' on the front of text, and remove it
     if text.lower()[0:2] == "p-":
         text = text.lower()
-        m = re.sub('p-0*',"",text,1)
+        text = re.sub('p-0*',"",text,1)
 
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
@@ -493,37 +493,39 @@ def create_slack_channel(text, token):
 
     return output
 
+
 def invite_slack_channel( channel_id, token ):
     '''
     updates the channel list for the slack UserGroup set in the config vars
     this automatically adds the entire group to the channel
     '''
 
-    slack_token = os.environ["SLACK_APP_API_TOKEN"]
-    invite_group = os.environ["SLACK_INVITE_USERGROUP"]
-    sc = SlackClient(slack_token)
+    try:
+        slack_token = os.environ["SLACK_APP_API_TOKEN"]
+        invite_group = os.environ["SLACK_INVITE_USERGROUP"]
+        sc = SlackClient(slack_token)
 
-    
-    # first we get the current channels for our group by getting the group list
-    usergroup_list = sc.api_call(
-        "usergroups.list"
-    )
+        
+        # first we get the current channels for our group by getting the group list
+        usergroup_list = sc.api_call(
+            "usergroups.list"
+        )
 
-    channel_list = usergroup_list[invite_group]['prefs']['channels']
+        channel_list = usergroup_list[invite_group]['prefs']['channels']
 
-    #add the new channel and call usergroups.update
-    channel_list.append(channel_id)
+        #add the new channel and call usergroups.update
+        channel_list.append(channel_id)
 
-    output = sc.api_call(
-        "usergroups.update",
-        usergroup = invite_group,
-        channels = channel_list
-    )
+        output = sc.api_call(
+            "usergroups.update",
+            usergroup = invite_group,
+            channels = channel_list
+        )
 
-    return output
+        return output
 
-
-
+    except Exception e:
+        print("We hit an exception in the invite slack function: " + e.msg)
 
 def create_all(text, response_url, token, results):
     issues = {}
