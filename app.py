@@ -531,7 +531,7 @@ def invite_slack_channel( channel_id, token ):
         return output
 
     except Exception as e:
-        print("We hit an exception in the invite slack function: " + e)
+        print(e)
 
 def create_all(text, response_url, token, results):
     issues = {}
