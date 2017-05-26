@@ -516,7 +516,7 @@ def invite_slack_channel( channel_id, token ):
 
             # iterate through the ids and find the one we want
             for group in usergroup_list['usergroups']:
-                if group.get('id') = invite_group:
+                if group.get('id') == invite_group:
                
                     channel_list = group['prefs']['channels']
 
@@ -536,7 +536,7 @@ def invite_slack_channel( channel_id, token ):
 
             print( "never found the usergroup we wanted..." )
             return False
-            
+
         else:
             print( "Error getting the usergroups" )
             raise Exception
