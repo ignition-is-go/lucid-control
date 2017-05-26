@@ -511,24 +511,35 @@ def invite_slack_channel( channel_id, token ):
             "usergroups.list"
         )
 
-        print( "Got the current group list" )
+        if usergroup_list.get('ok'):
+            print( "Got the current group list" )
 
-        group = usergroup_list.get(invite_group)
-        channel_list = group['prefs']['channels']
+            # iterate through the ids and find the one we want
+            for group in usergroup_list['usergroups']:
+                if group.get('id') = invite_group:
+               
+                    channel_list = group['prefs']['channels']
 
-        print( "Group has these channels: ")
-        print( channel_list )
+                    print( "Group has these channels: ")
+                    print( channel_list )
 
-        #add the new channel and call usergroups.update
-        channel_list.append(channel_id)
+                    #add the new channel and call usergroups.update
+                    channel_list.append(channel_id)
 
-        output = sc.api_call(
-            "usergroups.update",
-            usergroup = invite_group,
-            channels = channel_list
-        )
+                    output = sc.api_call(
+                        "usergroups.update",
+                        usergroup = invite_group,
+                        channels = channel_list
+                    )
 
-        return output
+                    return output
+
+            print( "never found the usergroup we wanted..." )
+            return False
+            
+        else:
+            print( "Error getting the usergroups" )
+            raise Exception
 
     except Exception as e:
         print(e)
@@ -556,11 +567,13 @@ def create_all(text, response_url, token, results):
         slack_response = create_slack_channel(slug, token)
         if slack_response.get('ok'):
             # Channel created, now invite
-            invite_response = invite_slack_channel( slack_response.get('id'), token)
-            if invite_response.get('ok'):
-                codes['slack'] = 'OK'
-            else:
+            try:
+                invite_response = invite_slack_channel( slack_response.get('id'), token)
+            except:
                 codes['slack'] = 'CREATED OK, ISSUE INVITING'
+            finally:
+                if invite_response.get('ok'):
+                    codes['slack'] = 'OK'
         else:
             codes['slack'] = 'ISSUE'
         print 'Create channel returns: {}'.format(slack_response)
