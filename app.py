@@ -553,7 +553,7 @@ def create_all(text, response_url, token, results):
         if slack_response.get('ok'):
             # Channel created, now invite
             try:
-                invite_response = invite_slack_channel( slack_response.get('id'), token)
+                invite_response = invite_slack_channel( slack_response.get('channel').get('id'), token)
                 print 'Invite to channel returns: {}'.format(invite_response)
             except:
                 codes['slack'] = 'CREATED OK, ISSUE INVITING'
