@@ -539,10 +539,12 @@ def create_all(text, response_url, token, results):
 
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
         slack_response = create_slack_channel(slug, token)
+        print 'Create channel returns: {}'.format(slack_response)
         if slack_response.get('ok'):
             # Channel created, now invite
             try:
                 invite_response = invite_slack_channel( slack_response.get('id'), token)
+                print 'Invite to channel returns: {}'.format(invite_response)
             except:
                 codes['slack'] = 'CREATED OK, ISSUE INVITING'
             finally:
@@ -550,7 +552,6 @@ def create_all(text, response_url, token, results):
                     codes['slack'] = 'OK'
         else:
             codes['slack'] = 'ISSUE'
-        print 'Create channel returns: {}'.format(slack_response)
         channel_id = slack_response['channel']['id']
         project_entry_response = create_project_entry(text, slug, channel_id)
 
