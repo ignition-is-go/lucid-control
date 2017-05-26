@@ -515,6 +515,8 @@ def invite_slack_channel( channel_id, token ):
 
         # turns out we didn't need to get the group list and update it, just call update with the channel id and it adds everyone
 
+        print "trying to update: usergroup='{}', channels='{}'".format(invite_group, channel_id)
+
         output = sc.api_call(
             "usergroups.update",
             usergroup = invite_group,
