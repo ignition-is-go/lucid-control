@@ -430,7 +430,7 @@ def send_slack_state_menu(channel_id, results):
         "chat.postMessage",
         channel=channel_id,
         text=results['text'],
-        as_user="true",
+        as_user="false",
         response_type="ephemeral",
         attachments=results['attachments']
 
@@ -480,17 +480,49 @@ def create_slack_channel(text, token):
         text = text.lower()
         m = re.sub('p-0*',"",text,1)
 
-    slack_token = os.environ["SLACK_API_TOKEN"]
+    slack_token = os.environ["SLACK_APP_API_TOKEN"]
     sc = SlackClient(slack_token)
 
-    # url = 'https://slack.com/api/channels.create'
+    # using 'channels.join' will force the calling user to create and join
+    # url = 'https://slack.com/api/channels.join'
 
     output = sc.api_call(
-        "channels.create",
+        "channels.join",
         name=text
     )
 
     return output
+
+def invite_slack_channel( channel_id, token ):
+    '''
+    updates the channel list for the slack UserGroup set in the config vars
+    this automatically adds the entire group to the channel
+    '''
+
+    slack_token = os.environ["SLACK_APP_API_TOKEN"]
+    invite_group = os.environ["SLACK_INVITE_USERGROUP"]
+    sc = SlackClient(slack_token)
+
+    
+    # first we get the current channels for our group by getting the group list
+    usergroup_list = sc.api_call(
+        "usergroups.list"
+    )
+
+    channel_list = usergroup_list[invite_group]['prefs']['channels']
+
+    #add the new channel and call usergroups.update
+    channel_list.append(channel_id)
+
+    output = sc.api_call(
+        "usergroups.update",
+        usergroup = invite_group,
+        channels = channel_list
+    )
+
+    return output
+
+
 
 
 def create_all(text, response_url, token, results):
@@ -515,7 +547,12 @@ def create_all(text, response_url, token, results):
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
         slack_response = create_slack_channel(slug, token)
         if slack_response.get('ok'):
-            codes['slack'] = 'OK'
+            # Channel created, now invite
+            invite_response = invite_slack_channel( slack_response.get('id'), token)
+            if invite_response.get('ok'):
+                codes['slack'] = 'OK'
+            else:
+                codes['slack'] = 'CREATED OK, ISSUE INVITING'
         else:
             codes['slack'] = 'ISSUE'
         print 'Create channel returns: {}'.format(slack_response)
@@ -728,15 +765,16 @@ def get_status(response_url, channel_name, channel_id, status):
     project_id = get_project_id_from_channel(channel_id)
     field = None
     options = []
-    if status.lower() == 'p':
+    if status.lower() == 'p' or status == "":
         field = 'production_state'
     if status.lower() == 's':
         field = 'sales_state'
     if status.lower() == 'i':
         field = 'invoice_state'
+
     print "this is project_id: {}".format(project_id)
     response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
-    print "this is the response: {}".format(response)
+    print "this is the database response: {}".format(response)
     options_response = requests.get('http://lucid-pro.herokuapp.com/api/project/schema/?format=json&username=admin&api_key=LucyT3st')
     choices = options_response.json()['fields'][field]['choices']
     for choice in choices:
