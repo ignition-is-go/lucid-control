@@ -481,6 +481,7 @@ def create_slack_channel(text, token):
         text = re.sub('p-0*',"",text,1)
 
     slack_token = os.environ["SLACK_API_TOKEN"]
+    bot_user = os.environ["SLACK_APP_BOT_USERID"]
     sc = SlackClient(slack_token)
 
     # using 'channels.join' will force the calling user to create and join
@@ -489,6 +490,13 @@ def create_slack_channel(text, token):
     output = sc.api_call(
         "channels.join",
         name=text
+    )
+
+    # i'm sneaking this in here to add the bot user to the channel
+    add_bot_output = sc.api_call(
+        'channels.invite', 
+        user=bot_user,
+        channel=output.get('id')
     )
 
     return output
