@@ -480,7 +480,7 @@ def create_slack_channel(text, token):
         text = text.lower()
         m = re.sub('p-0*',"",text,1)
 
-    slack_token = os.environ["SLACK_APP_API_TOKEN"]
+    slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
 
     # using 'channels.join' will force the calling user to create and join
