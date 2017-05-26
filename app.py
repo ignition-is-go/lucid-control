@@ -511,8 +511,13 @@ def invite_slack_channel( channel_id, token ):
             "usergroups.list"
         )
 
-        channel_list = usergroup_list[invite_group]['prefs']['channels']
+        print( "Got the current group list" )
 
+        group = usergroup_list.get(invite_group)
+        channel_list = group['prefs']['channels']
+
+        print( "Group has these channels: "+channel_list)
+        
         #add the new channel and call usergroups.update
         channel_list.append(channel_id)
 
@@ -525,7 +530,7 @@ def invite_slack_channel( channel_id, token ):
         return output
 
     except Exception as e:
-        print("We hit an exception in the invite slack function: " + e.msg)
+        print("We hit an exception in the invite slack function: " + e)
 
 def create_all(text, response_url, token, results):
     issues = {}
