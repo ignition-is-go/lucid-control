@@ -430,7 +430,7 @@ def send_slack_state_menu(channel_id, results):
         "chat.postMessage",
         channel=channel_id,
         text=results['text'],
-        as_user="true",
+        as_user="false",
         response_type="ephemeral",
         attachments=results['attachments']
 
@@ -477,22 +477,56 @@ def create_slack_channel(text, token):
     '''
     #check to see if there's 'P-00..' on the front of text, and remove it
     if text.lower()[0:2] == "p-":
-        text = text.lower().split('-', 2)[2]
-        # m = re.search('p-0*-(.*)',text)
-        # text = m.group(0)
+        text = text.lower()
+        text = re.sub('p-0*',"",text,1)
 
     slack_token = os.environ["SLACK_API_TOKEN"]
+    bot_user = os.environ["SLACK_APP_BOT_USERID"]
     sc = SlackClient(slack_token)
 
-    # url = 'https://slack.com/api/channels.create'
+    # using 'channels.join' will force the calling user to create and join
+    # url = 'https://slack.com/api/channels.join'
 
     output = sc.api_call(
-        "channels.create",
+        "channels.join",
         name=text
+    )
+
+    # i'm sneaking this in here to add the bot user to the channel
+    add_bot_output = sc.api_call(
+        'channels.invite',
+        user=bot_user,
+        channel=output.get('id')
     )
 
     return output
 
+
+def invite_slack_channel( channel_id, token ):
+    '''
+    updates the channel list for the slack UserGroup set in the config vars
+    this automatically adds the entire group to the channel
+    '''
+
+    try:
+        slack_token = os.environ["SLACK_APP_API_TOKEN"]
+        invite_group = os.environ["SLACK_INVITE_USERGROUP"]
+        sc = SlackClient(slack_token)
+
+        # turns out we didn't need to get the group list and update it, just call update with the channel id and it adds everyone
+
+        print "trying to update: usergroup='{}', channels='{}'".format(invite_group, channel_id)
+
+        output = sc.api_call(
+            "usergroups.update",
+            usergroup = invite_group,
+            channels = channel_id
+        )
+
+        return output
+
+    except Exception as e:
+        raise e
 
 def create_all(text, response_url, token, results):
     issues = {}
@@ -515,11 +549,19 @@ def create_all(text, response_url, token, results):
 
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
         slack_response = create_slack_channel(slug, token)
+        print 'Create channel returns: {}'.format(slack_response)
         if slack_response.get('ok'):
-            codes['slack'] = 'OK'
+            # Channel created, now invite
+            try:
+                invite_response = invite_slack_channel( slack_response.get('channel').get('id'), token)
+                print 'Invite to channel returns: {}'.format(invite_response)
+            except:
+                codes['slack'] = 'CREATED OK, ISSUE INVITING'
+            finally:
+                if invite_response.get('ok'):
+                    codes['slack'] = 'OK'
         else:
             codes['slack'] = 'ISSUE'
-        print 'Create channel returns: {}'.format(slack_response)
         channel_id = slack_response['channel']['id']
         project_entry_response = create_project_entry(text, slug, channel_id)
 
@@ -729,16 +771,19 @@ def get_status(response_url, channel_name, channel_id, status):
     project_id = get_project_id_from_channel(channel_id)
     field = None
     options = []
-    if status.lower() == 'p':
+    if status.lower() == 'p' or status == "":
         field = 'production_state'
     if status.lower() == 's':
         field = 'sales_state'
     if status.lower() == 'i':
         field = 'invoice_state'
+
     print "this is project_id: {}".format(project_id)
+
     response = requests.get('{}{}/?format=json&username={}&api_key={}'.format(os.environ.get('PROJECT_API_BASE_URL'), project_id, os.environ.get('API_USERNAME'), os.environ.get('API_KEY')))
     print "this is the response: {}".format(response)
     options_response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ.get('PROJECT_SCHEMA_API_BASE_URL'), os.environ.get('API_USERNAME'), os.environ.get('API_KEY')))
+
     choices = options_response.json()['fields'][field]['choices']
     for choice in choices:
         options.append({'text': choice[1], 'value': choice[0]})
