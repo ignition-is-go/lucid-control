@@ -37,7 +37,7 @@ def format_slug(project_id, text):
 
 def archive_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'production_state': 'archived',
         'sales_state': 'changes complete',
@@ -51,7 +51,7 @@ def archive_project(channel_id, text, slug, project_id):
 
 def rename_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'title': text,
         'slug': slug
@@ -64,7 +64,7 @@ def rename_project(channel_id, text, slug, project_id):
 
 def create_project_entry(text, slug, channel_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = 'http://lucid-pro.herokuapp.com/api/project/?username=admin&api_key=LucyT3st'
+    url = '{}?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'title': text,
         'slug': slug,
@@ -78,12 +78,12 @@ def create_project_entry(text, slug, channel_id):
 
 
 def get_project_id_from_channel(channel_id):
-    response = requests.get('http://lucid-pro.herokuapp.com/api/project/?format=json&username=admin&api_key=LucyT3st&slack_channel={}'.format(channel_id))
+    response = requests.get('{}?format=json&username={}&api_key={}&slack_channel={}'.format(os.environ['PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY'], channel_id))
     project_id = response.json()['objects'][0]['id']
     return project_id
 
 def get_last_project_id():
-    response = requests.get('http://lucid-pro.herokuapp.com/api/lastproject/?format=json&username=admin&api_key=LucyT3st')
+    response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['LAST_PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
     last_project_id = response.json()['objects'][0]['id']
     return last_project_id
 
@@ -430,7 +430,7 @@ def send_slack_state_menu(channel_id, results):
         "chat.postMessage",
         channel=channel_id,
         text=results['text'],
-        as_user="true",
+        as_user="false",
         response_type="ephemeral",
         attachments=results['attachments']
 
@@ -455,7 +455,7 @@ def create_slack_message(channel_id, text):
 
 def create_slack_pin(slug, channel_id):
     project_id = slug.split('-')[1]
-    url = 'http://lucid-pro.herokuapp.com/admin/mission_control/project/{}/change/'.format(project_id)
+    url = '{}{}/change/'.format(os.environ['PROJECT_EDIT_BASE_URL'], project_id)
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
 
@@ -478,20 +478,55 @@ def create_slack_channel(text, token):
     #check to see if there's 'P-00..' on the front of text, and remove it
     if text.lower()[0:2] == "p-":
         text = text.lower()
-        m = re.sub('p-0*',"",text,1)
+        text = re.sub('p-0*',"",text,1)
 
     slack_token = os.environ["SLACK_API_TOKEN"]
+    bot_user = os.environ["SLACK_APP_BOT_USERID"]
     sc = SlackClient(slack_token)
 
-    # url = 'https://slack.com/api/channels.create'
+    # using 'channels.join' will force the calling user to create and join
+    # url = 'https://slack.com/api/channels.join'
 
     output = sc.api_call(
-        "channels.create",
+        "channels.join",
         name=text
+    )
+
+    # i'm sneaking this in here to add the bot user to the channel
+    add_bot_output = sc.api_call(
+        'channels.invite',
+        user=bot_user,
+        channel=output.get('id')
     )
 
     return output
 
+
+def invite_slack_channel( channel_id, token ):
+    '''
+    updates the channel list for the slack UserGroup set in the config vars
+    this automatically adds the entire group to the channel
+    '''
+
+    try:
+        slack_token = os.environ["SLACK_APP_API_TOKEN"]
+        invite_group = os.environ["SLACK_INVITE_USERGROUP"]
+        sc = SlackClient(slack_token)
+
+        # turns out we didn't need to get the group list and update it, just call update with the channel id and it adds everyone
+
+        print "trying to update: usergroup='{}', channels='{}'".format(invite_group, channel_id)
+
+        output = sc.api_call(
+            "usergroups.update",
+            usergroup = invite_group,
+            channels = channel_id
+        )
+
+        return output
+
+    except Exception as e:
+        raise e
 
 def create_all(text, response_url, token, results):
     issues = {}
@@ -514,11 +549,19 @@ def create_all(text, response_url, token, results):
 
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
         slack_response = create_slack_channel(slug, token)
+        print 'Create channel returns: {}'.format(slack_response)
         if slack_response.get('ok'):
-            codes['slack'] = 'OK'
+            # Channel created, now invite
+            try:
+                invite_response = invite_slack_channel( slack_response.get('channel').get('id'), token)
+                print 'Invite to channel returns: {}'.format(invite_response)
+            except:
+                codes['slack'] = 'CREATED OK, ISSUE INVITING'
+            finally:
+                if invite_response.get('ok'):
+                    codes['slack'] = 'OK'
         else:
             codes['slack'] = 'ISSUE'
-        print 'Create channel returns: {}'.format(slack_response)
         channel_id = slack_response['channel']['id']
         project_entry_response = create_project_entry(text, slug, channel_id)
 
@@ -728,16 +771,19 @@ def get_status(response_url, channel_name, channel_id, status):
     project_id = get_project_id_from_channel(channel_id)
     field = None
     options = []
-    if status.lower() == 'p':
+    if status.lower() == 'p' or status == "":
         field = 'production_state'
     if status.lower() == 's':
         field = 'sales_state'
     if status.lower() == 'i':
         field = 'invoice_state'
+
     print "this is project_id: {}".format(project_id)
-    response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
+
+    response = requests.get('{}{}/?format=json&username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY']))
     print "this is the response: {}".format(response)
-    options_response = requests.get('http://lucid-pro.herokuapp.com/api/project/schema/?format=json&username=admin&api_key=LucyT3st')
+    options_response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['PROJECT_SCHEMA_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
+
     choices = options_response.json()['fields'][field]['choices']
     for choice in choices:
         options.append({'text': choice[1], 'value': choice[0]})
@@ -769,7 +815,7 @@ def set_status(response_url, channel_name, channel_id, selection, status_type):
     project_id = get_project_id_from_channel(channel_id)
     print 'project_id: {}'.format(project_id)
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         str(status_type): selection
     }
