@@ -51,7 +51,7 @@ def archive_project(channel_id, text, slug, project_id):
 
 def rename_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, , os.environ['API_USERNAME'], os.environ['API_KEY'])
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'title': text,
         'slug': slug
