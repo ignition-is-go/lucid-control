@@ -37,7 +37,7 @@ def format_slug(project_id, text):
 
 def archive_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = '{}{}/?username={}&api_key={}'.format(os.environ.get('PROJECT_API_BASE_URL'), project_id, os.environ.get('API_USERNAME'), os.environ.get('API_KEY'))
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'production_state': 'archived',
         'sales_state': 'changes complete',
@@ -51,7 +51,7 @@ def archive_project(channel_id, text, slug, project_id):
 
 def rename_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = '{}{}/?username={}&api_key={}'.format(os.environ.get('PROJECT_API_BASE_URL'), project_id, , os.environ.get('API_USERNAME'), os.environ.get('API_KEY'))
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, , os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'title': text,
         'slug': slug
@@ -64,7 +64,7 @@ def rename_project(channel_id, text, slug, project_id):
 
 def create_project_entry(text, slug, channel_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = '{}?username={}&api_key={}'.format(os.environ.get('PROJECT_API_BASE_URL'), , os.environ.get('API_USERNAME'), os.environ.get('API_KEY'))
+    url = '{}?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'title': text,
         'slug': slug,
@@ -78,12 +78,12 @@ def create_project_entry(text, slug, channel_id):
 
 
 def get_project_id_from_channel(channel_id):
-    response = requests.get('{}?format=json&username={}&api_key={}&slack_channel={}'.format(os.environ.get('PROJECT_API_BASE_URL'), os.environ.get('API_USERNAME'), os.environ.get('API_KEY'), channel_id))
+    response = requests.get('{}?format=json&username={}&api_key={}&slack_channel={}'.format(os.environ['PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY'], channel_id))
     project_id = response.json()['objects'][0]['id']
     return project_id
 
 def get_last_project_id():
-    response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ.get('LAST_PROJECT_API_BASE_URL'), os.environ.get('API_USERNAME'), os.environ.get('API_KEY')))
+    response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['LAST_PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
     last_project_id = response.json()['objects'][0]['id']
     return last_project_id
 
@@ -455,7 +455,7 @@ def create_slack_message(channel_id, text):
 
 def create_slack_pin(slug, channel_id):
     project_id = slug.split('-')[1]
-    url = '{}{}/change/'.format(os.environ.get('PROJECT_EDIT_BASE_URL'), project_id)
+    url = '{}{}/change/'.format(os.environ['PROJECT_EDIT_BASE_URL'], project_id)
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
 
@@ -780,9 +780,9 @@ def get_status(response_url, channel_name, channel_id, status):
 
     print "this is project_id: {}".format(project_id)
 
-    response = requests.get('{}{}/?format=json&username={}&api_key={}'.format(os.environ.get('PROJECT_API_BASE_URL'), project_id, os.environ.get('API_USERNAME'), os.environ.get('API_KEY')))
+    response = requests.get('{}{}/?format=json&username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY']))
     print "this is the response: {}".format(response)
-    options_response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ.get('PROJECT_SCHEMA_API_BASE_URL'), os.environ.get('API_USERNAME'), os.environ.get('API_KEY')))
+    options_response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['PROJECT_SCHEMA_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
 
     choices = options_response.json()['fields'][field]['choices']
     for choice in choices:
@@ -815,7 +815,7 @@ def set_status(response_url, channel_name, channel_id, selection, status_type):
     project_id = get_project_id_from_channel(channel_id)
     print 'project_id: {}'.format(project_id)
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = '{}{}/?username={}&api_key={}'.format(os.environ.get('PROJECT_API_BASE_URL'), project_id, os.environ.get('API_USERNAME'), os.environ.get('API_KEY'))
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         str(status_type): selection
     }
