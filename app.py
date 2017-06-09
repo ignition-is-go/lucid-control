@@ -205,9 +205,10 @@ def find_dropbox_folder(project_id):
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
     print 'Finding dropbox folders starting with: {}'.format(project_id)
     for folder in schema['folders']:
-        if folder.startswith(project_id):
-            print "found match: "
-            print folder
+        for f in dbx.files_list_folder(folder.root).entries:
+            if f.name.startswith(project_id):
+                print "match:"
+                print f.name
 
 
 def rename_dropbox_folder(channel_name, project_id, text):
