@@ -480,9 +480,8 @@ def create_slack_channel(text, token):
         text = text.lower()
         text = re.sub('p-0*',"",text,1)
 
-    slack_token = os.environ["SLACK_API_TOKEN"]
     bot_user = os.environ["SLACK_APP_BOT_USERID"]
-    sc = SlackClient(slack_token)
+    sc = get_slack(as_bot=True)
 
     # using 'channels.join' will force the calling user to create and join
     # url = 'https://slack.com/api/channels.join'
@@ -509,9 +508,8 @@ def invite_slack_channel( channel_id, token ):
     '''
 
     try:
-        slack_token = os.environ["SLACK_APP_API_TOKEN"]
         invite_group = os.environ["SLACK_INVITE_USERGROUP"]
-        sc = SlackClient(slack_token)
+        sc = get_slack(as_bot=True)
 
         # turns out we didn't need to get the group list and update it, just call update with the channel id and it adds everyone
 
@@ -527,6 +525,70 @@ def invite_slack_channel( channel_id, token ):
 
     except Exception as e:
         raise e
+def post_to_project_channel( project_id, message, message_attachments=None ):
+    '''
+    Posts the message to the project channel
+    '''
+
+    channel_id = find_slack_channel(project_id)
+    slack = get_slack(as_bot=True)
+
+    response = slack.api_call(
+        "chat.postMessage", 
+        text=message,
+        channel=channel_id,
+        attachments=message_attachments,
+        as_user=True,
+        username="Lucid Control"
+        )
+
+    if response['ok']:
+        return True
+    else 
+        return response['error']
+
+def get_slack( as_bot=True ):
+    '''
+    returns a SlackClient instance
+    '''
+    try:
+        slack_token = os.environ["SLACK_APP_API_TOKEN" if as_bot else "SLACK_APP_TEAM_TOKEN"]
+        sc = SlackClient(slack_token)
+
+
+def find_slack_channel( project_id ):
+    '''
+    returns the channel id of the slack channel associated with the project
+    '''
+
+    try:
+        slack = get_slack(as_bot=False)
+
+        channel_query = slack.api_call(
+            "channels.list",
+            exclude_archived=True,
+            exclude_members=True
+        )
+        
+        possible_results = []
+        #regex: look for the project_id at the top of the string, followed by a dash and characters
+        channel_regex = r"^" + re.escape(str(project_id)) + r"-.*"
+
+        for channel in channel_query.get("channels"):
+            if re.search(channel_regex, channel['name'], re.IGNORECASE):
+                possible_results.append(channel)
+
+        if len(possible_results) == 0:
+            #we didn't find anything, so go look through the previous names on channels
+            for channel in channel_query.get("channels"):
+                for prev_name in channel['previous_names']:
+                    if re.search(channel_regex, prev_name, re.IGNORECASE):
+                        possible_results.append(channel)
+                        continue
+        
+        #right now, this is a lazy solution, we should figure out how to resolve multiple possible results
+        return possible_results[0]['id']
+
 
 def create_all(text, response_url, token, results):
     issues = {}
