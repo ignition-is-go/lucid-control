@@ -200,6 +200,17 @@ def archive_dropbox_folder(channel_name, project_id, text):
     return response
 
 
+def find_dropbox_folder(project_id):
+    dbx = connect_to_dropbox()
+    schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    print 'Finding dropbox folders starting with: {}'.format(project_id)
+    for folder in schema['folders']:
+        for f in dbx.files_list_folder(folder.root).entries:
+            if f.name.startswith(project_id):
+                print "match:"
+                print f.name
+
+
 def rename_dropbox_folder(channel_name, project_id, text):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
@@ -793,6 +804,8 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         print 'Rename channel returns: {}'.format(slack_response)
 
         try:
+            find_dropbox_folder_response = find_dropbox_folder(project_id)
+            print find_dropbox_folder_response
             rename_dropbox_folder_response = rename_dropbox_folder(channel_name, project_id, slug)
             print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
             codes['dropbox'] = 'OK'
