@@ -219,7 +219,7 @@ def rename_dropbox_folder(channel_name, project_id, text):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
     for path in matches:
-        print 'from: {}'.format(path))
+        print 'from: {}'.format(path)
         print 'text: {}'.format(text)
         print 'to: {}'.format(path.rsplit('/', 1)[0] + '/' + text)
         response = dbx.files_move(path, os.path.join(path.rsplit('/', 1)[0], text))
