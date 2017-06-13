@@ -215,9 +215,10 @@ def find_dropbox_folder(project_id):
 
 
 def rename_dropbox_folder(channel_name, project_id, text):
-    matches = find_dropbox_folder(project_id)
+    folder_prefix = format_slug(project_id, '')
+    matches = find_dropbox_folder(folder_prefix)
     dbx = connect_to_dropbox()
-    schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    response = 'Folder not found'
     for path in matches:
         print 'from: {}'.format(path)
         print 'text: {}'.format(text)
