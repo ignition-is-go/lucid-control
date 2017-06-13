@@ -970,6 +970,8 @@ def rename():
         token = request.form.get('token')
         channel_name = request.form.get('channel_name').capitalize()
         channel_id = request.form.get('channel_id')
+        if text == '':
+            return 'Cannot rename project to an empty string'
         if token != os.environ['INTEGRATION_TOKEN_RENAME']:
             message = (
                 'Invalid Slack Integration Token. Commands disabled '
