@@ -805,44 +805,52 @@ def get_status(response_url, channel_name, channel_id, status):
     project_id = get_project_id_from_channel(channel_id)
     field = None
     options = []
+    fields = []
     if status.lower() == 'p' or status == "":
         field = 'production_state'
+        fields.append(field)
     if status.lower() == 's':
         field = 'sales_state'
+        fields.append(field)
     if status.lower() == 'i':
         field = 'invoice_state'
+        fields.append(field)
+
+    if status.lower().strip() == '':
+        fields = ['production_state', 'sales_state', 'invoice_state']
+
 
     print "this is project_id: {}".format(project_id)
 
     response = requests.get('{}{}/?format=json&username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY']))
     print "this is the response: {}".format(response)
     options_response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['PROJECT_SCHEMA_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
+    for field in fields:
+        choices = options_response.json()['fields'][field]['choices']
+        for choice in choices:
+            options.append({'text': choice[1], 'value': choice[0]})
+        status_value = response.json()[field]
+        results = {'text': 'Current {}: {}'.format(field.replace('_', ' ').upper(), status_value)}
+        headers = {'Content-Type': 'application/json'}
+        results['attachments'] = [
+            {
+                'text': 'Change {}'.format(field.replace('_', ' ').upper()),
+                "color": "#3AA3E3",
+                "attachment_type": "default",
+                "callback_id": field,
+                'fallback': "If you could read this message, you'd be choosing a new state right now.",
+                "actions": [
+                    {
+                        "name": "{}_choice".format(field),
+                        "text": "Set New State...",
+                        "type": "select",
+                        "options": options
+                    }
+                ]
 
-    choices = options_response.json()['fields'][field]['choices']
-    for choice in choices:
-        options.append({'text': choice[1], 'value': choice[0]})
-    status_value = response.json()[field]
-    results = {'text': 'Current {}: {}'.format(field.replace('_', ' ').upper(), status_value)}
-    headers = {'Content-Type': 'application/json'}
-    results['attachments'] = [
-        {
-            'text': 'Change {}'.format(field.replace('_', ' ').upper()),
-            "color": "#3AA3E3",
-            "attachment_type": "default",
-            "callback_id": field,
-            'fallback': "If you could read this message, you'd be choosing a new state right now.",
-            "actions": [
-                {
-                    "name": "{}_choice".format(field),
-                    "text": "Set New State...",
-                    "type": "select",
-                    "options": options
-                }
-            ]
-
-        }
-    ]
-    response = send_slack_state_menu(channel_id, results)
+            }
+        ]
+        response = send_slack_state_menu(channel_id, results)
 
 
 def set_status(response_url, channel_name, channel_id, selection, status_type):
@@ -859,7 +867,7 @@ def set_status(response_url, channel_name, channel_id, selection, status_type):
     print 'r: {}'.format(r)
     print 'r.content: {}'.format(r.content)
 
-    results = {'text': 'Successfully Changed State', 'attachments': [{'text': 'Hooray!'}]}
+    results = {'text': 'Successfully Changed State to {}'.format(selection), 'attachments': [{'text': 'Hooray!'}]}
     headers = {'Content-Type': 'application/json'}
 
     response = send_slack_state_menu(channel_id, results)
@@ -1016,7 +1024,7 @@ def create():
             }
         ]
     }
-    waiting = 'Request Received! Attempting to Create Project...'
+    waiting = 'Request Received! Check new slack channel for info...'
 
     if request.method == "POST":
         response_url = request.form.get('response_url')
