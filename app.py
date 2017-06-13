@@ -429,7 +429,9 @@ def archive_slack_channel(text, token, channel_id):
 def rename_slack_channel(text, token, channel_id):
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
-
+    if text.lower()[0:2] == "p-":
+        text = text.lower()
+        text = re.sub('p-0*', "", text, 1)
     output = sc.api_call(
         "channels.rename",
         channel=channel_id,
@@ -739,7 +741,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         else:
             codes['entry'] = 'ISSUE'
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        slack_response = rename_slack_channel(text, token, channel_id)
+        slack_response = rename_slack_channel(format_slug(project_id, text), token, channel_id)
         if slack_response.get('ok'):
             codes['slack'] = 'OK'
         else:
