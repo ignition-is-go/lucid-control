@@ -761,7 +761,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
             pass
 
         try:
-            xero_trackingcategory_response = rename_xero_tracking_category(channel_name, project_id, slug)
+            xero_trackingcategory_response = rename_xero_tracking_category(channel_name.split('-', 1)[1], project_id, slug)
             print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
             codes['xero'] = 'OK'
         except Exception as e:
