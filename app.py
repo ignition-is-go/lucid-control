@@ -520,6 +520,20 @@ def create_slack_channel(text, token):
     return output
 
 
+def post_create_results(results, channel_id):
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
+
+    output = sc.api_call(
+        "chat.postMessage",
+        channel=channel_id,
+        text=results
+    )
+    return output
+
+
+
+
 def invite_slack_channel( channel_id, token ):
     '''
     updates the channel list for the slack UserGroup set in the config vars
@@ -635,6 +649,7 @@ def create_all(text, response_url, token, results):
         pass
     print "These are the codes: {}".format(codes)
     description = ''
+    reason = ''
     for code in codes:
         description += '{}: {}, '.format(code.upper(), codes[code])
     if issues:
@@ -645,9 +660,8 @@ def create_all(text, response_url, token, results):
         results['attachments'].append({'text': reason})
     description = description.strip(', ')
     results['attachments'][0]['text'] = description
-    headers = {'Content-Type': 'application/json'}
-    requests.post(response_url, data=json.dumps(results), headers=headers)
-
+    post_response = post_create_results(description + '\n' + reason, channel_id)
+    print 'post response: {}'.format(post_response)
 
 def archive_all(text, response_url, channel_id, channel_name, token, results):
     issues = {}
