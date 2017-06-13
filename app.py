@@ -820,12 +820,13 @@ def get_status(response_url, channel_name, channel_id, status):
         fields = ['production_state', 'sales_state', 'invoice_state']
 
 
-    print "this is project_id: {}".format(project_id)
 
-    response = requests.get('{}{}/?format=json&username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY']))
-    print "this is the response: {}".format(response)
-    options_response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['PROJECT_SCHEMA_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
     for field in fields:
+        print "this is project_id: {}".format(project_id)
+
+        response = requests.get('{}{}/?format=json&username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY']))
+        print "this is the response: {}".format(response)
+        options_response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['PROJECT_SCHEMA_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
         choices = options_response.json()['fields'][field]['choices']
         for choice in choices:
             options.append({'text': choice[1], 'value': choice[0]})
