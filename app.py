@@ -203,22 +203,26 @@ def archive_dropbox_folder(channel_name, project_id, text):
 def find_dropbox_folder(project_id):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    matches = []
     print 'Finding dropbox folders starting with: {}'.format(project_id)
     for folder in schema['folders']:
-        for f in dbx.files_list_folder(folder.root).entries:
+        for f in dbx.files_list_folder(folder['root']).entries:
             if f.name.startswith(project_id):
                 print "match:"
-                print f.name
+                print f.path_lower
+                matches.append(f.path_lower)
+    return matches
 
 
 def rename_dropbox_folder(channel_name, project_id, text):
+    matches = find_dropbox_folder(project_id)
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
-    for folder in schema['folders']:
-        print 'from: {}'.format(format_slug(project_id, channel_name))
+    for path in matches:
+        print 'from: {}'.format(path))
         print 'text: {}'.format(text)
-        print 'to: {}'.format(text)
-        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], text))
+        print 'to: {}'.format(path.rsplit('/', 1)[0] + '/' + text)
+        response = dbx.files_move(path, os.path.join(path.rsplit('/', 1)[0], text))
         print response
     return response
 
