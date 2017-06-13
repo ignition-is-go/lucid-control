@@ -207,7 +207,7 @@ def find_dropbox_folder(project_id):
     print 'Finding dropbox folders starting with: {}'.format(project_id)
     for folder in schema['folders']:
         for f in dbx.files_list_folder(folder['root']).entries:
-            if f.name.startswith(project_id):
+            if f.name.startswith(str(project_id)):
                 print "match:"
                 print f.path_lower
                 matches.append(f.path_lower)
