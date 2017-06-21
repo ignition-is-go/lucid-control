@@ -99,12 +99,15 @@ def create_slug(text):
     return slug
 
 
+# service done
 def connect_to_xero():
     credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, constants.XERO_API_PRIVATE_KEY)
     xero = Xero(credentials)
     return xero
 
 
+
+# service done
 def create_xero_tracking_category(text):
     xero = connect_to_xero()
     xero.populate_tracking_categories()
@@ -112,6 +115,7 @@ def create_xero_tracking_category(text):
     return response
 
 
+# service done
 def get_xero_tracking_id(text):
     xero = connect_to_xero()
     xero.populate_tracking_categories()
@@ -498,6 +502,11 @@ def create_slack_channel(text, token):
         text = text.lower()
         text = re.sub('p-0*',"",text,1)
 
+    #get rid of any dangling - from the slack character cutoff (21 chars)
+    if len(text) > 21:
+        text = text[0:21]
+        if text[-1:] == "-":
+            text = text[0:-1]
     slack_token = os.environ["SLACK_API_TOKEN"]
     bot_user = os.environ["SLACK_APP_BOT_USERID"]
     sc = SlackClient(slack_token)
