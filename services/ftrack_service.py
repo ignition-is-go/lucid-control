@@ -15,15 +15,16 @@ import os
 import logging
 import re
 from types import *
+from service_template import ServiceTemplate
 
-class Ftrack(object):
+class FtrackService(ServiceTemplate):
 
     _server = None
     _connected = None
 
     _logger = logging.getLogger(__name__)
 
-    def __init__(self, server_url=None, api_key=None, api_user=None):
+    def __init__(self, server_url=None, api_key=None, api_user=None, slug_regex=super()._DEFAULT_REGEX):
         '''
         Constructor:
         @param server_url: ftrack server URL (must be HTTPS)

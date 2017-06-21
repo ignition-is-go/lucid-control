@@ -132,6 +132,7 @@ def get_xero_tracking_id(text):
     return option_id
 
 
+# service done
 def archive_xero_tracking_category(name, project_id, text):
     print 'name: {}'.format(name)
     print 'project_id: {}'.format(project_id)
@@ -149,6 +150,7 @@ def archive_xero_tracking_category(name, project_id, text):
     return response
 
 
+# service done
 def rename_xero_tracking_category(name, project_id, text):
     print 'name: {}'.format(name)
     print 'project_id: {}'.format(project_id)
