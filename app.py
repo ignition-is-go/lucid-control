@@ -29,13 +29,9 @@ def format_slug(project_id, text):
     #removed lower case on slug text (only necessary for slack)
     dashed_text = text.replace(' ', '-')
     slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
-<<<<<<< HEAD
-    slug = 'P-{:04d}-{}'.format(project_id, slug)
-=======
     print 'slug: {}'.format(slug)
     print 'project_id: {}'.format(project_id)
     slug = 'P-{}-{}'.format("%04d" % int(project_id), slug)
->>>>>>> refs/remotes/origin/master
     return slug
 
 
@@ -103,12 +99,15 @@ def create_slug(text):
     return slug
 
 
+# service done
 def connect_to_xero():
     credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, constants.XERO_API_PRIVATE_KEY)
     xero = Xero(credentials)
     return xero
 
 
+
+# service done
 def create_xero_tracking_category(text):
     xero = connect_to_xero()
     xero.populate_tracking_categories()
@@ -116,6 +115,7 @@ def create_xero_tracking_category(text):
     return response
 
 
+# service done
 def get_xero_tracking_id(text):
     xero = connect_to_xero()
     xero.populate_tracking_categories()
