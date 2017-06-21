@@ -29,13 +29,29 @@ def format_slug(project_id, text):
     #removed lower case on slug text (only necessary for slack)
     dashed_text = text.replace(' ', '-')
     slug = ''.join(e for e in dashed_text if e.isalnum or e == '-')
-    slug = 'P-{:04d}-{}'.format(project_id, slug)
+    print 'slug: {}'.format(slug)
+    print 'project_id: {}'.format(project_id)
+    slug = 'P-{}-{}'.format("%04d" % int(project_id), slug)
     return slug
 
 
-def rename_project(channel_name, text, slug, project_id):
+def archive_project(channel_id, text, slug, project_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
+    payload = {
+        'production_state': 'archived',
+        'sales_state': 'changes complete',
+        'invoice_state': 'closed'
+    }
+    r = requests.put(url, data=json.dumps(payload), headers=headers)
+    print r
+    print r.content
+    return r
+
+
+def rename_project(channel_id, text, slug, project_id):
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'title': text,
         'slug': slug
@@ -46,12 +62,13 @@ def rename_project(channel_name, text, slug, project_id):
     return r
 
 
-def create_project_entry(text, slug):
+def create_project_entry(text, slug, channel_id):
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = 'http://lucid-pro.herokuapp.com/api/project/?username=admin&api_key=LucyT3st'
+    url = '{}?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         'title': text,
-        'slug': slug
+        'slug': slug,
+        'slack_channel': channel_id
 
     }
     r = requests.post(url, data=json.dumps(payload), headers=headers)
@@ -60,8 +77,13 @@ def create_project_entry(text, slug):
     return r
 
 
+def get_project_id_from_channel(channel_id):
+    response = requests.get('{}?format=json&username={}&api_key={}&slack_channel={}'.format(os.environ['PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY'], channel_id))
+    project_id = response.json()['objects'][0]['id']
+    return project_id
+
 def get_last_project_id():
-    response = requests.get('http://lucid-pro.herokuapp.com/api/lastproject/?format=json&username=admin&api_key=LucyT3st')
+    response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['LAST_PROJECT_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
     last_project_id = response.json()['objects'][0]['id']
     return last_project_id
 
@@ -77,37 +99,69 @@ def create_slug(text):
     return slug
 
 
+# service done
 def connect_to_xero():
     credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, constants.XERO_API_PRIVATE_KEY)
     xero = Xero(credentials)
     return xero
 
 
+
+# service done
 def create_xero_tracking_category(text):
     xero = connect_to_xero()
     xero.populate_tracking_categories()
-    response = xero.TCShow.options.put({'Name': text})
+    response = xero.TCShow.options.put({'Name': text.lower()})
     return response
 
 
+# service done
 def get_xero_tracking_id(text):
     xero = connect_to_xero()
     xero.populate_tracking_categories()
     option_id = None
     for option in xero.TCShow.options.all():
+        print 'text: {}'.format(text)
+        print 'option: {}'.format(option)
+        print 'option name: {}'.format(option['Name'])
         if option['Name'] == text:
+            print 'match'
             option_id = option['TrackingOptionID']
+        else:
+            print 'no match'
     return option_id
 
 
-def rename_xero_tracking_category(name, text):
-    tracking_id = get_xero_tracking_id(name)
+def archive_xero_tracking_category(name, project_id, text):
+    print 'name: {}'.format(name)
+    print 'project_id: {}'.format(project_id)
+    print 'text: {}'.format(text)
+    print 'format_slug: {}'.format(format_slug(project_id, name).lower())
+    tracking_id = get_xero_tracking_id(format_slug(project_id, name).lower())
+    print 'tracking_id: {}'.format(tracking_id)
     xero = connect_to_xero()
     xero.populate_tracking_categories()
     option = xero.TCShow.options.get(tracking_id)[0]
 
-    option['Name'] = text
-    response = xero.TCShow.options.save_or_put(option)
+    option['IsArchived'] = True
+    response = xero.TCShow.options.delete(option['TrackingOptionID'])
+    # response = xero.TCShow.options.save({'TrackingOptionID': option['TrackingOptionID'], 'IsArchived': option['IsArchived']})
+    return response
+
+
+def rename_xero_tracking_category(name, project_id, text):
+    print 'name: {}'.format(name)
+    print 'project_id: {}'.format(project_id)
+    print 'text: {}'.format(text)
+    print 'format_slug: {}'.format(format_slug(project_id, name).lower())
+    tracking_id = get_xero_tracking_id(format_slug(project_id, name).lower())
+    print 'tracking_id: {}'.format(tracking_id)
+    xero = connect_to_xero()
+    xero.populate_tracking_categories()
+    option = xero.TCShow.options.get(tracking_id)[0]
+    print 'option: {}'.format(option)
+    option['Name'] = text.lower()
+    response = xero.TCShow.options.save({'TrackingOptionID': option['TrackingOptionID'], 'Name': option['Name']})
     return response
 
 
@@ -138,11 +192,37 @@ def create_dropbox_folder(text):
     return response
 
 
-def rename_dropbox_folder(channel_name, text):
+def archive_dropbox_folder(channel_name, project_id, text):
     dbx = connect_to_dropbox()
     schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
     for folder in schema['folders']:
-        response = dbx.files_move(os.path.join(folder['root'], channel_name), os.path.join(folder['root'], text))
+        print 'from: {}'.format(format_slug(project_id, channel_name))
+        print 'text: {}'.format(text)
+        print 'to: {}'.format(text)
+        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], 'Archive', format_slug(project_id, channel_name)))
+        print response
+    return response
+
+
+def find_dropbox_folder(project_id):
+    dbx = connect_to_dropbox()
+    schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    print 'Finding dropbox folders starting with: {}'.format(project_id)
+    for folder in schema['folders']:
+        for f in dbx.files_list_folder(folder.root).entries:
+            if f.name.startswith(project_id):
+                print "match:"
+                print f.name
+
+
+def rename_dropbox_folder(channel_name, project_id, text):
+    dbx = connect_to_dropbox()
+    schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+    for folder in schema['folders']:
+        print 'from: {}'.format(format_slug(project_id, channel_name))
+        print 'text: {}'.format(text)
+        print 'to: {}'.format(text)
+        response = dbx.files_move(os.path.join(folder['root'], format_slug(project_id, channel_name)), os.path.join(folder['root'], text))
         print response
     return response
 
@@ -334,6 +414,17 @@ def create_airtable_entry(text):
     return response
 
 
+def archive_slack_channel(text, token, channel_id):
+    slack_token = os.environ["SLACK_API_TOKEN"]
+    sc = SlackClient(slack_token)
+
+    output = sc.api_call(
+        "channels.archive",
+        channel=channel_id
+    )
+    return output
+
+
 def rename_slack_channel(text, token, channel_id):
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
@@ -354,7 +445,7 @@ def send_slack_state_menu(channel_id, results):
         "chat.postMessage",
         channel=channel_id,
         text=results['text'],
-        as_user="true",
+        as_user="false",
         response_type="ephemeral",
         attachments=results['attachments']
 
@@ -379,7 +470,7 @@ def create_slack_message(channel_id, text):
 
 def create_slack_pin(slug, channel_id):
     project_id = slug.split('-')[1]
-    url = 'http://lucid-pro.herokuapp.com/admin/mission_control/project/{}/change/'.format(project_id)
+    url = '{}{}/change/'.format(os.environ['PROJECT_EDIT_BASE_URL'], project_id)
     slack_token = os.environ["SLACK_API_TOKEN"]
     sc = SlackClient(slack_token)
 
@@ -400,22 +491,62 @@ def create_slack_channel(text, token):
     Creates a slack channel
     '''
     #check to see if there's 'P-00..' on the front of text, and remove it
-    if text[0:2] == "P-":
-        m = re.search('P-0*-(.*)',text)
-        text = m.group(0)
+    if text.lower()[0:2] == "p-":
+        text = text.lower()
+        text = re.sub('p-0*',"",text,1)
 
+    #get rid of any dangling - from the slack character cutoff (21 chars)
+    if len(text) > 21:
+        text = text[0:21]
+        if text[-1:] == "-":
+            text = text[0:-1]
     slack_token = os.environ["SLACK_API_TOKEN"]
+    bot_user = os.environ["SLACK_APP_BOT_USERID"]
     sc = SlackClient(slack_token)
 
-    # url = 'https://slack.com/api/channels.create'
+    # using 'channels.join' will force the calling user to create and join
+    # url = 'https://slack.com/api/channels.join'
 
     output = sc.api_call(
-        "channels.create",
+        "channels.join",
         name=text
+    )
+
+    # i'm sneaking this in here to add the bot user to the channel
+    add_bot_output = sc.api_call(
+        'channels.invite',
+        user=bot_user,
+        channel=output.get('id')
     )
 
     return output
 
+
+def invite_slack_channel( channel_id, token ):
+    '''
+    updates the channel list for the slack UserGroup set in the config vars
+    this automatically adds the entire group to the channel
+    '''
+
+    try:
+        slack_token = os.environ["SLACK_APP_API_TOKEN"]
+        invite_group = os.environ["SLACK_INVITE_USERGROUP"]
+        sc = SlackClient(slack_token)
+
+        # turns out we didn't need to get the group list and update it, just call update with the channel id and it adds everyone
+
+        print "trying to update: usergroup='{}', channels='{}'".format(invite_group, channel_id)
+
+        output = sc.api_call(
+            "usergroups.update",
+            usergroup = invite_group,
+            channels = channel_id
+        )
+
+        return output
+
+    except Exception as e:
+        raise e
 
 def create_all(text, response_url, token, results):
     issues = {}
@@ -435,7 +566,24 @@ def create_all(text, response_url, token, results):
         )
         results['text'] = message
         print "Create Slug returns: {}".format(slug)
-        project_entry_response = create_project_entry(text, slug)
+
+        print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
+        slack_response = create_slack_channel(slug, token)
+        print 'Create channel returns: {}'.format(slack_response)
+        if slack_response.get('ok'):
+            # Channel created, now invite
+            try:
+                invite_response = invite_slack_channel( slack_response.get('channel').get('id'), token)
+                print 'Invite to channel returns: {}'.format(invite_response)
+            except:
+                codes['slack'] = 'CREATED OK, ISSUE INVITING'
+            finally:
+                if invite_response.get('ok'):
+                    codes['slack'] = 'OK'
+        else:
+            codes['slack'] = 'ISSUE'
+        channel_id = slack_response['channel']['id']
+        project_entry_response = create_project_entry(text, slug, channel_id)
 
         if str(project_entry_response.status_code).startswith('2'):
             codes['entry'] = 'OK'
@@ -443,14 +591,6 @@ def create_all(text, response_url, token, results):
             codes['entry'] = 'ISSUE'
 
         print "Create Project Entry returns: {}".format(project_entry_response)
-        print 'This is the response_url: {}. This is the text: {}'.format(response_url, slug)
-        slack_response = create_slack_channel(slug, token)
-        if slack_response.get('ok'):
-            codes['slack'] = 'OK'
-        else:
-            codes['slack'] = 'ISSUE'
-        print 'Create channel returns: {}'.format(slack_response)
-        channel_id = slack_response['channel']['id']
         slack_pin_response = create_slack_pin(slug, channel_id)
         if slack_pin_response.get('ok'):
             codes['pin'] = 'OK'
@@ -511,6 +651,74 @@ def create_all(text, response_url, token, results):
     requests.post(response_url, data=json.dumps(results), headers=headers)
 
 
+def archive_all(text, response_url, channel_id, channel_name, token, results):
+    issues = {}
+    codes = {
+        'entry': None,
+        'slack': None,
+        'dropbox': None,
+        'xero': None
+    }
+    try:
+        description = 'Everything looks good!'
+        project_id = get_project_id_from_channel(channel_id)
+        slug = format_slug(project_id, text)
+        print slug
+        archive_project_response = archive_project(channel_id, text, slug, project_id)
+        message = (
+            'Successfully Archived Project in Database'
+        )
+        results['text'] = message
+        print 'Archive project returns: {}'.format(archive_project_response)
+        if str(archive_project_response.status_code).startswith('2'):
+            codes['entry'] = 'OK'
+        else:
+            codes['entry'] = 'ISSUE'
+        print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
+        slack_response = archive_slack_channel(text, token, channel_id)
+        if slack_response.get('ok'):
+            codes['slack'] = 'OK'
+        else:
+            codes['slack'] = 'ISSUE'
+        print 'Archive channel returns: {}'.format(slack_response)
+
+        try:
+            archive_dropbox_folder_response = archive_dropbox_folder(channel_name, project_id, slug)
+            print 'Archive dropbox folder returns: {}'.format(archive_dropbox_folder_response)
+            codes['dropbox'] = 'OK'
+        except Exception as e:
+            print "Dropbox issues: {}".format(e)
+            codes['dropbox'] = 'ISSUE'
+            issues['dropbox'] = '{}'.format(e)
+            pass
+
+        try:
+            xero_trackingcategory_response = archive_xero_tracking_category(channel_name, project_id, slug)
+            print 'Archive xero tracking category returns: {}'.format(xero_trackingcategory_response)
+            codes['xero'] = 'OK'
+        except Exception as e:
+            print "Xero issues: {}".format(e)
+            codes['xero'] = 'ISSUE'
+            issues['xero'] = '{}'.format(e)
+    except Exception as e:
+        print "Woops! Looks like we got an exception! {}".format(e)
+        description = "Woops! Looks like we got an exception! {}".format(e)
+    print "These are the codes: {}".format(codes)
+    description = ''
+    for code in codes:
+        description += '{}: {}, '.format(code.upper(), codes[code])
+    if issues:
+        reason = ''
+        for issue in issues:
+            reason += '{}: {}, '.format(issue.upper(), issues[issue])
+        reason = reason.strip(', ')
+        results['attachments'].append({'text': reason})
+    description = description.strip(', ')
+    results['attachments'][0]['text'] = description
+    headers = {'Content-Type': 'application/json'}
+    requests.post(response_url, data=json.dumps(results), headers=headers)
+
+
 def rename_all(text, response_url, channel_id, channel_name, token, results):
     issues = {}
     codes = {
@@ -521,9 +729,10 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
     }
     try:
         description = 'Everything looks good!'
-        project_id = channel_name.split('-')[1]
+        project_id = get_project_id_from_channel(channel_id)
         slug = format_slug(project_id, text)
-        rename_project_response = rename_project(channel_name, text, slug, project_id)
+        print slug
+        rename_project_response = rename_project(channel_id, text, slug, project_id)
         message = (
             'Successfully Renamed {} to: {}'.format(channel_name, slug)
         )
@@ -534,28 +743,17 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
         else:
             codes['entry'] = 'ISSUE'
         print 'This is the response_url: {}. This is the text: {}'.format(response_url, text)
-        slack_response = rename_slack_channel(slug, token, channel_id)
+        slack_response = rename_slack_channel(text, token, channel_id)
         if slack_response.get('ok'):
             codes['slack'] = 'OK'
         else:
             codes['slack'] = 'ISSUE'
         print 'Rename channel returns: {}'.format(slack_response)
-        # airtable_response = rename_airtable_entry(text, channel_name)
-        # print 'Rename airtable entry returns: {}'.format(airtable_response)
-        # meistertask_response = rename_meistertask_project(text, channel_name)
-        # print 'Rename meistertask project returns: {}'.format(meistertask_response)
-        # mindmeister_response = rename_mindmeister_folder(text)
-        # print 'Rename mindmeister folder returns: {}'.format(mindmeister_response)
-        # root = ET.fromstring(mindmeister_response.content)
-        # folder_id = root[0].attrib['id']
-        # mindmeister_response2 = rename_mindmeister_map(text)
-        # print 'Rename mindmeister map returns: {}'.format(mindmeister_response2)
-        # root = ET.fromstring(mindmeister_response2.content)
-        # map_id = root[0].attrib['id']
-        # mindmeister_response3 = move_mindmeister_map(folder_id, map_id)
-        # print 'Move mindmeister map returns: {}'.format(mindmeister_response3)
+
         try:
-            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, slug)
+            find_dropbox_folder_response = find_dropbox_folder(project_id)
+            print find_dropbox_folder_response
+            rename_dropbox_folder_response = rename_dropbox_folder(channel_name, project_id, slug)
             print 'Rename dropbox folder returns: {}'.format(rename_dropbox_folder_response)
             codes['dropbox'] = 'OK'
         except Exception as e:
@@ -565,7 +763,7 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
             pass
 
         try:
-            xero_trackingcategory_response = rename_xero_tracking_category(channel_name, slug)
+            xero_trackingcategory_response = rename_xero_tracking_category(channel_name, project_id, slug)
             print 'Rename xero tracking category returns: {}'.format(xero_trackingcategory_response)
             codes['xero'] = 'OK'
         except Exception as e:
@@ -592,17 +790,22 @@ def rename_all(text, response_url, channel_id, channel_name, token, results):
 
 
 def get_status(response_url, channel_name, channel_id, status):
-    project_id = channel_name.split('-')[1]
+    project_id = get_project_id_from_channel(channel_id)
     field = None
     options = []
-    if status.lower() == 'p':
+    if status.lower() == 'p' or status == "":
         field = 'production_state'
     if status.lower() == 's':
         field = 'sales_state'
     if status.lower() == 'i':
         field = 'invoice_state'
-    response = requests.get('http://lucid-pro.herokuapp.com/api/project/{}/?format=json&username=admin&api_key=LucyT3st'.format(project_id))
-    options_response = requests.get('http://lucid-pro.herokuapp.com/api/project/schema/?format=json&username=admin&api_key=LucyT3st')
+
+    print "this is project_id: {}".format(project_id)
+
+    response = requests.get('{}{}/?format=json&username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY']))
+    print "this is the response: {}".format(response)
+    options_response = requests.get('{}?format=json&username={}&api_key={}'.format(os.environ['PROJECT_SCHEMA_API_BASE_URL'], os.environ['API_USERNAME'], os.environ['API_KEY']))
+
     choices = options_response.json()['fields'][field]['choices']
     for choice in choices:
         options.append({'text': choice[1], 'value': choice[0]})
@@ -631,15 +834,18 @@ def get_status(response_url, channel_name, channel_id, status):
 
 
 def set_status(response_url, channel_name, channel_id, selection, status_type):
-    project_id = channel_name.split('-')[1]
-
+    project_id = get_project_id_from_channel(channel_id)
+    print 'project_id: {}'.format(project_id)
     headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
-    url = 'http://lucid-pro.herokuapp.com/api/project/{}/?username=admin&api_key=LucyT3st'.format(project_id)
+    url = '{}{}/?username={}&api_key={}'.format(os.environ['PROJECT_API_BASE_URL'], project_id, os.environ['API_USERNAME'], os.environ['API_KEY'])
     payload = {
         str(status_type): selection
     }
+    print 'url: {}'.format(url)
+    print 'payload: {}'.format(payload)
     r = requests.put(url, data=json.dumps(payload), headers=headers)
-
+    print 'r: {}'.format(r)
+    print 'r.content: {}'.format(r.content)
 
     results = {'text': 'Successfully Changed State', 'attachments': [{'text': 'Hooray!'}]}
     headers = {'Content-Type': 'application/json'}
@@ -709,6 +915,43 @@ def state():
 
     return waiting
 
+
+@app.route('/archive', methods=['GET', 'POST'])
+def archive():
+    results = {
+        'text': '',
+        'response_type': 'ephemeral',
+        'attachments': [
+            {
+                'text': ''
+            }
+        ]
+    }
+    waiting = 'Request Received! Attempting to Archive Project...'
+    if request.method == "POST":
+        response_url = request.form.get('response_url')
+        text = request.form.get('text')
+        token = request.form.get('token')
+        channel_name = request.form.get('channel_name').capitalize()
+        channel_id = request.form.get('channel_id')
+        if token != os.environ['INTEGRATION_TOKEN_RENAME']:
+            message = (
+                'Invalid Slack Integration Token. Commands disabled '
+                'until token is corrected. Try setting the '
+                'SLACK_INTEGRATION_TOKEN environment variable'
+            )
+
+        else:
+            message = (
+                'Successfully Renamed {} to: {}'.format(channel_name, text)
+            )
+        results['text'] = message
+        results['attachments'][0]['text'] = message
+
+        t = Thread(target=archive_all, args=(text, response_url, channel_id, channel_name, token, results,))
+        t.start()
+
+    return waiting
 
 
 @app.route('/rename', methods=['GET', 'POST'])
