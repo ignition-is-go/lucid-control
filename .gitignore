@@ -4,3 +4,5 @@ env/*
 env.json
 .vscode*
 .cache*
+.env
+.vscode/settings.json
