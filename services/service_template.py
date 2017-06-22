@@ -7,15 +7,53 @@ K Bjordahl
 '''
 
 import re
+import os
+import logging
 
 class ServiceTemplate(object):
 
-    _DEFAULT_REGEX = re.compile(r'^P-(?P<project_id>\d{4})-(?P<project_title>.+)')
-    _DEFAULT_FORMAT = "P-{project_id:04d}-{title}"
+    _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Z])-(?P<project_id>\d{4})-(?P<project_title>.+)')
+    _DEFAULT_FORMAT = "{typecode}-{project_id:04d}-{title}"
+    _pretty_name = "Generic Service"
 
-    @classmethod
-    def _format_slug(cls, project_id, title):
-        return cls._DEFAULT_FORMAT.format(
+    def _setup_logger(self, level='warn', to_file=False):
+        self._logger = logging.getLogger(__name__)
+
+        if level.lower()[0] == 'w': self._logger.setLevel(logging.WARN)
+        if level.lower()[0] == 'e': self._logger.setLevel(logging.ERROR)
+        if level.lower()[0] == 'i': self._logger.setLevel(logging.INFO)
+        if level.lower()[0] == 'd': self._logger.setLevel(logging.DEBUG)
+        if level.lower()[0] == 'c': self._logger.setLevel(logging.CRITICAL)
+
+        if to_file:
+            handler = logging.FileHandler('{}.log'.format(__name__))
+            formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+            handler.setFormatter(formatter)
+            self._logger.addHandler(handler)        
+
+    def get_pretty_name(self):
+        return self._pretty_name
+
+    def get_link(self, project_id):
+        return "_No Link Defined_"
+        
+    def _format_slug(self, project_id, title):
+        m = re.match(self._DEFAULT_REGEX, title)
+
+        if m is not None:
+            # this means we've matched the regex
+            if int(m.group('project_id')) == project_id:
+                # confirm the project id's match, so extract just the title
+                title = m.group('project_title')
+                typecode = m.group('typecode')
+        else:
+            typecode = "P"
+
+        return self._DEFAULT_FORMAT.format(
+            typecode=typecode,
             project_id=project_id,
             title=title
             )
+
+class ServiceException(Exception):
+    pass

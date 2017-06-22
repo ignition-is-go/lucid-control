@@ -6,12 +6,15 @@ Ftrack service tests
 import os, random
 import pytest
 import ftrack_api
+import simplejson as json
+from basic_test_data import sample_project_data
+
 
 #load env vars
-with open(".env", mode='r') as fp:
-    envs = fp.readlines()
-    for env in envs:
-        (key, value) = env.strip().replace('"','').split("=")
+with open("env.json") as fp:
+    jstring = fp.read().decode('utf-16-le')
+    envs = json.loads(jstring)
+    for key, value in envs.items():
         os.environ[key] = value
 
 def test_env_variables():
@@ -26,8 +29,10 @@ def ftrack():
     '''
     creates a testing ftrack service instance
     '''
-    import ftrack_service
-    return ftrack_service.Ftrack()
+
+    print os.getcwd()
+    from services.ftrack_service import FtrackService
+    return FtrackService()
 
 @pytest.fixture(scope='function')
 def local_ftrack():
@@ -35,23 +40,13 @@ def local_ftrack():
     return local
 
 
-@pytest.fixture(scope='session')
-def sample_project(request):
+@pytest.fixture(scope='module')
+def sample_project(request, sample_project_data):
     '''
     creates test project for use
     '''
-    from random_words import RandomNicknames, RandomWords
-
-    random_names = RandomNicknames()
-    random_words = RandomWords()
-    project_id = random.randint(1, 9999)
-    project_title = "T-{:04d}-{} {}".format(
-        project_id,
-        random_names.random_nick(gender='f').capitalize(),
-        random_words.random_word().capitalize()
-        )
-    
-    project_id = "T{}".format(project_id)
+    project_id = str(sample_project_data['project_id'])
+    project_title = sample_project_data['project_title']
 
     def fin():
         '''

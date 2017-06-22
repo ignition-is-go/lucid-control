@@ -15,16 +15,16 @@ import os
 import logging
 import re
 from types import *
-from service_template import ServiceTemplate
+import service_template
 
-class FtrackService(ServiceTemplate):
+class FtrackService(service_template.ServiceTemplate):
 
     _server = None
     _connected = None
 
-    _logger = logging.getLogger(__name__)
+    _pretty_name = "ftrack"
 
-    def __init__(self, server_url=None, api_key=None, api_user=None, slug_regex=super()._DEFAULT_REGEX):
+    def __init__(self, server_url=None, api_key=None, api_user=None, slug_regex=None):
         '''
         Constructor:
         @param server_url: ftrack server URL (must be HTTPS)
@@ -33,21 +33,30 @@ class FtrackService(ServiceTemplate):
 
         creates an API connection and connects to the server
         '''
-        if server_url is None:
-            server_url = os.environ.get('FTRACK_SERVER')
         
-        if api_key is None:
-            api_key = os.environ.get('FTRACK_API_KEY')
+        self._setup_logger(level='info',to_file=True)
 
-        if api_user is None:
-            api_user = os.environ.get('FTRACK_API_USER')
+        try:
+            if server_url is None:
+                server_url = os.environ.get('FTRACK_SERVER')
+            
+            if api_key is None:
+                api_key = os.environ.get('FTRACK_API_KEY')
 
-        self._server = ftrack_api.Session(
-            server_url=server_url,
-            api_key=api_key,
-            api_user=api_user
-            )
+            if api_user is None:
+                api_user = os.environ.get('FTRACK_API_USER')
 
+            if slug_regex is not None:
+                self._DEFAULT_REGEX = slug_regex
+
+            self._server = ftrack_api.Session(
+                server_url=server_url,
+                api_key=api_key,
+                api_user=api_user
+                )
+        except TypeError as e:
+            self._logger.error("Seems that some environment variables may be missing")
+            raise e
 
     def is_connected(self):
         '''
@@ -61,19 +70,21 @@ class FtrackService(ServiceTemplate):
         return self._connected
 
 
-    def create(self, project_id, title):
+    def create(self, project_id, title, silent=None):
         '''
         creates a new ftrack project
         '''
         default_schema_name = os.environ.get("FTRACK_DEFAULT_SCHEMA_NAME")
         assert default_schema_name is not None, "Please set env var 'FTRACK_DEFAULT_SCHEMA_NAME'"
 
+        slug = self._format_slug(project_id,title)
+
         lucid_schema = self._server.query(
             'ProjectSchema where name is "{}"'.format(default_schema_name)).one()
 
         project = self._server.create('Project', {
             'name': project_id,
-            'full_name': title,
+            'full_name': slug,
             'project_schema': lucid_schema
         })
 
@@ -99,7 +110,7 @@ class FtrackService(ServiceTemplate):
 
         # do a query check
         check_project = self._find(project_id)
-        return bool(check_project['full_name'] == title)
+        return bool(check_project['full_name'] == slug)
 
 
     def rename(self, project_id, new_title):
@@ -111,6 +122,7 @@ class FtrackService(ServiceTemplate):
 
         @return success boolean
         '''
+        new_slug = self._format_slug(project_id,new_title)
         try:
             project = self._find(project_id)
         
@@ -118,12 +130,12 @@ class FtrackService(ServiceTemplate):
             return False
         
         else:
-            project['full_name'] = new_title
+            project['full_name'] = new_slug
             self._server.commit()
 
             # do a query check
             check_project = self._find(project_id)
-            return bool(check_project['full_name'] == new_title)
+            return bool(check_project['full_name'] == new_slug)
 
     def archive(self, project_id, unarchive=False):
         '''
@@ -198,13 +210,14 @@ class FtrackService(ServiceTemplate):
                                   )
 
                 # we return the first project who's full name has the project code
-                project_name_format = r'\w-(\d{4}).*'
-                m = re.match(project_name_format, project['full_name'])
-                if m.group(0) is not None:
+                m = re.match(self._DEFAULT_REGEX, project['full_name'])
+                if m.group('project_id') is not None:
                     self._logger.debug("%s has a project code", project['full_name'])
-                    test_number = int(m.group(0))
+                    test_number = int(m.group('project_id'))
                     if test_number == int(project_id):
                         return project
+            
+            # We didn't settle on a regex match, so now we give up            
             raise FtrackServiceError("Found too many Project ID # {} \
                                       and couldn't decide which to use"
                                      .format(project_id))
@@ -212,5 +225,5 @@ class FtrackService(ServiceTemplate):
             return projects[0]
 
 
-class FtrackServiceError(Exception):
+class FtrackServiceError(service_template.ServiceException):
     pass
