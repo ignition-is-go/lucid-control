@@ -54,6 +54,7 @@ class FtrackService(service_template.ServiceTemplate):
                 api_key=api_key,
                 api_user=api_user
                 )
+            self._logger.info('Initializing FTrack Server as: %s with API user %s', server_url, api_user)
         except TypeError as e:
             self._logger.error("Seems that some environment variables may be missing")
             raise e
@@ -87,6 +88,7 @@ class FtrackService(service_template.ServiceTemplate):
             'full_name': slug,
             'project_schema': lucid_schema
         })
+        self._logger.debug('Created project %s (ID: %s)', slug, project_id)
 
         # add default components:
         # TODO: Add default items with task templates
@@ -95,6 +97,7 @@ class FtrackService(service_template.ServiceTemplate):
             'name': 'Sale',
             'parent': project
         })
+        self._logger.debug('Created sales item in %s', project['full_name'])
 
         project_management = self._server.create('ProjectManagement', {
             'name': 'Management',
@@ -185,7 +188,8 @@ class FtrackService(service_template.ServiceTemplate):
             return False
         
         else:
-            url = "{server}/#entityType=show&entityId={project[id]}&itemId=projects&view=tasks".format(
+            url = "{server}/#entityType=show&entityId={project[id]}\
+&itemId=projects&view=tasks".format(
                 project=project,
                 server=self._server.server_url
             )
