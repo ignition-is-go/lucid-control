@@ -41,7 +41,7 @@ def local_ftrack():
 
 
 @pytest.fixture(scope='module')
-def sample_project(request, sample_project_data):
+def sample_project_with_teardown(request, sample_project_data):
     '''
     creates test project for use
     '''
@@ -77,64 +77,69 @@ def test_connection(ftrack):
     '''
     assert ftrack.is_connected()
 
-def test_create_project(ftrack, local_ftrack, sample_project):
+def test_create_project(ftrack, local_ftrack, sample_project_with_teardown):
     '''
     tests the project creation process
     '''
     
-    ftrack.create(sample_project['project_id'], sample_project['title'])
+    ftrack.create(
+        sample_project_with_teardown['project_id'], 
+        sample_project_with_teardown['title'])
 
     # now we go look in ftrack for it
 
-    project = local_ftrack.query('Project where name is "{id}" and full_name is "{title}"'.format(
-        id=sample_project['project_id'],
-        title=sample_project['title']
-        )).one()
-    
-    assert project['name'] == sample_project['project_id']
-    assert project['full_name'] == sample_project['title']
+    try:
+        project = local_ftrack.query('Project where name is "{id}" and full_name is "{title}"'.format(
+            id=sample_project_with_teardown['project_id'],
+            title=sample_project_with_teardown['title']
+            )).one()
+    except:
+        assert 0
 
-def test_rename_project(ftrack, local_ftrack, sample_project):
+    assert project['name'] == sample_project_with_teardown['project_id']
+    assert project['full_name'] == sample_project_with_teardown['title']
+
+def test_rename_project(ftrack, local_ftrack, sample_project_with_teardown):
     '''
     Tests the rename function
     '''
-    rename_title = sample_project['title']+"-RENAME"
+    rename_title = sample_project_with_teardown['title']+"-RENAME"
 
-    assert ftrack.rename(sample_project['project_id'], rename_title) is True
+    assert ftrack.rename(sample_project_with_teardown['project_id'], rename_title) is True
 
     renamed_project = local_ftrack.query('Project where name is "{id}"'.format(
-        id=sample_project['project_id']
+        id=sample_project_with_teardown['project_id']
         )).one()
 
 
-    assert renamed_project['name'] == sample_project['project_id']
+    assert renamed_project['name'] == sample_project_with_teardown['project_id']
     assert renamed_project['full_name'] == rename_title
 
     #the last assertion confirms that the name was reset
-    assert ftrack.rename(sample_project['project_id'], sample_project['title']) is True
+    assert ftrack.rename(sample_project_with_teardown['project_id'], sample_project_with_teardown['title']) is True
 
 
-def test_archive_project(ftrack, local_ftrack, sample_project):
+def test_archive_project(ftrack, local_ftrack, sample_project_with_teardown):
     '''
     Test the archive function
     '''
 
-    assert ftrack.archive(sample_project['project_id']) is True
+    assert ftrack.archive(sample_project_with_teardown['project_id']) is True
 
     project = local_ftrack.query('Project where name is "{id}"'.format(
-        id=sample_project['project_id']
+        id=sample_project_with_teardown['project_id']
         )).one()
 
 
     assert project['status'] == 'hidden'
 
-    assert ftrack.archive(sample_project['project_id'], unarchive=True)
+    assert ftrack.archive(sample_project_with_teardown['project_id'], unarchive=True)
 
-def test_get_link(ftrack,sample_project):
+def test_get_link(ftrack,sample_project_with_teardown):
     '''
     Test getting a url
     '''
-    url = ftrack.get_link(sample_project['project_id'])
+    url = ftrack.get_link(sample_project_with_teardown['project_id'])
     print url
 
     assert isinstance(url, str)
