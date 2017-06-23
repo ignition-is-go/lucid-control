@@ -16,7 +16,7 @@ class DropboxService(service_template.ServiceTemplate):
 
     def __init__(self):
 
-        self._logger = self._setup_logger()
+        self._logger = self._logger = self._setup_logger(to_file=True)
 
         self._dbx = dropbox.Dropbox(constants.DROPBOX_ACCESS_TOKEN)
         
@@ -26,7 +26,8 @@ class DropboxService(service_template.ServiceTemplate):
         '''
         self._logger.info('Attempting to create Dropbox folder schema for #%s: %s',
             project_id, title)
-
+        
+        slug = self._format_slug('')
         try:
             folders = self._find_schema(project_id)
         except DropboxServiceError:
@@ -37,7 +38,7 @@ class DropboxService(service_template.ServiceTemplate):
             responses = []
             try:
                 for folder in schema['folders']:
-                    self._logger.info( 'attempting to make: %s', os.path.join(folder['root'], text))
+                    self._logger.info( 'attempting to make: %s', os.path.join(folder['root'], slug))
                     response = self._dbx.files_create_folder(os.path.join(folder['root'], text))
                     self._logger.debug("Dbx Response: %s", response)
                     responses.append(response)
@@ -189,9 +190,13 @@ class DropboxService(service_template.ServiceTemplate):
         
     def _format_slug(self, project_id, title):
         '''Correctly formats  the slug for drobox'''
+        self._logger.info("Creating Dropbox Slug for #%s: %s", project_id, title)
+        
         title = title.lower().replace(" ", "-")
         slug = super(DropboxService, self)._format_slug(project_id, title)
-
+        
+        self._logger.info("Made Dropbox Slug for #%s: %s = %s",project_id, title, slug)
+        return slug
 
 class DropboxServiceError(service_template.ServiceException):
     pass

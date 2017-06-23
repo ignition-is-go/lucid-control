@@ -30,7 +30,7 @@ class SlackService(service_template.ServiceTemplate):
         self._slack_bot = slacker.Slacker(bot_token)
         self._slack_team = slacker.Slacker(team_token)
 
-        self._setup_logger(level='debug', to_file=True)
+        self._logger = self._setup_logger(level='debug', to_file=True)
 
 
     def create(self, project_id, title, silent=False):
