@@ -71,6 +71,16 @@ def sample_project_with_teardown(request, sample_project_data):
     request.addfinalizer(fin)
     return {'project_id': project_id, 'title': project_title}
 
+
+
+@pytest.fixture(scope='module')
+def sample_project_with_setup_and_teardown(ftrack, sample_project_with_teardown):
+    ftrack.create(
+        sample_project_with_teardown['project_id'],
+        sample_project_with_teardown['title']
+    )
+    return sample_project_with_teardown
+
 def test_connection(ftrack):
     '''
     tests to confirm that the ftrackService object connects
@@ -89,35 +99,38 @@ def test_create_project(ftrack, local_ftrack, sample_project_with_teardown):
     # now we go look in ftrack for it
 
     try:
-        project = local_ftrack.query('Project where name is "{id}" and full_name is "{title}"'.format(
+        project = local_ftrack.query('Project where name is "{id}"'.format(
             id=sample_project_with_teardown['project_id'],
-            title=sample_project_with_teardown['title']
             )).one()
     except:
         assert 0
 
+    slug = ftrack._format_slug(
+        sample_project_with_teardown['project_id'], 
+        sample_project_with_teardown['title']
+    )
     assert project['name'] == sample_project_with_teardown['project_id']
-    assert project['full_name'] == sample_project_with_teardown['title']
+    assert project['full_name'] == slug
 
-def test_rename_project(ftrack, local_ftrack, sample_project_with_teardown):
+def test_rename_project(ftrack, local_ftrack, sample_project_with_setup_and_teardown):
     '''
     Tests the rename function
     '''
-    rename_title = sample_project_with_teardown['title']+"-RENAME"
+    project = sample_project_with_setup_and_teardown
+    rename_title = project['title']+"-RENAME"
 
-    assert ftrack.rename(sample_project_with_teardown['project_id'], rename_title) is True
+    assert ftrack.rename(project['project_id'], rename_title) is True
 
     renamed_project = local_ftrack.query('Project where name is "{id}"'.format(
-        id=sample_project_with_teardown['project_id']
+        id=project['project_id']
         )).one()
 
-
-    assert renamed_project['name'] == sample_project_with_teardown['project_id']
-    assert renamed_project['full_name'] == rename_title
-
-    #the last assertion confirms that the name was reset
-    assert ftrack.rename(sample_project_with_teardown['project_id'], sample_project_with_teardown['title']) is True
-
+    slug = ftrack._format_slug(
+        project['project_id'], 
+        rename_title
+    )
+    assert renamed_project['name'] == project['project_id']
+    assert renamed_project['full_name'] == slug
 
 def test_archive_project(ftrack, local_ftrack, sample_project_with_teardown):
     '''

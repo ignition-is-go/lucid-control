@@ -34,7 +34,7 @@ class FtrackService(service_template.ServiceTemplate):
         creates an API connection and connects to the server
         '''
         
-        self._logger = self._setup_logger(level='info',to_file=True)
+        self._logger = self._setup_logger(to_file=True)
 
         try:
             if server_url is None:
@@ -80,36 +80,41 @@ class FtrackService(service_template.ServiceTemplate):
 
         slug = self._format_slug(project_id,title)
 
-        lucid_schema = self._server.query(
-            'ProjectSchema where name is "{}"'.format(default_schema_name)).one()
+        try:
+            self._find(project_id)
+        except FtrackServiceError:
+            #this means that _find failed to find an existing project! carry on...
+                
+            lucid_schema = self._server.query(
+                'ProjectSchema where name is "{}"'.format(default_schema_name)).one()
 
-        project = self._server.create('Project', {
-            'name': project_id,
-            'full_name': slug,
-            'project_schema': lucid_schema
-        })
-        self._logger.debug('Created project %s (ID: %s)', slug, project_id)
+            project = self._server.create('Project', {
+                'name': project_id,
+                'full_name': slug,
+                'project_schema': lucid_schema
+            })
+            self._logger.debug('Created project %s (ID: %s)', slug, project_id)
 
-        # add default components:
-        # TODO: Add default items with task templates
+            # add default components:
+            # TODO: Add default items with task templates
 
-        sale = self._server.create('Sale', {
-            'name': 'Sale',
-            'parent': project
-        })
-        self._logger.debug('Created sales item in %s', project['full_name'])
+            sale = self._server.create('Sale', {
+                'name': 'Sale',
+                'parent': project
+            })
+            self._logger.debug('Created sales item in %s', project['full_name'])
 
-        project_management = self._server.create('ProjectManagement', {
-            'name': 'Management',
-            'parent': project
-        })
+            project_management = self._server.create('ProjectManagement', {
+                'name': 'Management',
+                'parent': project
+            })
 
-        schedule = self._server.create('Schedule', {
-            'name': 'Schedule',
-            'parent': project
-        })
+            schedule = self._server.create('Schedule', {
+                'name': 'Schedule',
+                'parent': project
+            })
 
-        self._server.commit()
+            self._server.commit()
 
         # do a query check
         check_project = self._find(project_id)
@@ -224,8 +229,11 @@ class FtrackService(service_template.ServiceTemplate):
             raise FtrackServiceError("Found too many Project ID # {} \
                                       and couldn't decide which to use"
                                      .format(project_id))
-        else:
+        elif len(projects) == 1:
             return projects[0]
+        else:
+            self._logger.info("Couldn't find a match for #%s",project_id)
+            raise FtrackServiceError("Couldn't find a match for {}".format(project_id))
 
 
 class FtrackServiceError(service_template.ServiceException):
