@@ -80,40 +80,8 @@ class FtrackService(service_template.ServiceTemplate):
 
         slug = self._format_slug(project_id,title)
 
-<<<<<<< HEAD
         self._logger.info('Start create project for %s', slug)
 
-        lucid_schema = self._server.query(
-            'ProjectSchema where name is "{}"'.format(default_schema_name)).one()
-
-        project = self._server.create('Project', {
-            'name': project_id,
-            'full_name': slug,
-            'project_schema': lucid_schema
-        })
-        self._logger.debug('Created project %s (ID: %s)', project['full_name'], project_id)
-
-        # add default components:
-        # TODO: Add default items with task templates
-
-        sale = self._server.create('Sale', {
-            'name': 'Sale',
-            'parent': project
-        })
-        self._logger.debug('Created sales item in %s', project['full_name'])
-
-        project_management = self._server.create('ProjectManagement', {
-            'name': 'Management',
-            'parent': project
-        })
-        self._logger.debug('Created project management item in %s', project['full_name'])
-
-        schedule = self._server.create('Schedule', {
-            'name': 'Schedule',
-            'parent': project
-        })
-        self._logger.debug('Created schedule item in %s', project['full_name'])
-=======
         try:
             self._find(project_id)
         except FtrackServiceError:
@@ -127,7 +95,7 @@ class FtrackService(service_template.ServiceTemplate):
                 'full_name': slug,
                 'project_schema': lucid_schema
             })
-            self._logger.debug('Created project %s (ID: %s)', slug, project_id)
+            self._logger.debug('Creating project %s (ID: %s)', slug, project_id)
 
             # add default components:
             # TODO: Add default items with task templates
@@ -142,12 +110,13 @@ class FtrackService(service_template.ServiceTemplate):
                 'name': 'Management',
                 'parent': project
             })
+            self._logger.debug('Created project management item in %s', project['full_name'])
 
             schedule = self._server.create('Schedule', {
                 'name': 'Schedule',
                 'parent': project
             })
->>>>>>> master
+            self._logger.debug('Created schedule item in %s', project['full_name'])
 
             self._server.commit()
 
@@ -281,9 +250,10 @@ class FtrackService(service_template.ServiceTemplate):
                                       and couldn't decide which to use"
                                      .format(project_id))
         elif len(projects) == 1:
+            self._logger.debug('Found project %s', project_id)
             return projects[0]
         else:
-            self._logger.info("Couldn't find a match for #%s",project_id)
+            self._logger.info("Did not find project %s",project_id)
             raise FtrackServiceError("Couldn't find a match for {}".format(project_id))
 
 
