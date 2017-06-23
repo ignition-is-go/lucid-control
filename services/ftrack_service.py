@@ -34,7 +34,7 @@ class FtrackService(service_template.ServiceTemplate):
         creates an API connection and connects to the server
         '''
         
-        self._logger = self._setup_logger(level='info',to_file=True)
+        self._setup_logger(level='info',to_file=True)
 
         try:
             if server_url is None:
@@ -54,6 +54,7 @@ class FtrackService(service_template.ServiceTemplate):
                 api_key=api_key,
                 api_user=api_user
                 )
+            self._logger.info('Initializing FTrack Server as: %s with API user %s and API key %s', server_url, api_user, api_key)
         except TypeError as e:
             self._logger.error("Seems that some environment variables may be missing")
             raise e
@@ -185,7 +186,8 @@ class FtrackService(service_template.ServiceTemplate):
             return False
         
         else:
-            url = "{server}/#entityType=show&entityId={project[id]}&itemId=projects&view=tasks".format(
+            url = "{server}/#entityType=show&entityId={project[id]}\
+&itemId=projects&view=tasks".format(
                 project=project,
                 server=self._server.server_url
             )
