@@ -90,7 +90,7 @@ class FtrackService(service_template.ServiceTemplate):
             'full_name': slug,
             'project_schema': lucid_schema
         })
-        self._logger.debug('Created project %s (ID: %s)', slug, project_id)
+        self._logger.debug('Created project %s (ID: %s)', project['full_name'], project_id)
 
         # add default components:
         # TODO: Add default items with task templates
@@ -131,7 +131,7 @@ class FtrackService(service_template.ServiceTemplate):
         '''
         new_slug = self._format_slug(project_id,new_title)
 
-        self._logger.info('Start project rename - change %s to %s', project['full_name'], new_slug)
+        self._logger.info('Start project rename - change project %s to %s', project_id, new_slug)
 
         try:
             project = self._find(project_id)
@@ -160,21 +160,28 @@ class FtrackService(service_template.ServiceTemplate):
         Returns:
             bool: Success or not
         '''
+
+        self._logger.info('Start project archive for %s', project_id)
+
         try:
             project = self._find(project_id)
         
         except FtrackServiceError:
+            self._logger.debug('Unable to find project %s to archive.', project_id)
             return False
         
         else:
             if unarchive:
                 new_status = "active"
+                self._logger.debug('Setting flag for project %s to be unarchived.', project_id)
             else:
                 # hidden is the ftrack version of archived
                 new_status = "hidden"
+                self._logger.debug('Setting flag for project %s to be archived.', project_id)
 
             project['status'] = new_status
             self._server.commit()
+            self._logger.debug('Status for project %s has been set to %s.', project_id, project['status'])
 
             # do a query check
             check_project = self._find(project_id)
@@ -191,19 +198,22 @@ class FtrackService(service_template.ServiceTemplate):
         Returns:
             str: URL for the project
         '''
+        
+        self._logger.info('Start get link for %s', project_id)
+
         try:
             project = self._find(project_id)
         
         except FtrackServiceError:
+            self._logger.debug('Unable to find project %s to create link.', project_id)
             return False
         
         else:
-            url = "{server}/#entityType=show&entityId={project[id]}\
-&itemId=projects&view=tasks".format(
+            url = "{server}/#entityType=show&entityId={project[id]}&itemId=projects&view=tasks".format(
                 project=project,
                 server=self._server.server_url
             )
-
+            self._logger.debug('Link created for project %s: %s ', project_id, url)
             return url
 
     def _find(self, project_id):
