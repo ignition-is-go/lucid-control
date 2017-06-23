@@ -42,8 +42,3 @@ def test_create_with_teardown( sample_project, slack, ftrack, xero ):
     finally:
         assert lucid_api.archive(project_id)
 
-def test_cleanup_fix():
-
-    assert lucid_api.archive(104)
-    assert lucid_api.archive(105)
-    assert lucid_api.archive(106)
