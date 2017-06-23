@@ -33,7 +33,7 @@ class SlackService(service_template.ServiceTemplate):
         self._setup_logger(level='debug', to_file=True)
 
 
-    def create(self, project_id, title, silent=True):
+    def create(self, project_id, title, silent=False):
         '''
         Handles the process of creating a new slack channel, including adding people to it
         '''
@@ -59,7 +59,8 @@ class SlackService(service_template.ServiceTemplate):
                 raise SlackServiceError("Could not create channel for #%s, Slack API error: %s", project_id, err.message)
 
         else:
-            raise SlackServiceError("Could create the channel for #%s, because it already exists", project_id)
+            # TODO: should we rename the channel that already exists?
+            raise SlackServiceError("Couldn't create the channel for #%s, because it already exists", project_id)
         
         finally:
             #even if the channel was created already, try and invite before we throw exceptions

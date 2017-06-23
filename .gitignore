@@ -6,3 +6,4 @@ env.json
 .cache*
 .env
 .vscode/settings.json
+*.log

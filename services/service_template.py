@@ -18,6 +18,13 @@ class ServiceTemplate(object):
     _pretty_name = "Generic Service"
 
     def _setup_logger(self, level=constants.LOG_LEVEL, to_file=False):
+        '''
+        Sets up the logger for the service
+
+        Args:
+            level (str): logging level as a string "info", "debug", "warn", "error", "critical"
+        '''
+        
         self._logger = logging.getLogger(type(self).__name__)
 
         if level.lower()[0] == 'w': self._logger.setLevel(logging.WARN)
@@ -27,7 +34,7 @@ class ServiceTemplate(object):
         if level.lower()[0] == 'c': self._logger.setLevel(logging.CRITICAL)
 
         if to_file:
-            handler = logging.FileHandler('{}.log'.format(__name__))
+            handler = logging.FileHandler('{}.log'.format(type(self).__name__))
             formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
             handler.setFormatter(formatter)
             self._logger.addHandler(handler)        
