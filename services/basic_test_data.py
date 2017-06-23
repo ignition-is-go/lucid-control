@@ -31,7 +31,7 @@ def sample_project_data():
 
     project = {}
 
-    project['project_id'] = random.randint(1, 9999)
+    project['project_id'] = random.randint(1000, 9999)
     project['project_title'] = "{} {}".format(
         random_names.random_nick(gender='f').capitalize(),
         random_words.random_word().capitalize()
