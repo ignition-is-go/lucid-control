@@ -280,7 +280,6 @@ class FtrackService(service_template.ServiceTemplate):
             raise FtrackServiceError("Found too many Project ID # {} \
                                       and couldn't decide which to use"
                                      .format(project_id))
-        else:
         elif len(projects) == 1:
             return projects[0]
         else:
