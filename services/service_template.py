@@ -9,6 +9,7 @@ K Bjordahl
 import re
 import os
 import logging
+import constants
 
 class ServiceTemplate(object):
 
@@ -16,8 +17,8 @@ class ServiceTemplate(object):
     _DEFAULT_FORMAT = "{typecode}-{project_id:04d}-{title}"
     _pretty_name = "Generic Service"
 
-    def _setup_logger(self, level='warn', to_file=False):
-        self._logger = logging.getLogger(__name__)
+    def _setup_logger(self, level=constants.LOG_LEVEL, to_file=False):
+        self._logger = logging.getLogger(type(self).__name__)
 
         if level.lower()[0] == 'w': self._logger.setLevel(logging.WARN)
         if level.lower()[0] == 'e': self._logger.setLevel(logging.ERROR)
