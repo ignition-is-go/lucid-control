@@ -250,10 +250,10 @@ class FtrackService(service_template.ServiceTemplate):
                                       and couldn't decide which to use"
                                      .format(project_id))
         elif len(projects) == 1:
-            self._logger.debug('Found project %s', project_id)
+            self._logger.debug('Found project ID # %s', project_id)
             return projects[0]
         else:
-            self._logger.info("Did not find project %s",project_id)
+            self._logger.debug("Did not find project ID # %s",project_id)
             raise FtrackServiceError("Couldn't find a match for {}".format(project_id))
 
 
