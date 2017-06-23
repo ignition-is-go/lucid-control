@@ -26,6 +26,8 @@ class ServiceTemplate(object):
         '''
         
         logger = logging.getLogger(type(self).__name__)
+        assert isinstance(logger, logging.Logger)
+        logger.info("INFO TEST")
 
         if level.lower()[0] == 'w': logger.setLevel(logging.WARN)
         if level.lower()[0] == 'e': logger.setLevel(logging.ERROR)
@@ -34,8 +36,9 @@ class ServiceTemplate(object):
         if level.lower()[0] == 'c': logger.setLevel(logging.CRITICAL)
 
         if to_file:
-            handler = logging.FileHandler('{}.log'.format(type(self).__name__))
-            formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+            log_path = os.path.join("logs", '{}.log'.format(type(self).__name__))
+            handler = logging.FileHandler(log_path)
+            formatter = logging.Formatter('%(asctime)s | %(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
             handler.setFormatter(formatter)
             logger.addHandler(handler)        
 
@@ -48,6 +51,7 @@ class ServiceTemplate(object):
         return "_No Link Defined_"
         
     def _format_slug(self, project_id, title):
+        project_id = int(project_id)
         m = re.match(self._DEFAULT_REGEX, title)
 
         if m is not None:
