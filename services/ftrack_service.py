@@ -80,6 +80,8 @@ class FtrackService(service_template.ServiceTemplate):
 
         slug = self._format_slug(project_id,title)
 
+        self._logger.info('Start create project for %s', slug)
+
         lucid_schema = self._server.query(
             'ProjectSchema where name is "{}"'.format(default_schema_name)).one()
 
@@ -103,11 +105,13 @@ class FtrackService(service_template.ServiceTemplate):
             'name': 'Management',
             'parent': project
         })
+        self._logger.debug('Created project management item in %s', project['full_name'])
 
         schedule = self._server.create('Schedule', {
             'name': 'Schedule',
             'parent': project
         })
+        self._logger.debug('Created schedule item in %s', project['full_name'])
 
         self._server.commit()
 
@@ -126,15 +130,21 @@ class FtrackService(service_template.ServiceTemplate):
         @return success boolean
         '''
         new_slug = self._format_slug(project_id,new_title)
+
+        self._logger.info('Start project rename - change %s to %s', project['full_name'], new_slug)
+
         try:
             project = self._find(project_id)
         
         except FtrackServiceError:
+            self._logger.debug('Unable to rename project %s as it already exists!', project['full_name'])
             return False
         
         else:
+            old_slug = project['full_name']
             project['full_name'] = new_slug
             self._server.commit()
+            self._logger.debug('Renamed project %s to %s', old_slug, project['full_name'])
 
             # do a query check
             check_project = self._find(project_id)
