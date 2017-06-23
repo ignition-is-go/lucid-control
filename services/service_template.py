@@ -25,19 +25,21 @@ class ServiceTemplate(object):
             level (str): logging level as a string "info", "debug", "warn", "error", "critical"
         '''
         
-        self._logger = logging.getLogger(type(self).__name__)
+        logger = logging.getLogger(type(self).__name__)
 
-        if level.lower()[0] == 'w': self._logger.setLevel(logging.WARN)
-        if level.lower()[0] == 'e': self._logger.setLevel(logging.ERROR)
-        if level.lower()[0] == 'i': self._logger.setLevel(logging.INFO)
-        if level.lower()[0] == 'd': self._logger.setLevel(logging.DEBUG)
-        if level.lower()[0] == 'c': self._logger.setLevel(logging.CRITICAL)
+        if level.lower()[0] == 'w': logger.setLevel(logging.WARN)
+        if level.lower()[0] == 'e': logger.setLevel(logging.ERROR)
+        if level.lower()[0] == 'i': logger.setLevel(logging.INFO)
+        if level.lower()[0] == 'd': logger.setLevel(logging.DEBUG)
+        if level.lower()[0] == 'c': logger.setLevel(logging.CRITICAL)
 
         if to_file:
             handler = logging.FileHandler('{}.log'.format(type(self).__name__))
             formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
             handler.setFormatter(formatter)
-            self._logger.addHandler(handler)        
+            logger.addHandler(handler)        
+
+        return logger
 
     def get_pretty_name(self):
         return self._pretty_name
