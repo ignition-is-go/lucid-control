@@ -11,12 +11,17 @@ import simplejson as json
 import os
 import re
 import constants
+import logging
+
+os.path.normpath
 
 class DropboxService(service_template.ServiceTemplate):
 
     def __init__(self):
 
-        self._logger = self._logger = self._setup_logger(to_file=True)
+        self._logger = self._setup_logger(to_file=True)
+
+        self._logger.info("Instantiated Dropbox!")
 
         self._dbx = dropbox.Dropbox(constants.DROPBOX_ACCESS_TOKEN)
         
@@ -24,10 +29,11 @@ class DropboxService(service_template.ServiceTemplate):
         '''
         Creates dropbox folder based on the schema in the ENV
         '''
+        project_id = str(project_id)
         self._logger.info('Attempting to create Dropbox folder schema for #%s: %s',
             project_id, title)
         
-        slug = self._format_slug('')
+        slug = self._format_slug(project_id,title)
         try:
             folders = self._find_schema(project_id)
         except DropboxServiceError:
@@ -38,14 +44,14 @@ class DropboxService(service_template.ServiceTemplate):
             responses = []
             try:
                 for folder in schema['folders']:
-                    self._logger.info( 'attempting to make: %s', os.path.join(folder['root'], slug))
-                    response = self._dbx.files_create_folder(os.path.join(folder['root'], text))
+                    self._logger.info( 'attempting to make: %s', self._join_path(folder['root'], slug))
+                    response = self._dbx.files_create_folder(self._join_path(folder['root'], slug))
                     self._logger.debug("Dbx Response: %s", response)
                     responses.append(response)
                     for subfolder in folder['subfolders']:
                         self._logger.info('attempting to make: %s', 
-                            os.path.join(folder['root'], title, subfolder))
-                        response = self._dbx.files_create_folder(os.path.join(folder['root'], text, subfolder))
+                            self._join_path(folder['root'], slug, subfolder))
+                        response = self._dbx.files_create_folder(self._join_path(folder['root'], slug, subfolder))
                         self._logger.debug("Dbx Response: %s", response)
                         responses.append(response)
 
@@ -81,20 +87,20 @@ class DropboxService(service_template.ServiceTemplate):
                 path, folder_name = os.path.split(folder.path_lower)
                 self._dbx.files_move(
                     folder.path_lower,
-                    os.path.join(path, new_slug)
+                    self._join_path(path, new_slug)
                     )
 
                 
 
 
-                    # self._logger.info( 'attempting to make: %s', os.path.join(folder['root'], text))
-                    # response = self._dbx.files_create_folder(os.path.join(folder['root'], text))
+                    # self._logger.info( 'attempting to make: %s', self._join_path(folder['root'], text))
+                    # response = self._dbx.files_create_folder(self._join_path(folder['root'], text))
                     # self._logger.debug("Dbx Response: %s", response)
                     # responses.append(response)
                     # for subfolder in folder['subfolders']:
                     #     self._logger.info('attempting to make: %s', 
-                    #         os.path.join(folder['root'], title, subfolder))
-                    #     response = self._dbx.files_create_folder(os.path.join(folder['root'], text, subfolder))
+                    #         self._join_path(folder['root'], title, subfolder))
+                    #     response = self._dbx.files_create_folder(self._join_path(folder['root'], text, subfolder))
                     #     self._logger.debug("Dbx Response: %s", response)
                     #     responses.append(response)
 
@@ -112,8 +118,8 @@ class DropboxService(service_template.ServiceTemplate):
     def archive(self, project_id):
         '''Archives the folders associated with the project'''
         return True
-        self._logger.info('Attempting to archive Dropbox folder schema for #%s to %s',
-            project_id, title)
+        self._logger.info('Attempting to archive Dropbox folder schema for #%s',
+            project_id)
 
         try:
             folders = self._find(project_id)
@@ -122,14 +128,14 @@ class DropboxService(service_template.ServiceTemplate):
            raise err
         else:
             responses = []
-            new_slug = self._format_slug(project_id, title)
+            new_slug = self._format_slug(project_id)
             
             for folder in folders:
                 assert isinstance(folder, dropbox.files.FolderMetadata)
                 path, folder_name = os.path.split(folder.path_lower)
                 self._dbx.files_move(
                     folder.path_lower,
-                    os.path.join(path, new_slug)
+                    self._join_path(path, new_slug)
                     )
 
 
@@ -184,7 +190,7 @@ class DropboxService(service_template.ServiceTemplate):
                 results.append(result.metadata)
                 self._logger.info("Found dropbox for #%s: %s", project_id, results.metadata)
         
-        if len(result) > 0 : return result
+        if len(results) > 0 : return results
         else: raise DropboxServiceError("Couldn't find folders matching that project ID") 
 
         
@@ -197,6 +203,10 @@ class DropboxService(service_template.ServiceTemplate):
         
         self._logger.info("Made Dropbox Slug for #%s: %s = %s",project_id, title, slug)
         return slug
+
+    def _join_path(self, *args):
+        '''Fixes paths to uniformly linux style'''
+        return self._join_path(*args).replace("\\","/")
 
 class DropboxServiceError(service_template.ServiceException):
     pass
