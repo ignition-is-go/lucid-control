@@ -1,6 +1,6 @@
 import logging
 import os
-from services import ftrack_service, xero_service, slack_service, lucid_data_service
+from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service
 from services.service_template import ServiceException
 #import all_the_functions
 from flask import request
@@ -14,13 +14,15 @@ lucid_data = lucid_data_service.LucidDataService()
 slack = slack_service.SlackService()
 xero = xero_service.XeroService()
 ftrack = ftrack_service.FtrackService()
+dropbox = dropbox_service.DropboxService()
 
 #put these in order of desired execution
 service_collection = [
     lucid_data,
     slack,
     ftrack,
-    xero
+    xero,
+    dropbox
 ]
 
 def create(title, silent=False):
