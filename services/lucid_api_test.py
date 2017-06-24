@@ -30,6 +30,15 @@ def sample_project(request, sample_project_data):
     for id in cleanup_ids:
         lucid_api.archive(id)
 
+@pytest.fixture(scope='module')
+def sample_project_with_setup_and_teardown(request, sample_project_data):
+    project = sample_project_data
+    project_id = lucid_api.create(project['project_title'], silent=True)
+    sample_project_data['project_id'] = project_id
+    yield sample_project_data
+
+    #need to archive here!
+    lucid_api.archive(project_id)
 
 def test_create_with_teardown( sample_project, slack, ftrack, xero ):
 
@@ -44,3 +53,8 @@ def test_create_with_teardown( sample_project, slack, ftrack, xero ):
     finally:
         assert lucid_api.archive(project_id)
 
+def test_rename(sample_project_with_setup_and_teardown, slack, ftrack, xero):
+    project = sample_project_with_setup_and_teardown
+    project['rename_title'] = project['project_title'] + "-RENAME"
+
+    assert lucid_api.rename(project['project_id'], project['rename_title'])

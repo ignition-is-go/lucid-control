@@ -3,11 +3,15 @@ import os
 from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service
 from services.service_template import ServiceException
 #import all_the_functions
-from flask import request
+import pymongo
 
 
 logger = logging.getLogger(__name__)
 #logger.setLevel(os.environ['LOG_LEVEL'])
+
+# mongo = pymongo.MongoClient(
+#     os.environ['MONGODB_URI']
+# )
 
 #make an instance of each service
 lucid_data = lucid_data_service.LucidDataService()
@@ -84,9 +88,45 @@ def create(title, silent=False):
     return project_id
 
 
+def rename_from_slack(slack_channel_id, new_title):
+    '''receieves a slack channel ID and a new title, and passes to rename command the correct project_id'''
+    try:
+        project_id = slack.get_project_id(slack_channel_id)
+    except slack_service.SlackServiceError as err:
+        # couldn't find the project nubmer in the channel name
+        slack.post_basic(slack_channel_id, 
+            ":crying_cat_face: That doesn't appear to work from here! _(the project id can't be discerned from the channel name)_")
+    
+    return rename(project_id, new_title)
+    
 def rename(project_id, new_title):
-    # TODO
-    pass
+    '''
+    handles all the renaming of a project by id
+    '''
+    successes = []
+    failtures = {}
+
+    for s in service_collection:
+        try:
+            
+            success = s.rename(project_id, new_title)
+
+            if success: successes.append(s.get_pretty_name())
+            else: failtures[s.get_pretty_name()] = "?"
+        
+        except ServiceException as err:
+            failtures[s.get_pretty_name()] = err.message
+
+    slack_message = "*Rename Project Results*\n:white_check_mark: {success}\n{fail}".format(
+        success= ", ".join(successes),
+        fail="\n".join(
+            [":heavy_exclamation_mark: {}: _{}_".format(service, error) for service, error in failtures.items()])
+    )
+
+    slack.update_pinned_message(project_id,slack_message,"*Create Project Results*")
+    slack.post_to_project(project_id,slack_message,pinned=False)
+
+    return bool( len(failtures) > 0 )
 
     
 def archive(project_id):
