@@ -48,7 +48,11 @@ class ServiceTemplate(object):
         return self._pretty_name
 
     def get_link(self, project_id):
-        return "_No Link Defined_"
+        return ""
+
+    
+    def get_link_dict(self, project_id):
+        return {self.get_pretty_name(): self.get_link(project_id)}
         
     def _format_slug(self, project_id, title):
         project_id = int(project_id)

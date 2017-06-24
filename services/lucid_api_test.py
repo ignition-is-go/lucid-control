@@ -57,4 +57,10 @@ def test_rename(sample_project_with_setup_and_teardown, slack, ftrack, xero):
     project = sample_project_with_setup_and_teardown
     project['rename_title'] = project['project_title'] + "-RENAME"
 
-    assert lucid_api.rename(project['project_id'], project['rename_title'])
+    rename_success = lucid_api.rename(project['project_id'], project['rename_title'])
+
+    assert rename_success
+
+def test_do_links():
+
+    lucid_api.do_project_links(118,create=False)

@@ -65,4 +65,11 @@ def test_dropbox_rename(dropbox, sample_project_with_setup_and_teardown):
         )
 
     check = dropbox._find_schema(project['project_id'])
+
+def test_dropbox_links(dropbox):
+
+    links = dropbox.get_link_dict(118)
+
+    print links
+    assert 0
     

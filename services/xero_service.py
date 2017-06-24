@@ -27,7 +27,7 @@ class XeroService(service_template.ServiceTemplate):
         credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, constants.XERO_API_PRIVATE_KEY)
         self._xero = Xero(credentials)
         
-        self._setup_logger(level='debug', to_file=True)
+        self._logger = self._setup_logger(level='debug', to_file=True)
         
 
         

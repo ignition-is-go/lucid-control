@@ -30,7 +30,7 @@ class SlackService(service_template.ServiceTemplate):
         self._slack_bot = slacker.Slacker(bot_token)
         self._slack_team = slacker.Slacker(team_token)
 
-        self._logger = self._setup_logger(level='debug', to_file=True)
+        self._logger = self._setup_logger(to_file=True)
 
 
     def create(self, project_id, title, silent=False):
@@ -143,7 +143,7 @@ class SlackService(service_template.ServiceTemplate):
                 self._logger.error('Could not Archive #%s because slacker.Error: %s',project_id,err.message)
                 raise SlackServiceError("Could not Archive channel for #%s, Slack API error: %s", project_id, err.message)
                 
-    def post_to_project(self, project_id, text, user=None, attachments=None, pinned=False):
+    def post_to_project(self, project_id, text, user=None, attachments=None, pinned=False, unfurl_links=True):
         '''
         Posts a message into the project's slack channel.abs
 
@@ -170,16 +170,21 @@ class SlackService(service_template.ServiceTemplate):
                 username = "{} via Lucid Control".format(user) 
 
             try:
+                self._logger.debug("Attempting slack post: channel=%s text=%s attachments=%s",
+                    channel['id'], text, attachments)
                 post_response = self._slack_bot.chat.post_message(
                     channel=channel['id'],
                     text=text,
                     as_user=as_user,
                     username=username,
                     attachments=attachments,
-                    parse=True
+                    parse=True,
+                    unfurl_links=unfurl_links
                 )
 
-                if pinned:
+                self._logger.debug("Posted to slack. Response: %s", post_response)
+                if pinned and post_response.body['ok']:
+                    self._logger.debug("Attempting to pin ts=%s", post_response.body['ts'] )
                     pin_response = self._slack_bot.pins.add(
                         channel=channel['id'],
                         timestamp=post_response.body['ts']
@@ -196,7 +201,7 @@ class SlackService(service_template.ServiceTemplate):
                 raise SlackServiceError("Could not post to channel for #%s, Slack API error: %s", project_id, err.message)
 
     
-    def update_pinned_message(self, project_id, text, old_text_stub, attachments=None):
+    def update_pinned_message(self, project_id, text, old_text_stub, attachments=None, unfurl_links=True):
         '''Updates a pinned slack message with new text'''
         self._logger.info("Attempting to update a pinned message starting with [%s] in project %s to %s",
             old_text_stub, project_id, text)
@@ -292,8 +297,7 @@ class SlackService(service_template.ServiceTemplate):
     
     def get_link(self, project_id):
         return ""
-
-        
+    
     def _find(self, project_id):
         '''
         Finds and returns a slack channel dictionary for the given project number

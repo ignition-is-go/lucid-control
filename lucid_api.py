@@ -74,20 +74,50 @@ def create(title, silent=False):
         failtures[lucid_data.get_pretty_name()] = err.message
 
     #now we make a slack message to show off what's happened
-    slack_message = "*Create Project Results*\n{success}\n{fail}".format(
-        success= "\n ".join(
-            [":white_check_mark: <{}|{}>".format(link, service) if link != "" 
-                else ":white_check_mark: {}".format(service) 
-                for service, link in successes.items()]),
+    result_message = "*Create Project Results*\n:white_check_mark: {success}\n{fail}".format(
+        success= ", ".join(successes),
         fail="\n".join(
             [":heavy_exclamation_mark: {}: _{}_".format(service, error) for service, error in failtures.items()])
     )
+    slack.post_to_project(project_id,result_message,pinned=True)
 
-    slack.post_to_project(project_id,slack_message,pinned=True)
+    do_project_links(project_id, create=True)
 
     return project_id
 
+def do_project_links(project_id, create=False):
 
+    links = {}
+    for s in service_collection:
+        s_links = s.get_link_dict(project_id)
+        links.update(s_links)
+
+    link_text = "\n".join(
+            ["<{}|{}>".format(link, service) if link != "" else "" 
+                for service, link in links.items()][::-1]
+        )
+    # for some reason, slack can't pin messages with attachments?
+    # message_attachment = [
+    #     {
+    #         "fallback": "Project links attached here",
+    #         "color": "#36a64f",
+    #         "text": link_text,
+    #         "image_url": "http://my-website.com/path/to/image.jpg",
+    #         "thumb_url": "http://example.com/path/to/thumb.png",
+    #         "footer": "Ludid Control API"
+            
+    #     }
+    # ]
+    
+
+    ref_text = "*Links for {}*".format(project_id)
+    
+    if create:
+        return slack.post_to_project(project_id,ref_text+"\n"+link_text,pinned=True, unfurl_links = False)
+    else:
+        return slack.update_pinned_message(project_id,ref_text+"\n"+link_text,ref_text)
+
+    
 def rename_from_slack(slack_channel_id, new_title):
     '''receieves a slack channel ID and a new title, and passes to rename command the correct project_id'''
     try:
@@ -123,8 +153,8 @@ def rename(project_id, new_title):
             [":heavy_exclamation_mark: {}: _{}_".format(service, error) for service, error in failtures.items()])
     )
 
-    slack.update_pinned_message(project_id,slack_message,"*Create Project Results*")
     slack.post_to_project(project_id,slack_message,pinned=False)
+    do_project_links(project_id)
 
     return bool( len(failtures) > 0 )
 

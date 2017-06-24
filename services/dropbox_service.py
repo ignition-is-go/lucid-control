@@ -12,20 +12,22 @@ import os
 import re
 import constants
 import logging
+import datetime
+from werkzeug.urls import url_fix
 
 os.path.normpath
 
 class DropboxService(service_template.ServiceTemplate):
 
+    _pretty_name = "Dropbox"
     def __init__(self):
 
         self._logger = self._setup_logger(to_file=True)
-
         self._logger.info("Instantiated Dropbox!")
 
         self._dbx = dropbox.Dropbox(constants.DROPBOX_ACCESS_TOKEN)
         
-    def create(self, project_id, title):
+    def create(self, project_id, title, silent=None):
         '''
         Creates dropbox folder based on the schema in the ENV
         '''
@@ -43,9 +45,10 @@ class DropboxService(service_template.ServiceTemplate):
                 try:
                     # look for the folder before making it
                     self._logger.debug("Checking for existing in %s/",folder['root'])
-                    schema['folders'][f]['match'] = self._find(project_id,
-                        title=title,
-                        root=folder['root'])
+                    schema['folders'][f]['match'] = self._find_in_folder(project_id,
+                        folder['root'],
+                        title=title
+                        )
 
                 except DropboxServiceError:
                     # didn't find the folder, so create it
@@ -67,9 +70,12 @@ class DropboxService(service_template.ServiceTemplate):
                             sub_path)
                         response = self._dbx.files_create_folder(sub_path)
                         self._logger.debug("Dbx Response: %s", response)
-                        responses.append(response)
-            
-            return bool(False in responses)
+                        responses.append(bool(
+                            response.path_lower == sub_path.lower()
+                        ))
+
+            self._logger.info("!!!CREATE RESULTS==%s", responses)
+            return not bool(False in responses)
 
         except Exception as err:
             self._logger.error("Error while creating dropbox folders for #%s: %s",
@@ -124,58 +130,62 @@ class DropboxService(service_template.ServiceTemplate):
                             responses[-1],
                             response)
                 self._logger.info("Finished with rename. Results: %s",responses)
-                return bool(False in responses)
+                return not bool(False in responses)
         
             except Exception as err:
                 self._logger.error("Error while creating dropbox folders for #%s: %s",
                     project_id, err.message)
                 raise err
 
-
-                    # self._logger.info( 'attempting to make: %s', self._join_path(folder['root'], text))
-                    # response = self._dbx.files_create_folder(self._join_path(folder['root'], text))
-                    # self._logger.debug("Dbx Response: %s", response)
-                    # responses.append(response)
-                    # for subfolder in folder['subfolders']:
-                    #     self._logger.info('attempting to make: %s', 
-                    #         self._join_path(folder['root'], title, subfolder))
-                    #     response = self._dbx.files_create_folder(self._join_path(folder['root'], text, subfolder))
-                    #     self._logger.debug("Dbx Response: %s", response)
-                    #     responses.append(response)
-
-        #         return True
-        #     except Exception as err:
-        #         self._logger.error("Error while creating dropbox folders for #%s: %s",
-        #             project_id, err.message)
-        #         raise err
-        # else:
-        #     self._logger.error("Cannot rename folders for #%s, these already exist: %s",
-        #         project_id, folders)
-        #     raise DropboxServiceError("Cannot rename folders, these already exist: %s", 
-        #         folders) 
     
     def archive(self, project_id):
         '''Archives the folders associated with the project'''
-        return True
         self._logger.info('Attempting to archive Dropbox folder schema for #%s',
             project_id)
 
         try:
-            folders = self._find(project_id)
+            schema = self._find_schema(project_id)
         except DropboxServiceError as err:
             # this means the folders don't exist, so bail!
-           raise err
-        else:
+            self._logger.error("Couldn't find folders for %s: %s",project_id,err.message)
+            raise err
+
+        try:
             responses = []
-            new_slug = self._format_slug(project_id)
+            year = datetime.date.today().year
+            self._logger.debug("Got Schema, archiving as year=%s", year)
             
-            for folder in folders:
-                assert isinstance(folder, dropbox.files.FolderMetadata)
-                path, folder_name = os.path.split(folder.path_lower)
-                self._dbx.files_move(
-                    folder.path_lower,
-                    self._join_path(path, new_slug)
+            for folder in schema['folders']:
+                for match in folder['matches']:
+                    assert isinstance(match, dropbox.files.FolderMetadata)
+                    archive_target = self._join_path(
+                        schema['archive'],
+                        year,
+                        folder['archive_target'],
+                        match.name
                     )
+                    
+                    self._logger.debug("Attempting to move %s to %s", folder.path_lower, archive_target)
+
+                    response = self._dbx.files_move(
+                        folder.path_lower,
+                        archive_target
+                        )
+                    
+                    responses.append(bool(
+                        response.path_lower == rename_target.lower()
+                    ))
+
+                    self._logger.debug("!!!Move result: %s (%s)", 
+                        responses[-1],
+                        response)
+            self._logger.info("Finished with archive. Results: %s",responses)
+            return not bool(False in responses)
+    
+        except Exception as err:
+            self._logger.error("Error while creating dropbox folders for #%s: %s",
+                project_id, err.message)
+            raise err
 
 
     def _get_schema(self):
@@ -237,11 +247,15 @@ class DropboxService(service_template.ServiceTemplate):
             raise err
 
     def _find(self, project_id, title="" ,root=""):
-        '''search using the dropbox search function'''
+        '''
+        search using the dropbox search function
+        
+        NOTE: this will not find files which are very recently changed, due to indexing on Dropbox
+        '''
 
         project_code = self._format_slug(project_id,title)
         self._logger.info("Searching for [%s] in '%s'",project_code,root)
-
+        self._dbx.files
         search = self._dbx.files_search(root, project_code)   
         results = []
         self._logger.debug("Search Results: %s", search)
@@ -271,6 +285,24 @@ class DropboxService(service_template.ServiceTemplate):
         self._logger.debug("Path is= %s",fixed_path)
         return fixed_path
 
+    def get_link_dict(self, project_id):
+        '''returns a dictionary of folder: link'''
+        try:
+            schema = self._find_schema(project_id)
+            
+            response = {}
+            for folder in schema['folders']:
+                if folder['matches'][0]:
+                    # we will lazily return the first match, i guess
+                    name = ":lucid-control-dropbox: " + folder['root'].replace("/", "")
+                    link = url_fix( "https://www.dropbox.com/home"+ folder['matches'][0].path_lower)
+                        
+                    response[name] = link
+
+            return response
+            
+        except Exception as err:
+            self._logger.error("Had an error getting the link dicitonary: %s", err.message)
 
 class DropboxServiceError(service_template.ServiceException):
     pass

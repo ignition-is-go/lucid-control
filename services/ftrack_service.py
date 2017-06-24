@@ -201,6 +201,12 @@ class FtrackService(service_template.ServiceTemplate):
 
             return url
 
+
+    def get_link_dict(self, project_id):
+        '''gets a link dictionary with a link name for display'''
+
+        return {":lucid-control-ftrack: " + self.get_pretty_name() : self.get_link(project_id)}
+
     def _find(self, project_id):
         '''
         finds an ftrack project by project_id
