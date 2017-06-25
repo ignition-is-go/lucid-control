@@ -1,5 +1,6 @@
 import os
 
+IS_HEROKU = os.path.isdir("/app/.heroku")
 
 DROPBOX_APP_KEY = os.environ['DROPBOX_APP_KEY']
 DROPBOX_APP_SECRET = os.environ['DROPBOX_APP_SECRET']

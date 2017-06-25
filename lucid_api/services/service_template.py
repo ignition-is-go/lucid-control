@@ -8,6 +8,7 @@ K Bjordahl
 
 import re
 import os
+import sys
 import logging
 import constants
 
@@ -16,6 +17,7 @@ class ServiceTemplate(object):
     _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Z])-(?P<project_id>\d{4})-(?P<project_title>.+)')
     _DEFAULT_FORMAT = "{typecode}-{project_id:04d}-{title}"
     _pretty_name = "Generic Service"
+    
 
     def _setup_logger(self, level=constants.LOG_LEVEL, to_file=False):
         '''
@@ -35,12 +37,24 @@ class ServiceTemplate(object):
         if level.lower()[0] == 'd': logger.setLevel(logging.DEBUG)
         if level.lower()[0] == 'c': logger.setLevel(logging.CRITICAL)
 
-        if to_file:
-            log_path = os.path.join("logs", '{}.log'.format(type(self).__name__))
+        try:
+            logging_path = os.environ['LOG_PATH']
+        except KeyError:
+            logging_path = "/logs"
+
+        if to_file and not constants.IS_HEROKU:
+            if not os.path.isdir(logging_path): os.mkdir(logging_path)
+            log_path = os.path.join(logging_path, '{}.log'.format(type(self).__name__))
             handler = logging.FileHandler(log_path)
             formatter = logging.Formatter('%(asctime)s | %(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
             handler.setFormatter(formatter)
-            logger.addHandler(handler)        
+            logger.addHandler(handler)  
+
+        elif constants.IS_HEROKU:
+            handler = logging.StreamHandler(sys.stdout)
+            formatter = logging.Formatter('%(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
+            handler.setFormatter(formatter)
+            logger.addHandler(handler) 
 
         return logger
 
