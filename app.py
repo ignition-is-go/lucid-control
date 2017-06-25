@@ -20,7 +20,7 @@ app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
 logger = logging.getLogger(__name__)
-logger.setLevel(os.environ['LOG_LEVEL'])
+logger.setLevel(constants.LOG_LEVEL_TYPE)
 
 def format_slug(project_id, text):
     '''
