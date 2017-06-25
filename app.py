@@ -13,6 +13,7 @@ from xero.auth import PrivateCredentials
 import re
 from threading import Thread
 
+import lucid_api
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
@@ -1061,6 +1062,66 @@ def create():
         t.start()
 
     return waiting
+
+@app.route('/lucid-create', methods=['POST'])
+def lucid_create():
+    '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
+    
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    
+    else:
+        # we've verified it's our slack app a-knockin'
+        command_text = request.form.get('text')
+        t = Thread(target=lucid_api.create, args=(command_text))
+
+
+@app.route('/lucid-rename', methods=['POST'])
+def lucid_rename():
+    '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
+    
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    
+    else:
+        # we've verified it's our slack app a-knockin'
+        command_text = request.form.get('text')
+        channel_name = request.form.get('channel_name')
+        t = Thread(target=lucid_api.rename_from_slack, 
+            args=(channel_name, command_text))  
+
+
+@app.route('/lucid-archive', methods=['POST'])
+def lucid_archive():
+    '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
+    
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    
+    else:
+        # we've verified it's our slack app a-knockin'
+        channel_name = request.form.get('channel_name')
+        t = Thread(target=lucid_api.archive_from_slack, 
+            args=(channel_name, command_text))  
+
 
 if __name__ == '__main__':
     app.run()
