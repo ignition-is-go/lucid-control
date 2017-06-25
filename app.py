@@ -14,13 +14,15 @@ import re
 from threading import Thread
 import logging
 
-import lucid_api
+# derp-a-derp import. sorry python gods.
+import lucid_api.lucid_api as lucid_api
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOG_LEVEL_TYPE)
+
 
 def format_slug(project_id, text):
     '''
