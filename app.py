@@ -1108,6 +1108,7 @@ def lucid_create():
         command_text = request.form.get('text')
         logger.debug("Preparing to thread lucid_api.create(%s)", command_text)
         t = Thread(target=lucid_api.create, args=(command_text))
+        t.start()
         logger.info("Lucid API Create Thread Away, returning 200 to Slack")
 
         waiting_message = {'text': 'Working to create now...', 'response_type': 'ephemeral'}
@@ -1137,6 +1138,7 @@ def lucid_rename():
         logger.debug("Preparing to thread lucid_api.rename(%s, %s)", channel_name, command_text)
         t = Thread(target=lucid_api.rename_from_slack, 
             args=(channel_name, command_text)) 
+        t.start()
         logger.info("Lucid API Rename Thread Away, returning 200 to Slack")
         waiting_message = {'text': 'Working to rename now...', 'response_type': 'ephemeral'}
         return jsonify(waiting_message)
@@ -1166,7 +1168,8 @@ def lucid_archive():
         logger.debug("Preparing to thread lucid_api.archive(%s)", channel_name)
         t = Thread(target=lucid_api.archive_from_slack, 
             args=(channel_name)) 
-            
+        t.start()    
+        
         logger.info("Lucid API Archive Thread Away, returning 200 to Slack")
         waiting_message = {'text': 'Working to archive now...', 'response_type': 'ephemeral'}
         return jsonify(waiting_message)
