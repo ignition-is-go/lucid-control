@@ -8,10 +8,10 @@ K Bjordahl
 
 import basic_test_data
 from basic_test_data import sample_project_data
-from slack_service_test import slack
-from FtrackService_test import ftrack
-from xero_service_test import xero
-from dropbox_service_test import dropbox
+from test_slack_service import slack
+from test_ftrack_service import ftrack
+from test_xero_service import xero
+from test_dropbox_service import dropbox
 import pytest
 import simplejson as json
 import os
@@ -60,6 +60,13 @@ def test_rename(sample_project_with_setup_and_teardown, slack, ftrack, xero):
     rename_success = lucid_api.rename(project['project_id'], project['rename_title'])
 
     assert rename_success
+
+def test_direct_archive():
+
+    project_id = 118
+    tests = lucid_api.archive(project_id, return_individual = True)
+
+    assert len(tests['failtures'].items()) == 0
 
 def test_do_links():
 

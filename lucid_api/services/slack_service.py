@@ -252,35 +252,44 @@ class SlackService(service_template.ServiceTemplate):
 
         return response['ok']    
 
-    def get_project_id(self, slack_channel_id):
+    def get_project_id(self, slack_channel_id="", slack_channel_name=""):
         '''Takes a slack channel ID and returns a project_id from it'''
+        if slack_channel_id is None and slack_channel_name is None: 
+            self._logger.error("No name or id supplied for search")
+            raise SlackServiceError("Must supply either channel name or ID")
+
         self._logger.info("Starting search for project ID for channel: %s", slack_channel_id)
-        try:
-            channel_response = self._slack_team.channels.info(slack_channel_id)
-            if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
 
-        except slacker.Error or SlackServiceError as err:
-            self._logger.error("Had an issue with accessing the team slack API: %s", err.message)
-            raise SlackServiceError("Couldn't find the requested channel")
+        if slack_channel_id is not None and slack_channel_name is None:
+            try:
+                channel_response = self._slack_team.channels.info(slack_channel_id)
+                if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
 
-        else:
-            self._logger.debug("Got info back: %s", channel_response)
-            m = re.match(self._DEFAULT_REGEX, channel_response.body['channel']['name'])
-            if m:
-                project_id = int(m.group('project_id'))
-                self._logger.info('Found a match as Project ID: %s', project_id)
-                return project_id
+            except slacker.Error or SlackServiceError as err:
+                self._logger.error("Had an issue with accessing the team slack API: %s", err.message)
+                raise SlackServiceError("Couldn't find the requested channel")
+
             else:
-                previous_names = channel_response.body['channel']['previous_names']
-                self._logger.warn("Current name not a match, trying previous names: %s", previous_names)
-                for old_name in previous_names:
-                    m = re.match(self._DEFAULT_REGEX, old_name)
-                    if m:
-                        project_id = int(m.group('project_id'))
-                        self._logger.info('Found an old name match as Project ID: %s', project_id)
-                        return project_id
-                
-                raise SlackServiceError('Channel could not be associated with a project ID')
+                self._logger.debug("Got info back: %s", channel_response)
+                slack_channel_name = channel_response.body['channel']['name']
+        
+        self._logger.debug("Searching for slack channel name = %s", slack_channel_name)
+        m = re.match(self._DEFAULT_REGEX, slack_channel_name)
+        if m:
+            project_id = int(m.group('project_id'))
+            self._logger.info('Found a match as Project ID: %s', project_id)
+            return project_id
+        else:
+            previous_names = channel_response.body['channel']['previous_names']
+            self._logger.warn("Current name not a match, trying previous names: %s", previous_names)
+            for old_name in previous_names:
+                m = re.match(self._DEFAULT_REGEX, old_name)
+                if m:
+                    project_id = int(m.group('project_id'))
+                    self._logger.info('Found an old name match as Project ID: %s', project_id)
+                    return project_id
+            
+            raise SlackServiceError('Channel could not be associated with a project ID')
 
     def get_id(self, project_id):
         '''

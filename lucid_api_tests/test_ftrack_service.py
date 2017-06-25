@@ -3,11 +3,13 @@ Ftrack service tests
 
 '''
 
+from basic_test_data import sample_project_data
 import os, random
 import pytest
 import ftrack_api
 import simplejson as json
-from basic_test_data import sample_project_data
+from lucid_api.services.ftrack_service import FtrackService
+
 
 
 #load env vars
@@ -30,8 +32,6 @@ def ftrack():
     creates a testing ftrack service instance
     '''
 
-    print os.getcwd()
-    from services.ftrack_service import FtrackService
     return FtrackService()
 
 @pytest.fixture(scope='function')

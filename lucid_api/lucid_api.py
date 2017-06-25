@@ -79,7 +79,7 @@ def create(title, silent=False):
         fail="\n".join(
             [":heavy_exclamation_mark: {}: _{}_".format(service, error) for service, error in failtures.items()])
     )
-    slack.post_to_project(project_id,result_message,pinned=True)
+    slack.post_to_project(project_id,result_message,pinned=False)
 
     do_project_links(project_id, create=True)
 
@@ -118,17 +118,6 @@ def do_project_links(project_id, create=False):
         return slack.update_pinned_message(project_id,ref_text+"\n"+link_text,ref_text)
 
     
-def rename_from_slack(slack_channel_id, new_title):
-    '''receieves a slack channel ID and a new title, and passes to rename command the correct project_id'''
-    try:
-        project_id = slack.get_project_id(slack_channel_id)
-    except slack_service.SlackServiceError as err:
-        # couldn't find the project nubmer in the channel name
-        slack.post_basic(slack_channel_id, 
-            ":crying_cat_face: That doesn't appear to work from here! _(the project id can't be discerned from the channel name)_")
-    
-    return rename(project_id, new_title)
-    
 def rename(project_id, new_title):
     '''
     handles all the renaming of a project by id
@@ -159,7 +148,7 @@ def rename(project_id, new_title):
     return bool( len(failtures) > 0 )
 
     
-def archive(project_id):
+def archive(project_id, return_individual=False):
     '''
     handles all the archiving of a project by id
     '''
@@ -191,6 +180,32 @@ def archive(project_id):
     # now that we've posted the results,
     slack.archive(project_id)
 
+    if return_individual: return {'succeses': successes, 'failtures': failtures}
     return bool(len(failtures)==0)
 
+
+# Slack input functions 
+
+def rename_from_slack(slack_channel_name, new_title):
+    '''receieves a slack channel ID and a new title, and passes to rename command the correct project_id'''
+    try:
+        project_id = slack.get_project_id(slack_channel_name=slack_channel_name)
+    except slack_service.SlackServiceError as err:
+        # couldn't find the project nubmer in the channel name
+        slack.post_basic(slack_channel_name, 
+            ":crying_cat_face: That doesn't appear to work from here! _(the project id can't be discerned from the channel name)_")
+    
+    return rename(project_id, new_title)
+    
+
+def archive_from_slack(slack_channel_name):
+    '''receieves a slack channel ID and a new title, and passes to rename command the correct project_id'''
+    try:
+        project_id = slack.get_project_id(slack_channel_name=slack_channel_name)
+    except slack_service.SlackServiceError as err:
+        # couldn't find the project nubmer in the channel name
+        slack.post_basic(slack_channel_name, 
+            ":crying_cat_face: That doesn't appear to work from here! _(the project id can't be discerned from the channel name)_")
+    
+    return archive(project_id)
 # eof

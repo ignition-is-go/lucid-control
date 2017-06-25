@@ -152,8 +152,12 @@ class DropboxService(service_template.ServiceTemplate):
 
         try:
             responses = []
-            year = datetime.date.today().year
+            year = str(datetime.date.today().year)
             self._logger.debug("Got Schema, archiving as year=%s", year)
+            
+            # this is lazy, we should probably do a better job of getting 
+            # the proper slug for the archive folder name, but cest la vie
+            slug = schema['folders'][0]['matches'][0].name
             
             for folder in schema['folders']:
                 for match in folder['matches']:
@@ -161,19 +165,19 @@ class DropboxService(service_template.ServiceTemplate):
                     archive_target = self._join_path(
                         schema['archive'],
                         year,
-                        folder['archive_target'],
-                        match.name
+                        slug,
+                        folder['archive_target']
                     )
                     
-                    self._logger.debug("Attempting to move %s to %s", folder.path_lower, archive_target)
+                    self._logger.debug("Attempting to move %s to %s", match.path_lower, archive_target)
 
                     response = self._dbx.files_move(
-                        folder.path_lower,
+                        match.path_lower,
                         archive_target
                         )
                     
                     responses.append(bool(
-                        response.path_lower == rename_target.lower()
+                        response.path_lower == archive_target.lower()
                     ))
 
                     self._logger.debug("!!!Move result: %s (%s)", 
@@ -182,10 +186,10 @@ class DropboxService(service_template.ServiceTemplate):
             self._logger.info("Finished with archive. Results: %s",responses)
             return not bool(False in responses)
     
-        except Exception as err:
+        except dropbox.exceptions.DropboxException as err:
             self._logger.error("Error while creating dropbox folders for #%s: %s",
                 project_id, err.message)
-            raise err
+            raise DropboxServiceError("Error: %s",err.message)
 
 
     def _get_schema(self):
@@ -272,7 +276,7 @@ class DropboxService(service_template.ServiceTemplate):
     def _format_slug(self, project_id, title):
         '''Correctly formats  the slug for drobox'''
         self._logger.info("Creating Dropbox Slug for #%s: %s", project_id, title)
-        
+        project_id = str(project_id)
         title = title.lower().replace(" ", "-")
         slug = super(DropboxService, self)._format_slug(project_id, title)
         

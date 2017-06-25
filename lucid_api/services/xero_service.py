@@ -67,8 +67,9 @@ class XeroService(service_template.ServiceTemplate):
 
         try:
             option = self._find(project_id)
-        except XeroServiceError:
-            self._logger.info("Confirmed that % doesn't exist", project_id)
+        except XeroServiceError as err:
+            self._logger.info("It seems that % doesn't exist", project_id)
+            raise err
 
         new_slug = self._format_slug(project_id, new_title)
         option['Name'] = new_slug
@@ -89,9 +90,10 @@ class XeroService(service_template.ServiceTemplate):
 
         try:
             option = self._find(project_id)
-        except XeroServiceError:
-            self._logger.info("Confirmed that % doesn't exist", project_id)
-        
+        except XeroServiceError as err:
+            self._logger.info("It seems that %s doesn't exist", project_id)
+            raise err
+            
         option['IsArchived'] = True
         try:
             response = self._xero.TCShow.options.delete(option['TrackingOptionID'])

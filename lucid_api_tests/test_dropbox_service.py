@@ -4,7 +4,7 @@ dropbox service tests
 
 import basic_test_data
 from basic_test_data import sample_project_data
-import dropbox_service
+from lucid_api.services import dropbox_service  
 import os
 import pytest
 import random
@@ -65,6 +65,14 @@ def test_dropbox_rename(dropbox, sample_project_with_setup_and_teardown):
         )
 
     check = dropbox._find_schema(project['project_id'])
+
+def test_dropbox_direct_archive(dropbox):
+
+    # project_id=117
+
+    result = dropbox.archive(project_id)
+    print result
+    
 
 def test_dropbox_links(dropbox):
 
