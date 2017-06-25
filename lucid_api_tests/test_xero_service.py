@@ -12,9 +12,7 @@ from basic_test_data import sample_project_data
 import pytest
 import simplejson as json
 import os
-from basic_test_data import sample_project_data
-
-from services.xero_service import XeroService, XeroServiceError
+from lucid_api.services.xero_service import XeroService, XeroServiceError
 
 
 @pytest.fixture(scope='session')

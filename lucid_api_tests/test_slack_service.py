@@ -12,9 +12,7 @@ from basic_test_data import sample_project_data
 import pytest
 import simplejson as json
 import os
-from basic_test_data import sample_project_data
-
-from services.slack_service import SlackService, SlackServiceError
+from lucid_api.services.slack_service import SlackService, SlackServiceError
 
 
 @pytest.fixture(scope='session')

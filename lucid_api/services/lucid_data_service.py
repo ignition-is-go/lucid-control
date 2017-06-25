@@ -17,7 +17,7 @@ class LucidDataService(service_template.ServiceTemplate):
 
     def __init__(self):
 
-        self._setup_logger()
+        self._logger = self._setup_logger(to_file=True)
 
     def create(self, project_id, title, slack_channel, silent=None):
         '''Creates the database entry on luciddata'''
@@ -53,7 +53,7 @@ class LucidDataService(service_template.ServiceTemplate):
         return r
 
 
-    def rename_project(self, project_id, new_title):
+    def rename(self, project_id, new_title):
         self._logger.info("Attempting to rename id#%s to %s on Lucid Data", project_id, new_title)
 
         new_slug = self._format_slug(project_id,new_title)
@@ -96,3 +96,6 @@ class LucidDataService(service_template.ServiceTemplate):
     def get_link(self, project_id):
         url = '{}{}/change/'.format(os.environ['PROJECT_EDIT_BASE_URL'], project_id)
         return url
+
+    def get_link_dict(self, project_id):
+        return {":floppy_disk: "+self.get_pretty_name() : self.get_link(project_id)}

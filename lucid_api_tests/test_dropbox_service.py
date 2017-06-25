@@ -4,10 +4,11 @@ dropbox service tests
 
 import basic_test_data
 from basic_test_data import sample_project_data
-import dropbox_service
+from lucid_api.services import dropbox_service  
 import os
 import pytest
 import random
+from dropbox import Dropbox
 
 
 @pytest.fixture(scope='session')
@@ -17,10 +18,13 @@ def dropbox():
 @pytest.fixture(scope='module')
 def sample_project_with_teardown(dropbox, sample_project_data): 
     yield sample_project_data
-    try:
-        dropbox.archive(sample_project_data['project_id'])
-    except dropbox_service.DropboxServiceError:
-        print "Already archived {}".format(sample_project_data['project_id'])
+
+    project_id = sample_project_data['project_id']
+    title = sample_project_data['project_title']
+    schema = dropbox._find_schema(project_id, title=title) 
+    for s in schema['folders']:
+        for f in s['matches']:
+            dropbox._dbx.files_delete(f.path_lower)
 
 @pytest.fixture(scope='module')
 def sample_project_with_setup_and_teardown(dropbox, sample_project_with_teardown): 
@@ -43,12 +47,37 @@ def test_dropbox_create_slug(dropbox):
     assert test_project_code == "P-{}-".format(test_id)
 
 def test_dropbox_create(dropbox, sample_project_with_teardown):
+    project = sample_project_with_teardown
+
     assert dropbox.create(
-        sample_project_with_teardown['project_id'],
-        sample_project_with_teardown['project_title']
+        project['project_id'],
+        project['project_title']
     )
 
-    result_search = dropbox._find(sample_project_with_teardown['project_id'])
-    schema = dropbox._get_schema()
+    
+def test_dropbox_rename(dropbox, sample_project_with_setup_and_teardown):
+    project = sample_project_with_setup_and_teardown
+    rename = project['project_title'] + "-RENAME"
 
-    assert len(result_search) == len(schema['files'])
+    assert dropbox.rename(
+        project['project_id'],
+        rename     
+        )
+
+    check = dropbox._find_schema(project['project_id'])
+
+def test_dropbox_direct_archive(dropbox):
+
+    # project_id=117
+
+    result = dropbox.archive(project_id)
+    print result
+    
+
+def test_dropbox_links(dropbox):
+
+    links = dropbox.get_link_dict(118)
+
+    print links
+    assert 0
+    

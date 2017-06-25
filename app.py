@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, render_template, make_response
+from flask import Flask, request, render_template, make_response, jsonify
 import requests
 import json
 from slackclient import SlackClient
@@ -12,10 +12,16 @@ from xero import Xero
 from xero.auth import PrivateCredentials
 import re
 from threading import Thread
+import logging
 
+# derp-a-derp import. sorry python gods.
+import lucid_api.lucid_api as lucid_api
 
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
+
+logger = logging.getLogger(__name__)
+logger.setLevel(constants.LOG_LEVEL_TYPE)
 
 
 def format_slug(project_id, text):
@@ -1061,6 +1067,89 @@ def create():
         t.start()
 
     return waiting
+
+@app.route('/lucid-create', methods=['POST'])
+def lucid_create():
+    '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
+    
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    
+    else:
+        # we've verified it's our slack app a-knockin'
+        logger.info("Confirmed Slack token")
+        
+        command_text = request.form.get('text')
+        logger.debug("Preparing to thread lucid_api.create(%s)", command_text)
+        t = Thread(target=lucid_api.create, args=(command_text))
+        logger.info("Lucid API Create Thread Away, returning 200 to Slack")
+
+        waiting_message = {'text': 'Working to create now...', 'response_type': 'ephemeral'}
+        return jsonify(waiting_message)
+        # return "", 200, {'ContentType':'application/json'}
+    
+
+@app.route('/lucid-rename', methods=['POST'])
+def lucid_rename():
+    '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
+    
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    
+    else:
+        # we've verified it's our slack app a-knockin'
+        logger.info("Confirmed Slack token")
+
+        command_text = request.form.get('text')
+        channel_name = request.form.get('channel_name')
+        logger.debug("Preparing to thread lucid_api.rename(%s, %s)", channel_name, command_text)
+        t = Thread(target=lucid_api.rename_from_slack, 
+            args=(channel_name, command_text)) 
+        logger.info("Lucid API Rename Thread Away, returning 200 to Slack")
+        waiting_message = {'text': 'Working to rename now...', 'response_type': 'ephemeral'}
+        return jsonify(waiting_message)
+        # return "", 200, {'ContentType':'application/json'}
+
+
+@app.route('/lucid-archive', methods=['POST'])
+def lucid_archive():
+    '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
+    
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    
+    else:
+        # we've verified it's our slack app a-knockin'
+        logger.info("Confirmed Slack token")
+
+        channel_name = request.form.get('channel_name')
+        logger.debug("Preparing to thread lucid_api.archive(%s)", channel_name)
+        t = Thread(target=lucid_api.archive_from_slack, 
+            args=(channel_name)) 
+            
+        logger.info("Lucid API Archive Thread Away, returning 200 to Slack")
+        waiting_message = {'text': 'Working to archive now...', 'response_type': 'ephemeral'}
+        return jsonify(waiting_message)
+        # return "{", 200, {'ContentType':'application/json'}
+
 
 if __name__ == '__main__':
     app.run()
