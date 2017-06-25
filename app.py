@@ -1080,7 +1080,8 @@ def lucid_create():
         # we've verified it's our slack app a-knockin'
         command_text = request.form.get('text')
         t = Thread(target=lucid_api.create, args=(command_text))
-
+        return "", 200, {'ContentType':'application/json'}
+    
 
 @app.route('/lucid-rename', methods=['POST'])
 def lucid_rename():
@@ -1100,7 +1101,8 @@ def lucid_rename():
         command_text = request.form.get('text')
         channel_name = request.form.get('channel_name')
         t = Thread(target=lucid_api.rename_from_slack, 
-            args=(channel_name, command_text))  
+            args=(channel_name, command_text)) 
+        return "", 200, {'ContentType':'application/json'}
 
 
 @app.route('/lucid-archive', methods=['POST'])
@@ -1121,7 +1123,8 @@ def lucid_archive():
         channel_name = request.form.get('channel_name')
         t = Thread(target=lucid_api.archive_from_slack, 
             args=(channel_name, command_text))  
-
+        return "", 200, {'ContentType':'application/json'}
+        
 
 if __name__ == '__main__':
     app.run()

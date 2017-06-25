@@ -247,7 +247,8 @@ class SlackService(service_template.ServiceTemplate):
         response = self._slack_bot.chat.post_message(
             slack_channel_id,
             text,
-            parse=True
+            parse=True,
+            as_user=True
         ).body
 
         return response['ok']    
