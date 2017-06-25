@@ -80,6 +80,8 @@ class FtrackService(service_template.ServiceTemplate):
 
         slug = self._format_slug(project_id,title)
 
+        self._logger.info('Start create project for %s', slug)
+
         try:
             self._find(project_id)
         except FtrackServiceError:
@@ -93,7 +95,7 @@ class FtrackService(service_template.ServiceTemplate):
                 'full_name': slug,
                 'project_schema': lucid_schema
             })
-            self._logger.debug('Created project %s (ID: %s)', slug, project_id)
+            self._logger.debug('Creating project %s (ID: %s)', slug, project_id)
 
             # add default components:
             # TODO: Add default items with task templates
@@ -108,11 +110,13 @@ class FtrackService(service_template.ServiceTemplate):
                 'name': 'Management',
                 'parent': project
             })
+            self._logger.debug('Created project management item in %s', project['full_name'])
 
             schedule = self._server.create('Schedule', {
                 'name': 'Schedule',
                 'parent': project
             })
+            self._logger.debug('Created schedule item in %s', project['full_name'])
 
             self._server.commit()
 
@@ -131,15 +135,21 @@ class FtrackService(service_template.ServiceTemplate):
         @return success boolean
         '''
         new_slug = self._format_slug(project_id,new_title)
+
+        self._logger.info('Start project rename - change project %s to %s', project_id, new_slug)
+
         try:
             project = self._find(project_id)
         
         except FtrackServiceError:
+            self._logger.debug('Unable to rename project %s as it already exists!', project['full_name'])
             return False
         
         else:
+            old_slug = project['full_name']
             project['full_name'] = new_slug
             self._server.commit()
+            self._logger.debug('Renamed project %s to %s', old_slug, project['full_name'])
 
             # do a query check
             check_project = self._find(project_id)
@@ -155,21 +165,28 @@ class FtrackService(service_template.ServiceTemplate):
         Returns:
             bool: Success or not
         '''
+
+        self._logger.info('Start project archive for %s', project_id)
+
         try:
             project = self._find(project_id)
         
         except FtrackServiceError:
+            self._logger.debug('Unable to find project %s to archive.', project_id)
             return False
         
         else:
             if unarchive:
                 new_status = "active"
+                self._logger.debug('Setting flag for project %s to be unarchived.', project_id)
             else:
                 # hidden is the ftrack version of archived
                 new_status = "hidden"
+                self._logger.debug('Setting flag for project %s to be archived.', project_id)
 
             project['status'] = new_status
             self._server.commit()
+            self._logger.debug('Status for project %s has been set to %s.', project_id, project['status'])
 
             # do a query check
             check_project = self._find(project_id)
@@ -186,19 +203,22 @@ class FtrackService(service_template.ServiceTemplate):
         Returns:
             str: URL for the project
         '''
+        
+        self._logger.info('Start get link for %s', project_id)
+
         try:
             project = self._find(project_id)
         
         except FtrackServiceError:
+            self._logger.debug('Unable to find project %s to create link.', project_id)
             return False
         
         else:
-            url = "{server}/#entityType=show&entityId={project[id]}\
-&itemId=projects&view=tasks".format(
+            url = "{server}/#entityType=show&entityId={project[id]}&itemId=projects&view=tasks".format(
                 project=project,
                 server=self._server.server_url
             )
-
+            self._logger.debug('Link created for project %s: %s ', project_id, url)
             return url
 
 
@@ -236,9 +256,10 @@ class FtrackService(service_template.ServiceTemplate):
                                       and couldn't decide which to use"
                                      .format(project_id))
         elif len(projects) == 1:
+            self._logger.debug('Found project ID # %s', project_id)
             return projects[0]
         else:
-            self._logger.info("Couldn't find a match for #%s",project_id)
+            self._logger.debug("Did not find project ID # %s",project_id)
             raise FtrackServiceError("Couldn't find a match for {}".format(project_id))
 
 
