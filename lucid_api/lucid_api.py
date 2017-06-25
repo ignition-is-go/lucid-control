@@ -41,15 +41,15 @@ def create(title, silent=False):
     Returns:
         (bool) Success or Fail
     '''
-    # first we need a project id
-    project_id = lucid_data.get_next_project_id()
+    # first we need a project id, so create the lucid data entry
+    project_id = lucid_data.create(title)
     
     successes = {}
     failtures = {}
 
     for s in service_collection:
         try:
-            # LucidData requires the slack channel id as well. Derp.
+            # LucidData is already done!
             if isinstance(s, lucid_data_service.LucidDataService):
                 continue
             # everyone else is normal
@@ -65,7 +65,7 @@ def create(title, silent=False):
     #go back and redo the lucid_data one now. derp.
     try:
         channel_id = slack.get_id(project_id)
-        success = lucid_data.create(project_id, title, channel_id)
+        success = lucid_data.rename(project_id, title, channel_id)
 
         if success: successes[lucid_data.get_pretty_name()] = lucid_data.get_link(project_id)
         else: failtures[lucid_data.get_pretty_name()] = "?"
