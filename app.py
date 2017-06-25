@@ -1122,9 +1122,9 @@ def lucid_archive():
         # we've verified it's our slack app a-knockin'
         channel_name = request.form.get('channel_name')
         t = Thread(target=lucid_api.archive_from_slack, 
-            args=(channel_name, command_text))  
+            args=(channel_name))  
         return "", 200, {'ContentType':'application/json'}
-        
+
 
 if __name__ == '__main__':
     app.run()
