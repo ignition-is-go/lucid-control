@@ -1,9 +1,10 @@
 env/*
 *.pyc
-.env
+.env*
 env.json
 .vscode*
 .cache*
 .env
 .vscode/settings.json
 *.log
+.env

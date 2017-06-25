@@ -1141,6 +1141,8 @@ def lucid_archive():
         logger.info("Confirmed Slack token")
 
         channel_name = request.form.get('channel_name')
+        print "Preparing to thread lucid_api.archive(%s)" % channel_name
+
         logger.debug("Preparing to thread lucid_api.archive(%s)", channel_name)
         t = Thread(target=lucid_api.archive_from_slack, 
             args=(channel_name)) 
