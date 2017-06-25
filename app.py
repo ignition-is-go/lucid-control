@@ -22,6 +22,10 @@ app.config.from_object(os.environ['APP_SETTINGS'])
 
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOG_LEVEL_TYPE)
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler) 
 
 
 def format_slug(project_id, text):
