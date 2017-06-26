@@ -1113,9 +1113,9 @@ def lucid_create():
         t.start()
         logger.info("Lucid API Create Thread Away, returning 200 to Slack")
 
-        waiting_message = {'text': '...', 'response_type': 'ephemeral'}
-        return jsonify(waiting_message)
-        # return "", 200, {'ContentType':'application/json'}
+        # waiting_message = {'text': '...', 'response_type': 'ephemeral'}
+        # return jsonify(waiting_message)
+        return "", 200, {'ContentType':'application/json'}
     
 
 @app.route('/lucid-rename', methods=['POST'])
@@ -1180,6 +1180,7 @@ def lucid_archive():
 @app.route("/lucid-action-response", methods=['POST'])
 def lucid_action_handler():
     token = request.form.get('token')
+    logger.info("Verification token sent=%s", token)
     if token != os.environ['SLACK_VERIFICATION_TOKEN']:
         # this didn't come from slack
         return (
