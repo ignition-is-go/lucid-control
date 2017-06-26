@@ -1180,7 +1180,7 @@ def lucid_archive():
 @app.route("/lucid-action-response", methods=['POST'])
 def lucid_action_handler():
     slack_data = json.dumps(request.form.get('payload'))
-    token = slack_data.get('token')
+    token = slack_data['token']
     if token is None:
         token = request.form.get("token")
     logger.info("Verification token sent=%s", token)
@@ -1196,10 +1196,10 @@ def lucid_action_handler():
         )
     else:
         if "challenge" in slack_data.keys():
-            return slack_data.get('challenge')
+            return slack_data['challenge']
         
         elif "callback_id" in slack_data.keys():
-            func_name = slack_data.get('callback_id')
+            func_name = slack_data.['callback_id']
             func = getattr(lucid_api, func_name)
 
             func(slack_data)
