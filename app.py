@@ -1181,6 +1181,8 @@ def lucid_archive():
 def lucid_action_handler():
     token = request.form.get('token')
     logger.info("Verification token sent=%s", token)
+    logger.debug("Request: %s", request.form)
+    
     if token != os.environ['SLACK_VERIFICATION_TOKEN']:
         # this didn't come from slack
         return (
@@ -1195,6 +1197,9 @@ def lucid_action_handler():
         elif "callback_id" in request.form.keys():
             func_name = request.form.get('callback_id')
             func = getattr(lucid_api, func_name)
+
+            func(request.form)
+            return "", 200, {'ContentType':'application/json'}
 
             
     
