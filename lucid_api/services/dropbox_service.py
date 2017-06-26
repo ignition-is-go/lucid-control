@@ -279,6 +279,8 @@ class DropboxService(service_template.ServiceTemplate):
         project_id = str(project_id)
         title = title.lower().replace(" ", "-")
         slug = super(DropboxService, self)._format_slug(project_id, title)
+
+        re.sub(r'[\\/:*?\"<>|]+','',slug)
         
         self._logger.info("Made Dropbox Slug for #%s: %s = %s",project_id, title, slug)
         return slug

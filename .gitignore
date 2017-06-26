@@ -7,3 +7,4 @@ env.json
 .env
 .vscode/settings.json
 *.log
+.env

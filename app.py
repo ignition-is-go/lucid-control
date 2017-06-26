@@ -13,6 +13,7 @@ from xero.auth import PrivateCredentials
 import re
 from threading import Thread
 import logging
+import sys
 
 # derp-a-derp import. sorry python gods.
 import lucid_api.lucid_api as lucid_api
@@ -20,8 +21,27 @@ import lucid_api.lucid_api as lucid_api
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 
+# to fix buffered logging:
+class Unbuffered(object):
+   def __init__(self, stream):
+       self.stream = stream
+   def write(self, data):
+       self.stream.write(data)
+       self.stream.flush()
+   def writelines(self, datas):
+       self.stream.writelines(datas)
+       self.stream.flush()
+   def __getattr__(self, attr):
+       return getattr(self.stream, attr)
+
+sys.stdout = Unbuffered(sys.stdout)
+
 logger = logging.getLogger(__name__)
 logger.setLevel(constants.LOG_LEVEL_TYPE)
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler) 
 
 
 def format_slug(project_id, text):
@@ -1087,7 +1107,8 @@ def lucid_create():
         
         command_text = request.form.get('text')
         logger.debug("Preparing to thread lucid_api.create(%s)", command_text)
-        t = Thread(target=lucid_api.create, args=(command_text))
+        t = Thread(target=lucid_api.create, args=[command_text])
+        t.start()
         logger.info("Lucid API Create Thread Away, returning 200 to Slack")
 
         waiting_message = {'text': 'Working to create now...', 'response_type': 'ephemeral'}
@@ -1116,7 +1137,8 @@ def lucid_rename():
         channel_name = request.form.get('channel_name')
         logger.debug("Preparing to thread lucid_api.rename(%s, %s)", channel_name, command_text)
         t = Thread(target=lucid_api.rename_from_slack, 
-            args=(channel_name, command_text)) 
+            args=[channel_name, command_text]) 
+        t.start()
         logger.info("Lucid API Rename Thread Away, returning 200 to Slack")
         waiting_message = {'text': 'Working to rename now...', 'response_type': 'ephemeral'}
         return jsonify(waiting_message)
@@ -1141,10 +1163,13 @@ def lucid_archive():
         logger.info("Confirmed Slack token")
 
         channel_name = request.form.get('channel_name')
+        print "Preparing to thread lucid_api.archive(%s)" % channel_name
+
         logger.debug("Preparing to thread lucid_api.archive(%s)", channel_name)
         t = Thread(target=lucid_api.archive_from_slack, 
-            args=(channel_name)) 
-            
+            args=[channel_name]) 
+        t.start()    
+        
         logger.info("Lucid API Archive Thread Away, returning 200 to Slack")
         waiting_message = {'text': 'Working to archive now...', 'response_type': 'ephemeral'}
         return jsonify(waiting_message)
