@@ -1199,7 +1199,7 @@ def lucid_action_handler():
             return slack_data['challenge']
         
         elif "callback_id" in slack_data.keys():
-            func_name = slack_data.['callback_id']
+            func_name = slack_data['callback_id']
             func = getattr(lucid_api, func_name)
 
             func(slack_data)
