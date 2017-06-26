@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request, render_template, make_response, jsonify
 import requests
-import json
+import simplejson as json
 from slackclient import SlackClient
 import datetime
 import hashlib
@@ -1179,7 +1179,10 @@ def lucid_archive():
 
 @app.route("/lucid-action-response", methods=['POST'])
 def lucid_action_handler():
-    token = request.form.get('token')
+    slack_data = json.dumps(request.form.get('payload'))
+    token = slack_data.get('token')
+    if token is None:
+        token = request.form.get("token")
     logger.info("Verification token sent=%s", token)
     from pprint import pprint
     pprint(request.form)
@@ -1192,14 +1195,14 @@ def lucid_action_handler():
             'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
         )
     else:
-        if "challenge" in request.form.keys():
-            return request.form.get('challenge')
+        if "challenge" in slack_data.keys():
+            return slack_data.get('challenge')
         
-        elif "callback_id" in request.form.keys():
-            func_name = request.form.get('callback_id')
+        elif "callback_id" in slack_data.keys():
+            func_name = slack_data.get('callback_id')
             func = getattr(lucid_api, func_name)
 
-            func(request.form)
+            func(slack_data)
             return "", 200, {'ContentType':'application/json'}
 
             
