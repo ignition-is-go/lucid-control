@@ -67,3 +67,9 @@ def test_slack_archive(slack, prebuilt_sample_project):
     assert slack.archive(
         prebuilt_sample_project['project_id'],
         )
+
+def test_find_channel_by_id(slack):
+    assert isinstance(slack, SlackService)
+    channel = slack._find(110)
+    assert channel['name'] == "110-shall_we_"
+    
