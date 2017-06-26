@@ -1181,8 +1181,9 @@ def lucid_archive():
 def lucid_action_handler():
     token = request.form.get('token')
     logger.info("Verification token sent=%s", token)
-    logger.debug("Request: %s", request.form)
-    
+    from pprint import pprint
+    pprint(request.form)
+
     if token != os.environ['SLACK_VERIFICATION_TOKEN']:
         # this didn't come from slack
         return (
