@@ -3,7 +3,7 @@ import os
 from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service
 from services.service_template import ServiceException
 #import all_the_functions
-import pymongo
+import requests
 
 
 logger = logging.getLogger(__name__)
@@ -185,6 +185,21 @@ def archive(project_id, return_individual=False):
 
 
 # Slack input functions 
+def create_from_slack(original_channel, title, callback_url ):
+    '''receives a title from and the original calling location'''
+    slack.respond_to_url(callback_url,
+        "Working on creating *{}* right now for you".format(title),
+        ephemeral=True)
+    try:
+        create(title)
+    except slack_service.SlackServiceError as err:
+        logger.error("Slack creation error: %s", err)
+
+        slack.respond_to_url(callback_url,
+            text="Error creating new slack channel: *{}*".format(err.message),
+            ephemeral=True)
+
+        
 
 def rename_from_slack(slack_channel_name, new_title):
     '''receieves a slack channel ID and a new title, and passes to rename command the correct project_id'''

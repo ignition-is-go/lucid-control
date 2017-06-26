@@ -11,6 +11,7 @@ import constants
 import requests.sessions
 import os
 import re
+import simplejson as json
 
 
 class SlackService(service_template.ServiceTemplate):
@@ -54,6 +55,23 @@ class SlackService(service_template.ServiceTemplate):
                 self._logger.info("Successfully created channel for #%s", project_id)
 
             except slacker.Error as err:
+                if slacker.Error.message == "is_archived":
+                    #we managed to try and make a channel which has the exact name as this one and is archived
+                    self._logger.warn("EDGE CASE: Channel %s exists and is archived", slug)
+                    if len(slug) == 21:
+                        slug = slug[0:-1] + "_"
+                    else: slug += "_"
+
+                    self._logger.debug("Reattempting with slug: %s", slug)
+                    try:
+                        create_response = self._slack_team.channels.create(name=slug)
+                        channel = create_response.body['channel']
+                        self._logger.info("Compromise slug %s success. Channel created", slug)
+
+                    except slacker.Error as err2:
+                        self._logger.error("Another slack error: %s", err2.message)
+                        raise SlackServiceError("Channel {} could not be created (is one already archived?)".format(slug))
+
                 # whoops!
                 self._logger.error("Error Creating Slack Channel for project # %s: %s", project_id, err)
                 raise SlackServiceError("Could not create channel for #%s, Slack API error: %s", project_id, err.message)
@@ -73,9 +91,9 @@ class SlackService(service_template.ServiceTemplate):
                     )
                 self._logger.info("Successfully invited bot to channel for #%s", project_id)
                 
-                if not silent:
+                if not silent and os.environ['SLACK_INVITE_USERGROUP'] is not "" :
                     invite_group_response = self._slack_team.usergroups.update(
-                        usergroup='S5J987J02',
+                        usergroup=os.environ['SLACK_INVITE_USERGROUP'],
                         channels=channel['id']
                     )
                     self._logger.info("Successfully invited usergroup channel for #%s", project_id)
@@ -252,6 +270,30 @@ class SlackService(service_template.ServiceTemplate):
         ).body
 
         return response['ok']    
+    def respond_to_url(self, url, text="", ephemeral=True, attachments=[]):
+        '''respond to a slack action or command'''
+
+        message = {
+            'text': text,
+            'attachments': attachments
+        }
+
+        if ephemeral: 
+            message['response_type'] = 'ephemeral'
+        
+        hook = slacker.IncomingWebhook(url)
+
+        response = hook.post(message)
+
+        self._logger.info("Posted to %s", url)
+        self._logger.info("Response: %s", response)
+
+        return response
+
+        if response.status_code in range(200,299):
+            return True
+        else:
+            raise SlackServiceError("Slack returned an error: {}".format(response.contents))
 
     def get_project_id(self, slack_channel_id="", slack_channel_name=""):
         '''Takes a slack channel ID and returns a project_id from it'''

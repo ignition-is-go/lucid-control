@@ -8,3 +8,5 @@ env.json
 .vscode/settings.json
 *.log
 .env
+
+interact.py
