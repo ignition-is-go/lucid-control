@@ -1179,7 +1179,8 @@ def lucid_archive():
 
 @app.route("/lucid-action-response", methods=['POST'])
 def lucid_action_handler():
-    slack_data = json.dumps(request.form.get('payload'))[0]
+    slack_data = json.dumps(request.form.get('payload'))
+    print slack_data
     token = slack_data['token']
     if token is None:
         token = request.form.get("token")
