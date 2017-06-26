@@ -189,30 +189,75 @@ def do_project_links(project_id, create=False):
     
 
 # Slack input functions 
-def create_from_slack(original_channel, title, callback_url ):
-    '''receives a title from and the original calling location'''
-    slack.respond_to_url(callback_url,
-        "Working on creating *{}* right now for you".format(title),
-        ephemeral=True)
-    try:
-        create(title)
-    except slack_service.SlackServiceError as err:
-        logger.error("Slack creation error: %s", err)
+def create_from_slack(slack_message):
+    if 'action' in slack_message.keys():
+        action = slack_message['action'][0]
+        if action['name']=='confirm' and bool(action['value']) == True:
+            # the user has confirmed the action
 
-        slack.respond_to_url(callback_url,
-            text="Error creating new slack channel: *{}*".format(err.message),
-            ephemeral=True)
+            for field in slack_message['original_message']['fields']:
+                if field['title'] is "Project Name":
+                    title = field['value']
+            else:
+                logger.error("Couldn't get title from original message")
 
+            slack.respond_to_url(callback_url,
+                "Working on creating *{}* right now for you".format(title),
+                ephemeral=True)
+            try:
+                create(title)
+            except slack_service.SlackServiceError as err:
+                logger.error("Slack creation error: %s", err)
+
+                slack.respond_to_url(callback_url,
+                    text="Error creating new slack channel: *{}*".format(err.message),
+                    ephemeral=True)
+            
+    else:
+        #send the confirmation
+        url = slack_message['response_url']
+        title = slack_message['text']
+        slack.respond_to_url(url, ephemeral=True, attachments=[{
+            "title": "Confirm Creation of {}?".format(title),
+            # "fields": [
+            #     {
+            #         "title": "Project Name",
+            #         "value": title
+            #     }],
+            "actions": [
+                {
+                    "name": title,
+                    "text": "Confirm",
+                    "value": "True",
+                    "type": "button",
+                    "style": "primary"
+                },
+                {
+                    "name": title,
+                    "text": "Cancel",
+                    "value": "False",
+                    "type": "button",
+                    "style": "danger"
+                }
+            ],
+        }])
+    
         
 
-def rename_from_slack(slack_channel_name, new_title):
+def rename_from_slack(slack_channel_name, new_title, callback_url=None, actions=None):
     '''receieves a slack channel ID and a new title, and passes to rename command the correct project_id'''
+    if actions is not None:
+         pass
     try:
         project_id = slack.get_project_id(slack_channel_name=slack_channel_name)
     except slack_service.SlackServiceError as err:
         # couldn't find the project nubmer in the channel name
-        slack.post_basic(slack_channel_name, 
-            ":crying_cat_face: That doesn't appear to work from here! _(the project id can't be discerned from the channel name)_")
+        response = ":crying_cat_face: That doesn't appear to work from here! _(the project id can't be discerned from the channel name)_"
+
+        if callback_url is None:
+            slack.post_basic(slack_channel_name, response)
+        else:
+            slack.respond_to_url(callback_url,text=response)
     
     return rename(project_id, new_title)
     

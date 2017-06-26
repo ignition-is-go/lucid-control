@@ -312,18 +312,18 @@ class SlackService(service_template.ServiceTemplate):
 
         self._logger.info("Starting search for project ID for channel: %s", slack_channel_id)
 
-        if slack_channel_id is not None and slack_channel_name is None:
-            try:
-                channel_response = self._slack_team.channels.info(slack_channel_id)
-                if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
+        try:
+            search = slack_channel_id if slack_channel_id is not None else slack_channel_name
+            channel_response = self._slack_team.channels.info(search)
+            if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
 
-            except slacker.Error or SlackServiceError as err:
-                self._logger.error("Had an issue with accessing the team slack API: %s", err.message)
-                raise SlackServiceError("Couldn't find the requested channel")
+        except slacker.Error or SlackServiceError as err:
+            self._logger.error("Had an issue with accessing the team slack API: %s", err.message)
+            raise SlackServiceError("Couldn't find the requested channel")
 
-            else:
-                self._logger.debug("Got info back: %s", channel_response)
-                slack_channel_name = channel_response.body['channel']['name']
+        else:
+            self._logger.debug("Got info back: %s", channel_response)
+            slack_channel_name = channel_response.body['channel']['name']
         
         self._logger.debug("Searching for slack channel name = %s", slack_channel_name)
         m = re.match(self._DEFAULT_REGEX, slack_channel_name)

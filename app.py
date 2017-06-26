@@ -1106,12 +1106,15 @@ def lucid_create():
         logger.info("Confirmed Slack token")
         
         command_text = request.form.get('text')
+        channel_name = request.form.get('channel_name')
+        callback_url = request.form.get('response_url')
         logger.debug("Preparing to thread lucid_api.create(%s)", command_text)
-        t = Thread(target=lucid_api.create, args=[command_text])
+        slack_message = json.loads(request.form['payload'])
+        t = Thread(target=lucid_api.create_from_slack, args=[slack_message])
         t.start()
         logger.info("Lucid API Create Thread Away, returning 200 to Slack")
 
-        waiting_message = {'text': 'Working to create now...', 'response_type': 'ephemeral'}
+        waiting_message = {'text': '...', 'response_type': 'ephemeral'}
         return jsonify(waiting_message)
         # return "", 200, {'ContentType':'application/json'}
     
@@ -1175,6 +1178,25 @@ def lucid_archive():
         return jsonify(waiting_message)
         # return "{", 200, {'ContentType':'application/json'}
 
+@app.route("/lucid-action-response", methods=['POST'])
+def lucid_action_handler():
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    else:
+        if "challenge" in request.form.keys():
+            return request.form.get('challenge')
+        
+        elif "callback_id" in request.form.keys():
+            func_name = request.form.get('callback_id')
+            func = getattr(lucid_api, func_name)
 
+            
+    
 if __name__ == '__main__':
     app.run()
