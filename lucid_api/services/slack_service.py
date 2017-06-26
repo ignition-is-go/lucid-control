@@ -90,7 +90,12 @@ class SlackService(service_template.ServiceTemplate):
                     user=os.environ.get('SLACK_APP_BOT_USERID')
                     )
                 self._logger.info("Successfully invited bot to channel for #%s", project_id)
-                
+
+            except slacker.Error as err:
+                self._logger.error("Error inviting the Lucid Control Bot to the Slack Channel for project # %s because slacker.Error: %s", project_id, err)
+                raise SlackServiceError("Could not invite Lucid Control Bot to channel for #%s, Slack API error: %s", project_id, err.message)
+
+            try:
                 if not silent and os.environ['SLACK_INVITE_USERGROUP'] is not "" :
                     invite_group_response = self._slack_team.usergroups.update(
                         usergroup=os.environ['SLACK_INVITE_USERGROUP'],
@@ -360,6 +365,7 @@ class SlackService(service_template.ServiceTemplate):
     
         for channel in channels.body['channels']:
             m = re.match(self._DEFAULT_REGEX, channel['name'])
+            self._logger.debug("Checking channel %s", channel['name'])
             if m and int(m.group('project_id')) == project_id:
                 self._logger.info('Found channel for #%s: %s',project_id,channel)
                 return channel

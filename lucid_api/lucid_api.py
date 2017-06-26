@@ -62,6 +62,9 @@ def create(title, silent=False):
         except ServiceException as err:
             failtures[s.get_pretty_name()] = err.message
 
+    logger.info("Service creation complete: Successes: %s \n\t\tFailtures: %s",
+                )
+
     #go back and redo the lucid_data one now. derp.
     try:
         channel_id = slack.get_id(project_id)
@@ -85,39 +88,6 @@ def create(title, silent=False):
 
     return project_id
 
-def do_project_links(project_id, create=False):
-
-    links = {}
-    for s in service_collection:
-        s_links = s.get_link_dict(project_id)
-        links.update(s_links)
-
-    link_text = "\n".join(
-            ["<{}|{}>".format(link, service) if link != "" else "" 
-                for service, link in links.items()][::-1]
-        )
-    # for some reason, slack can't pin messages with attachments?
-    # message_attachment = [
-    #     {
-    #         "fallback": "Project links attached here",
-    #         "color": "#36a64f",
-    #         "text": link_text,
-    #         "image_url": "http://my-website.com/path/to/image.jpg",
-    #         "thumb_url": "http://example.com/path/to/thumb.png",
-    #         "footer": "Ludid Control API"
-            
-    #     }
-    # ]
-    
-
-    ref_text = "*Links for {}*".format(project_id)
-    
-    if create:
-        return slack.post_to_project(project_id,ref_text+"\n"+link_text,pinned=True, unfurl_links = False)
-    else:
-        return slack.update_pinned_message(project_id,ref_text+"\n"+link_text,ref_text)
-
-    
 def rename(project_id, new_title):
     '''
     handles all the renaming of a project by id
@@ -183,6 +153,40 @@ def archive(project_id, return_individual=False):
     if return_individual: return {'succeses': successes, 'failtures': failtures}
     return bool(len(failtures)==0)
 
+
+def do_project_links(project_id, create=False):
+
+    links = {}
+    for s in service_collection:
+        s_links = s.get_link_dict(project_id)
+        links.update(s_links)
+
+    link_text = "\n".join(
+            ["<{}|{}>".format(link, service) if link != "" else "" 
+                for service, link in links.items()][::-1]
+        )
+    # for some reason, slack can't pin messages with attachments?
+    # message_attachment = [
+    #     {
+    #         "fallback": "Project links attached here",
+    #         "color": "#36a64f",
+    #         "text": link_text,
+    #         "image_url": "http://my-website.com/path/to/image.jpg",
+    #         "thumb_url": "http://example.com/path/to/thumb.png",
+    #         "footer": "Ludid Control API"
+            
+    #     }
+    # ]
+    
+
+    ref_text = "*Links for {}*".format(project_id)
+    
+    if create:
+        return slack.post_to_project(project_id,ref_text+"\n"+link_text,pinned=True, unfurl_links = False)
+    else:
+        return slack.update_pinned_message(project_id,ref_text+"\n"+link_text,ref_text)
+
+    
 
 # Slack input functions 
 def create_from_slack(original_channel, title, callback_url ):
