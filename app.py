@@ -1109,12 +1109,7 @@ def lucid_create():
         channel_name = request.form.get('channel_name')
         callback_url = request.form.get('response_url')
         logger.debug("Preparing to thread lucid_api.create(%s)", command_text)
-        from pprint import pprint
-        pprint(request.form)
-        
-        slack_message = json.loads(request.form['payload'])
-        logger.debug("Message JSON: %s", slack_message)
-        t = Thread(target=lucid_api.create_from_slack, args=[slack_message])
+        t = Thread(target=lucid_api.create_from_slack, args=[request.form])
         t.start()
         logger.info("Lucid API Create Thread Away, returning 200 to Slack")
 
