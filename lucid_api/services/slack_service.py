@@ -31,6 +31,9 @@ class SlackService(service_template.ServiceTemplate):
         self._slack_bot = slacker.Slacker(bot_token)
         self._slack_team = slacker.Slacker(team_token)
 
+        # get user info for the slack bot
+        self._bot_info = self._slack_bot.auth.test().body
+
         self._logger = self._setup_logger(to_file=True)
 
 
@@ -84,10 +87,11 @@ class SlackService(service_template.ServiceTemplate):
             #even if the channel was created already, try and invite before we throw exceptions
             
             try:
+
                 #invite the bot user
                 invite_bot_response = self._slack_team.channels.invite(
                     channel=channel['id'],
-                    user=os.environ.get('SLACK_APP_BOT_USERID')
+                    user= self._bot_info['user_id']
                     )
                 self._logger.info("Successfully invited bot to channel for #%s", project_id)
 
