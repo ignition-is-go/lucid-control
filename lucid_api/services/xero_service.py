@@ -118,6 +118,7 @@ class XeroService(service_template.ServiceTemplate):
             str: Xero tracking category option ID (or False)
         '''
         self._xero.populate_tracking_categories()
+        project_id = int(project_id)
 
         self._logger.info("Starting search for %s", str(project_id))
         for option in self._xero.TCShow.options.all():
