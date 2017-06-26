@@ -359,6 +359,7 @@ class SlackService(service_template.ServiceTemplate):
         '''
         Finds and returns a slack channel dictionary for the given project number
         '''
+        project_id = int(project_id)
         self._logger.info('Searching for channel for #%s',project_id)
 
         channels = self._slack_team.channels.list(exclude_archived=True,exclude_members=True)

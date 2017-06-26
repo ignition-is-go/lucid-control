@@ -69,7 +69,7 @@ def test_slack_post_basic(slack,prebuilt_sample_project):
 def test_find_channel_by_id(slack, prebuilt_sample_project):
     assert isinstance(slack, SlackService)
     project = prebuilt_sample_project
-    channel = slack._find(project['project_id'])
+    channel = slack._find(str(project['project_id']))
     assert channel['name'] == slack._format_slug(
         project['project_id'], project['project_title'])
 
