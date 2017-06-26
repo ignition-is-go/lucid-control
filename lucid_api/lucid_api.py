@@ -240,6 +240,8 @@ def create_from_slack(slack_message):
                     "style": "danger"
                 }
             ],
+            "callback_id": "create_from_slack",
+            "attachment_type": "default"
         }])
     
         
