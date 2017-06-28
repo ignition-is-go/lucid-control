@@ -190,7 +190,7 @@ def do_project_links(project_id, create=False):
 
 # Slack input functions 
 def create_from_slack(slack_message):
-    if 'action' in slack_message.keys():
+    if 'actions' in slack_message.keys():
         action = slack_message['action'][0]
         if action['name']=='confirm' and bool(action['value']) == True:
             # the user has confirmed the action
