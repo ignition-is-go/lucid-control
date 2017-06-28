@@ -1180,14 +1180,10 @@ def lucid_archive():
 @app.route("/lucid-action-response", methods=['POST'])
 def lucid_action_handler():
     slack_data = json.loads(request.form.get('payload'))
-    from pprint import pprint
-    pprint(slack_data)
     token = slack_data['token']
     if token is None:
         token = request.form.get("token")
     logger.info("Verification token sent=%s", token)
-    from pprint import pprint
-    pprint(request.form)
 
     if token != os.environ['SLACK_VERIFICATION_TOKEN']:
         # this didn't come from slack
@@ -1197,14 +1193,21 @@ def lucid_action_handler():
             'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
         )
     else:
+        # we've verified it's our slack app a-knockin'
+        logger.info("Confirmed Slack token")
+
         if "challenge" in slack_data.keys():
+            logger.info("Responding to challenge: %s", slack_data['challenge'])
             return slack_data['challenge']
         
         elif "callback_id" in slack_data.keys():
+            logger.info("Routing Action: %s", slack_data['callback)'])
             func_name = slack_data['callback_id']
             func = getattr(lucid_api, func_name)
 
-            func(slack_data)
+            logger.debug("Preparing to thread %s for action:%s - %s", func_name, slack_data['channel']['name'],slack_data['actions'])
+            t = Thread(target=func,args=[slack_data])
+            t.start()
             return "", 200, {'ContentType':'application/json'}
 
             
