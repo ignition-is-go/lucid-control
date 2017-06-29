@@ -42,7 +42,7 @@ class SlackService(service_template.ServiceTemplate):
         Handles the process of creating a new slack channel, including adding people to it
         '''
         self._logger.info('Start Create Slack for ProjectID %s: %s',project_id, title)
-
+        create_success = False
         # first, look to see if the channel exists
         try:
             channel = self._find(project_id)
@@ -54,6 +54,8 @@ class SlackService(service_template.ServiceTemplate):
                 # create the channel first
                 create_response = self._slack_team.channels.create(name=slug)
                 channel = create_response.body['channel']
+                create_success = bool(create_response.body['ok'])
+                logger.debug("Slack Create Response: %s", create_response.body)
 
                 self._logger.info("Successfully created channel for #%s", project_id)
 
@@ -70,6 +72,7 @@ class SlackService(service_template.ServiceTemplate):
                         create_response = self._slack_team.channels.create(name=slug)
                         channel = create_response.body['channel']
                         self._logger.info("Compromise slug %s success. Channel created", slug)
+                        create_success = bool(create_response.body['ok'])
 
                     except slacker.Error as err2:
                         self._logger.error("Another slack error: %s", err2.message)
@@ -108,13 +111,15 @@ class SlackService(service_template.ServiceTemplate):
                     self._logger.info("Successfully invited usergroup channel for #%s", project_id)
                     
                     #check for everyone's success
-                    return bool(create_response.body['ok'] and 
+                    return bool(create_success and 
                         invite_bot_response.body['ok'] and
                         invite_group_response.body['ok'])
 
+
                 else: 
                     # since we're not inviting the usergroup, don't check them for success
-                    return bool(create_response.body['ok'] and 
+                    self._logger.info("Create::%s | Invite::%s", create_success, invite_bot_response.body['ok'])
+                    return bool(create_success and 
                         invite_bot_response.body['ok'])
 
             except slacker.Error as err:

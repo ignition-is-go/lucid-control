@@ -1,13 +1,33 @@
 import logging
-import os
+import os, sys
 from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service
 from services.service_template import ServiceException
 #import all_the_functions
 import requests
+import constants
 
+# setup logging
+logger = logging.getLogger(__name__)
+class Unbuffered(object):
+   def __init__(self, stream):
+       self.stream = stream
+   def write(self, data):
+       self.stream.write(data)
+       self.stream.flush()
+   def writelines(self, datas):
+       self.stream.writelines(datas)
+       self.stream.flush()
+   def __getattr__(self, attr):
+       return getattr(self.stream, attr)
+
+sys.stdout = Unbuffered(sys.stdout)
 
 logger = logging.getLogger(__name__)
-#logger.setLevel(os.environ['LOG_LEVEL'])
+logger.setLevel(constants.LOG_LEVEL_TYPE)
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler) 
 
 # mongo = pymongo.MongoClient(
 #     os.environ['MONGODB_URI']
@@ -63,7 +83,7 @@ def create(title, silent=False):
             failtures[s.get_pretty_name()] = err.message
 
     logger.info("Service creation complete: Successes: %s \n\t\tFailtures: %s",
-                )
+                successes, failtures)
 
     #go back and redo the lucid_data one now. derp.
     try:
@@ -190,17 +210,19 @@ def do_project_links(project_id, create=False):
 
 # Slack input functions 
 def create_from_slack(slack_message):
+    logger.info("Running create_from_slack")
+
     if 'actions' in slack_message.keys():
+        # handling actions from interactive message
         action = slack_message['actions'][0]
-        if action['name']=='confirm' and bool(action['value']) == True:
+        logger.info("Dealing with actions %s", action)
+
+        if bool(action['value']) == True:
             # the user has confirmed the action
-
-            for field in slack_message['original_message']['fields']:
-                if field['title'] is "Project Name":
-                    title = field['value']
-            else:
-                logger.error("Couldn't get title from original message")
-
+            title = action['name']
+            logger.info("User has confirmed %s", title)
+            
+            callback_url = slack_message['response_url']
             slack.respond_to_url(callback_url,
                 "Working on creating *{}* right now for you".format(title),
                 ephemeral=True)
@@ -213,6 +235,9 @@ def create_from_slack(slack_message):
                     text="Error creating new slack channel: *{}*".format(err.message),
                     ephemeral=True)
             
+            slack.respond_to_url(callback_url,
+                "Successfully created *{}* for you!".format(title),
+                ephemeral=True)
     else:
         #send the confirmation
         url = slack_message['response_url']

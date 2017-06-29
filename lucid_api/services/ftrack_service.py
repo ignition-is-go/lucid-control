@@ -98,25 +98,25 @@ class FtrackService(service_template.ServiceTemplate):
             self._logger.debug('Creating project %s (ID: %s)', slug, project_id)
 
             # add default components:
-            # TODO: Add default items with task templates
+            # TODO: Add default items from sample project
 
-            sale = self._server.create('Sale', {
-                'name': 'Sale',
-                'parent': project
-            })
-            self._logger.debug('Created sales item in %s', project['full_name'])
+            # sale = self._server.create('Sale', {
+            #     'name': 'Sale',
+            #     'parent': project
+            # })
+            # self._logger.debug('Created sales item in %s', project['full_name'])
 
-            project_management = self._server.create('ProjectManagement', {
-                'name': 'Management',
-                'parent': project
-            })
-            self._logger.debug('Created project management item in %s', project['full_name'])
+            # project_management = self._server.create('ProjectManagement', {
+            #     'name': 'Management',
+            #     'parent': project
+            # })
+            # self._logger.debug('Created project management item in %s', project['full_name'])
 
-            schedule = self._server.create('Schedule', {
-                'name': 'Schedule',
-                'parent': project
-            })
-            self._logger.debug('Created schedule item in %s', project['full_name'])
+            # schedule = self._server.create('Schedule', {
+            #     'name': 'Schedule',
+            #     'parent': project
+            # })
+            # self._logger.debug('Created schedule item in %s', project['full_name'])
 
             self._server.commit()
 

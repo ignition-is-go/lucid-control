@@ -10,3 +10,6 @@ env.json
 .env
 
 interact.py
+Procfile.local
+run.py
+ngrok.exe

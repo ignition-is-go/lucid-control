@@ -1201,16 +1201,20 @@ def lucid_action_handler():
             return slack_data['challenge']
         
         elif "callback_id" in slack_data.keys():
-            logger.info("Routing Action: %s", slack_data['callback)'])
+            logger.info("Routing Action: %s", slack_data['callback_id'])
             func_name = slack_data['callback_id']
             func = getattr(lucid_api, func_name)
 
             logger.debug("Preparing to thread %s for action:%s - %s", func_name, slack_data['channel']['name'],slack_data['actions'])
             t = Thread(target=func,args=[slack_data])
             t.start()
+            logger.debug("Thread started!")
             return "", 200, {'ContentType':'application/json'}
 
             
+@app.route("/test")
+def test():
+    return "Test good"
     
 if __name__ == '__main__':
     app.run()
