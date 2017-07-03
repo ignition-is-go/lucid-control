@@ -72,6 +72,15 @@ def test_find_channel_by_id(slack, prebuilt_sample_project):
     channel = slack._find(str(project['project_id']))
     assert channel['name'] == slack._format_slug(
         project['project_id'], project['project_title'])
+    
+
+def test_get_id_by_channel_name(slack):
+    assert isinstance(slack, SlackService)
+    channel_name = "122-purple_potato"
+    result_id = slack.get_project_id(slack_channel_name=channel_name)
+    print result_id
+    assert result_id == 122
+
 
 def test_slack_archive(slack, prebuilt_sample_project):
     assert slack.archive(

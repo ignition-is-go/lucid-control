@@ -318,7 +318,7 @@ class SlackService(service_template.ServiceTemplate):
         self._logger.info("Starting search for project ID for channel: %s", slack_channel_id)
 
         try:
-            search = slack_channel_id if slack_channel_id is not None else slack_channel_name
+            search = slack_channel_id if slack_channel_id is not None else "#"+slack_channel_name
             channel_response = self._slack_team.channels.info(search)
             if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
 
