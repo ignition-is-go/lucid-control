@@ -94,3 +94,12 @@ def test_webhook(slack):
     print slack.respond_to_url(url, "Hook test", ephemeral=True)
 
     assert 0
+
+def test_user_info(slack):
+    assert isinstance(slack, SlackService)
+    userid = "U5YMK71UZ"
+    user = slack.get_user(userid)
+    from pprint import pprint
+    pprint(user)
+    assert 0
+    

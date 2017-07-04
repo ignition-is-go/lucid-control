@@ -1210,6 +1210,34 @@ def lucid_action_handler():
             return "", 200, {'ContentType':'application/json'}
 
             
+@app.route("/lead", methods=['POST'])
+def new_lead():
+    '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
+    
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    
+    else:
+        # we've verified it's our slack app a-knockin'
+        logger.info("Confirmed Slack token")
+
+        channel_name = request.form.get('channel_name')
+
+        logger.debug("Preparing to thread lucid_api.archive(%s)", channel_name)
+        t = Thread(target=lucid_api.lead_create, args=[request.form]) 
+        t.start()    
+        
+        logger.info("Lucid API lead_create Thread Away, returning 200 to Slack")
+        waiting_message = {'text': 'Working on that lead...', 'response_type': 'ephemeral'}
+        return jsonify(waiting_message)
+        # return "{", 200, {'ContentType':'application/json'}
+
 @app.route("/test")
 def test():
     return "Test good"

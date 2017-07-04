@@ -448,4 +448,26 @@ def archive_from_slack(slack_message):
             "attachment_type": "default"
         }])
     
+def lead_create(slack_message):
+    ''' for quickly storing a lead in ftrack'''
+    try:
+        logger.debug("Asking slack for user info")
+        user = slack.get_user(slack_message['user_id'])
+        logger.debug("Sending lead to ftrack: %s, %s",
+            slack_message['text'], user['profile']['email'])
+
+        ftrack_link = ftrack.create_lead(
+            slack_message['text'], user['profile']['email']
+        )
+
+        slack.respond_to_url(slack_message['response_url'],
+            text=":white_check_mark: {text}: \n {url}".format(
+                text=slack_message['text'],
+                url=ftrack_link
+            ), ephemeral=True)
+    except slack_service.SlackServiceError or ftrack_service.FtrackServiceError as err:
+        slack.respond_to_url(slack_message['response_url'],
+            text=":warning: {}".format(err.message), ephemeral=True)
+
+    pass
 # eof

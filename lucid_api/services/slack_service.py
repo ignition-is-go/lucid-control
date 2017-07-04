@@ -289,7 +289,8 @@ class SlackService(service_template.ServiceTemplate):
 
         message = {
             'text': text,
-            'attachments': attachments
+            'attachments': attachments,
+            'parse': True
         }
 
         if ephemeral: 
@@ -348,6 +349,7 @@ class SlackService(service_template.ServiceTemplate):
             
             raise SlackServiceError('Channel could not be associated with a project ID')
 
+    
     def get_id(self, project_id):
         '''
         Uses the project id to return a slack channel id
@@ -364,6 +366,15 @@ class SlackService(service_template.ServiceTemplate):
     def get_link(self, project_id):
         return ""
     
+    def get_user(self, user_id):
+        '''gets a user's info based on slack id'''
+        try:
+            user = self._slack_team.users.info(user_id).body['user']
+            return user
+        except Exception as err:
+            self._logger.error("Couldn't find user for uid %s because: %s", user_id, err.message)
+            raise SlackServiceError("User not found._({})_".format(err.message))
+
     def _find(self, project_id):
         '''
         Finds and returns a slack channel dictionary for the given project number

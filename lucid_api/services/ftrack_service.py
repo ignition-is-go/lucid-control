@@ -263,5 +263,70 @@ class FtrackService(service_template.ServiceTemplate):
             raise FtrackServiceError("Couldn't find a match for {}".format(project_id))
 
 
+    def create_lead(self, lead_text, user_email):
+        '''Creates a lead task in the Leads ftrack project as designated by the env var 'FTRACK_LEAD_PROJECT' '''
+        self._logger.info("Attempting to create lead %s by user %s", lead_text, user_email)
+        user_ftrack = ftrack_api.Session(api_user=user_email)
+        lead_project_name = os.environ['FTRACK_LEAD_PROJECT']
+        try:
+            lead_project = user_ftrack.query("Project where (name like '{name}' or full_name like '{name}')".format(name=lead_project_name)).one()
+            self._logger.debug("Found Lead project, name=%s", lead_project['name'])
+            task = {
+                'name': lead_text,
+                'parent': lead_project,
+                }
+        except ftrack_api.exception.NotFoundError as err:
+            self._logger.error("Couldn't find project named %s (%s)", lead_project_name, err.message)
+            raise FtrackServiceError("Couldn't find ftrack project {}. _Check Env variables...({})_".format(lead_project_name, err.message))
+        
+        try:
+            task['type'] = user_ftrack.query("Type where name like '%Slack'").one()
+            self._logger.debug("Found Slack task type %s", task['type']['name'])
+        except: 
+            self._logger.warn("Couldn't find Slack task type, going with Generic")
+            task['type'] = user_ftrack.query("Type where name like '%Generic%'").one()
+                
+        self._logger.debug("Running ftrack.create for %s",task)
+        lead_task = user_ftrack.create("Task", task)
+
+        try:
+            user = user_ftrack.query("User where email is '{}'".format(user_email)).one()
+            self._logger.debug("Found User %s:%s",user['first_name'], user['email'])
+        except:
+            self._logger.error("Couldn't find user for email %s", user_email)
+            raise FtrackServiceError("Could not find user with email {}".format(user_email))
+        else:
+            self._logger.debug("Creating assignment of %s to task %s", user['email'], lead_task['name'])
+            try:
+                appt = user_ftrack.create("Appointment", {
+                    'context': lead_task,
+                    'resource': user,
+                    'type': 'assignment'
+                })
+
+            except Exception as err:
+                self._logger.error("Error while assigning task: %s", err.message )
+                raise FtrackServiceError("Ran into a problem assigning the lead task._ftrack error: {}_".format(err.message))
+
+        finally:
+            self._logger.debug("Committing changes to ftrack server")
+            try:
+                # save changes to ftrack server
+                user_ftrack.commit()
+                self._logger.info("Finished creating lead %s", lead_text)
+
+                # make a link for the new lead
+                url = "{base}#slideEntityId={task_id}&slideEntityType=task&view=tasks&itemId=projects&entityId={project_id}&entityType=show".format(
+                    task_id=lead_task['id'], project_id=lead_project['id'], base=os.environ['FTRACK_SERVER']
+                )
+                self._logger.debug("Url=[%s]", url)
+                return url
+
+            except Exception as err:
+                self._logger.error("Error while committing changes: %s", err.message )
+                raise FtrackServiceError("Ran into a problem._ftrack error: {}_".format(err.message))
+            
+
+
 class FtrackServiceError(service_template.ServiceException):
     pass
