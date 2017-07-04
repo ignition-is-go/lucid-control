@@ -15,9 +15,17 @@ import os
 from lucid_api.services.groups_service import GroupsService, GroupsServiceError
 
 @pytest.fixture(scope='session')
-def groups()
+def groups():
     '''
     Build Google Groups Service for testing
     '''
 
     return GroupsService()
+
+@pytest.fixture(scope='module')
+def sample_project(request, sample_project_data, groups):
+    yield sample_project_data
+
+
+@pytest.fixture(scope='session')
+def test_create_group

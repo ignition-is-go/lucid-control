@@ -47,8 +47,8 @@ class GroupsService(service_template.ServiceTamplate):
         self._logger.debug('Created Google Group %s (ID: %s) with email address %s', grp_info['name'], project_id, grp_info['email'])
  
         # With the group created, let's add users.
-        add_users = service.members().insert(groupKey=grp_info['email'], body="employees@lucidsf.com").execute() #need to create the employees group
-        self._logger.debug('Added group employees@lucidsf.com to {}'.format(grp_info['name']))
+        add_users = service.members().insert(groupKey=grp_info['email'], body="employees@lucidsf.com").execute()
+        self._logger.debug('Added %s to %s', body, grp_info['name'])
 
 
     
