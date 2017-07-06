@@ -1,6 +1,6 @@
 import logging
 import os
-from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service
+from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service, groups_service
 from services.service_template import ServiceException
 #import all_the_functions
 import pymongo

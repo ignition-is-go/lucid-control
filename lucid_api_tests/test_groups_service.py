@@ -57,10 +57,8 @@ def test_groups_rename(groups, prebuilt_sample_project):
     assert groups.rename(
         prebuilt_sample_project['project_id'], "-RENAME")
 
-def test_groups_archive(groups, prebuilt_sample_project):
-    assert groups.archive(prebuilt_sample_project['project_id'])
+# def test_groups_archive(groups, prebuilt_sample_project):
+    # assert groups.archive(prebuilt_sample_project['project_id'])
 
 
 
-@pytest.fixture(scope='session')
-def test_create_group

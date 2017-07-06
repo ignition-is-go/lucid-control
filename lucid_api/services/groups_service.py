@@ -13,7 +13,7 @@ import os
 from apiclient import discovery
 from oauth2client.service_account import ServiceAccountCredentials
 
-class GroupsService(service_template.ServiceTamplate):
+class GroupsService(service_template.ServiceTemplate):
    
     def __init__(self, team_token=None, bot_token=None):
         '''
@@ -146,7 +146,7 @@ class GroupsService(service_template.ServiceTamplate):
         scopes = ['https://www.googleapis.com/auth/admin.directory.group.member']
 
         with open("auths/lucid-control-b5aa575292b.json", 'r') as fp:
-             credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+            credentials = ServiceAccountCredentials.from_json_keyfile_dict(
                 json.load(fp),
                 scopes= scopes)
             credentials = credentials.create_delegated('developer@lucidsf.com')
