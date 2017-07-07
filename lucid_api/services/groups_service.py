@@ -10,12 +10,13 @@ JT
 import service_template
 import httplib2, json
 import os
-from apiclient import discovery
+import re
+from apiclient import discovery, errors
 from oauth2client.service_account import ServiceAccountCredentials
 
 class GroupsService(service_template.ServiceTemplate):
    
-    def __init__(self, team_token=None, bot_token=None):
+    def __init__(self):
         '''
         Creates necessary services with Google Admin and Groups; also setups the logger.
         '''
@@ -32,24 +33,39 @@ class GroupsService(service_template.ServiceTemplate):
 
         self._logger.info('Start Create Google Group for Project ID %s: %s', project_id, title)
 
-        service = self._create_admin_service()
-        group = service.groups()
+        # service = self._create_admin_service()
+        group = self._admin.groups()
 
         slug = self._format_slug(project_id, title)
+        reg = r'^([\w]+-[\w]+)'
 
         grp_info = {
-            "email" : "{}@lucidsf.com".format(slug.replace(" ","-")), # email address of the group
+            "email" : "{}@lucidsf.com".format(re.match(reg, slug).group()), # email address of the group
             "name" : slug, # group name
             "description" : "Group Email for {}".format(slug), # group description
+            "showInGroupDirectory" : "true", # let's make sure this group is in the directory
         }
 
-        create_response = group.insert(body=grp_info).execute()
-        self._logger.debug('Created Google Group %s (ID: %s) with email address %s', grp_info['name'], project_id, grp_info['email'])
- 
-        # With the group created, let's add users.
-        # add_users = service.members().insert(groupKey=grp_info['email'], body="employees@lucidsf.com").execute()
-        # self._logger.debug('Added %s to %s', body, grp_info['name'])
+        try:
+            create_response = group.insert(body=grp_info).execute()
+            self._logger.info('Created Google Group %s (ID: %s) with email address %s', grp_info['name'], project_id, grp_info['email'])
+            self._logger.debug(create_response)
+        except errors.HttpError as err:
+            self._logger.error(err.message)
+            if err.resp.status == 409:
+                raise GroupsServiceError('Group already exists!')
+            else:
+                raise GroupsServiceError(err)
 
+# Still need try/except here - also great a loop which cycles through all employees in our directory - use 
+        # With the group created, let's add users.
+        membs = {
+            'email' : 'employees@lucidsf.com'
+        }
+        add_users = self._admin.members().insert(groupKey=grp_info['email'], body=membs).execute()
+        self._logger.debug('Added %s to %s', membs, grp_info['name'])
+
+        return create_response['id']
 
     def rename(self, project_id, new_title):
         '''
@@ -87,7 +103,7 @@ class GroupsService(service_template.ServiceTemplate):
         '''
 
         # At last discussion we did not want to archive / delete any google groups so we'll opt out here
-        return
+        return True
 
         self._logger.info("Start Delete Google Group for Project ID %s", project_id)
 
@@ -112,7 +128,7 @@ class GroupsService(service_template.ServiceTemplate):
 
     
     def get_group_id(self, project_id):
-        service = create_service()
+        service = _create_admin_service()
         group = service.groups()
 
         response = group.list(customer='my_customer').execute()
@@ -123,14 +139,18 @@ class GroupsService(service_template.ServiceTemplate):
         
         return False # Should this return 0 instead?
 
-    def list_groups():
-        service = create_service()
-        group = service.groups()
+    def list_groups(self):
+        group = self._admin.groups()
 
         response = group.list(customer='my_customer').execute()
 
         # For debugging purposes only
         print([r['name'] for r in response['groups']])
+    
+    def list_employees(self):
+        response = self._admin.members().list('employees@lucidsf.com')
+
+        print([r['name'] for r in response['members']])
 
     def _create_admin_service(self):
         scopes = ['https://www.googleapis.com/auth/admin.directory.group']
