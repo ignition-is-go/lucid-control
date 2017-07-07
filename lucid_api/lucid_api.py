@@ -18,6 +18,7 @@ lucid_data = lucid_data_service.LucidDataService()
 slack = slack_service.SlackService()
 xero = xero_service.XeroService()
 ftrack = ftrack_service.FtrackService()
+google_groups = groups_service.GroupsService()
 dropbox = dropbox_service.DropboxService()
 
 #put these in order of desired execution
@@ -26,6 +27,7 @@ service_collection = [
     slack,
     ftrack,
     xero,
+    groups_service,
     dropbox
 ]
 

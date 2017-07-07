@@ -43,8 +43,7 @@ def prebuilt_sample_project(request, sample_project, groups):
 
     assert groups.create(
             sample_project['project_id'],
-            sample_project['project_title'],
-            invite=False)
+            sample_project['project_title'])
     yield sample_project
 
 def test_groups_prevent_duplicate_create(groups, prebuilt_sample_project):

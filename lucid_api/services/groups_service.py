@@ -32,13 +32,13 @@ class GroupsService(service_template.ServiceTemplate):
 
         self._logger.info('Start Create Google Group for Project ID %s: %s', project_id, title)
 
-        service = _create_admin_service()
+        service = self._create_admin_service()
         group = service.groups()
 
         slug = self._format_slug(project_id, title)
 
         grp_info = {
-            "email" : "{}@lucidsf.com".format(slug), # email address of the group
+            "email" : "{}@lucidsf.com".format(slug.replace(" ","-")), # email address of the group
             "name" : slug, # group name
             "description" : "Group Email for {}".format(slug), # group description
         }
@@ -47,8 +47,8 @@ class GroupsService(service_template.ServiceTemplate):
         self._logger.debug('Created Google Group %s (ID: %s) with email address %s', grp_info['name'], project_id, grp_info['email'])
  
         # With the group created, let's add users.
-        add_users = service.members().insert(groupKey=grp_info['email'], body="employees@lucidsf.com").execute()
-        self._logger.debug('Added %s to %s', body, grp_info['name'])
+        # add_users = service.members().insert(groupKey=grp_info['email'], body="employees@lucidsf.com").execute()
+        # self._logger.debug('Added %s to %s', body, grp_info['name'])
 
 
     def rename(self, project_id, new_title):
@@ -85,6 +85,9 @@ class GroupsService(service_template.ServiceTemplate):
         '''
         Deletes an existing google group.
         '''
+
+        # At last discussion we did not want to archive / delete any google groups so we'll opt out here
+        return
 
         self._logger.info("Start Delete Google Group for Project ID %s", project_id)
 
@@ -129,7 +132,7 @@ class GroupsService(service_template.ServiceTemplate):
         # For debugging purposes only
         print([r['name'] for r in response['groups']])
 
-    def _create_admin_service():
+    def _create_admin_service(self):
         scopes = ['https://www.googleapis.com/auth/admin.directory.group']
 
         with open("auths/lucid-control-b5aa575292fb.json",'r') as fp:
@@ -142,10 +145,10 @@ class GroupsService(service_template.ServiceTemplate):
 
             return service
     
-    def _create_groupsettings_service():
+    def _create_groupsettings_service(self):
         scopes = ['https://www.googleapis.com/auth/admin.directory.group.member']
 
-        with open("auths/lucid-control-b5aa575292b.json", 'r') as fp:
+        with open("auths/lucid-control-b5aa575292fb.json", 'r') as fp:
             credentials = ServiceAccountCredentials.from_json_keyfile_dict(
                 json.load(fp),
                 scopes= scopes)
