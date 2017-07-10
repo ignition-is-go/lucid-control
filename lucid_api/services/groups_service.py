@@ -50,7 +50,8 @@ class GroupsService(service_template.ServiceTemplate):
         }
 
         try:
-            create_response = group.insert(body=grp_info).grp_settings.patch(groupUniqueId=grp_info['email'], body=dir_info).execute() # This is where I left off - groupUniqueId unexpected arg
+            create_response = group.insert(body=grp_info).execute()
+            create_settings = grp_settings.patch(groupUniqueId=grp_info['email'], body=dir_info).execute() # This is where I left off - groupUniqueId unexpected arg
             self._logger.info('Created Google Group %s (ID: %s) with email address %s', grp_info['name'], project_id, grp_info['email'])
             self._logger.debug('Create response = %s', create_response)
         except errors.HttpError as err:
