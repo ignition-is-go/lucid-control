@@ -81,6 +81,7 @@ class GroupsService(service_template.ServiceTemplate):
             self._logger.debug('Group with project ID %s does not exist.', project_id)
             raise GroupsServiceError("Could not find a project with ID # %s", project_id)
                 
+        # TODO: change this to use self._admin
         service = _create_admin_service()
         group = service.groups()
         slug = self._format_slug(project_id, new_title)
@@ -137,8 +138,8 @@ class GroupsService(service_template.ServiceTemplate):
             if project_id in i['name']:
                 return i['id']
         
-        return False # Should this return 0 instead?
-
+        raise GroupsServiceError("Could not find group #{}".format(project_id))
+        
     def list_groups(self):
         group = self._admin.groups()
 
