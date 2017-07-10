@@ -8,3 +8,7 @@ env.json
 .vscode/settings.json
 *.log
 .env
+
+ngrok*
+interact.py
+run.py
