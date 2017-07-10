@@ -86,15 +86,8 @@ class GroupsService(service_template.ServiceTemplate):
         except GroupsServiceError as err:
             self._logger.debug('Group with project ID %s does not exist.', project_id)
             raise GroupsServiceError("Could not find a project with ID # %s", project_id)
-<<<<<<< HEAD
-                
-        # TODO: change this to use self._admin
-        service = _create_admin_service()
-        group = service.groups()
-=======
         
         group = self._admin.groups()
->>>>>>> a34282bdda28e61f7a2874e72d4223923142f3f1
         slug = self._format_slug(project_id, new_title)
 
         # 2. Create the JSON request for the changes we want
