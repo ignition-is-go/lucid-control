@@ -149,8 +149,8 @@ class GroupsService(service_template.ServiceTemplate):
             if project_id in i['name']:
                 return i['id']
         
-        return False # Should this return 0 instead?
-
+        raise GroupsServiceError("Could not find group #{}".format(project_id))
+        
     def list_groups(self):
         group = self._admin.groups()
 
