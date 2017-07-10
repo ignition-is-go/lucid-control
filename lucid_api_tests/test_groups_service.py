@@ -48,13 +48,15 @@ def prebuilt_sample_project(request, sample_project, groups):
 
 def test_groups_prevent_duplicate_create(groups, prebuilt_sample_project):
     with pytest.raises(GroupsServiceError):
-        groups.create(
+        assert groups.create(
             prebuilt_sample_project['project_id'],
             prebuilt_sample_project['project_title'])
 
 def test_groups_rename(groups, prebuilt_sample_project):
-    assert groups.rename(
-        prebuilt_sample_project['project_id'], "-RENAME")
+    assert groups.rename(prebuilt_sample_project['project_id'], "RENAME")
+
+def test_get_group_id(groups, prebuilt_sample_project):
+    assert groups.get_group_id(prebuilt_sample_project['project_id'])
 
 def test_groups_list(groups):
     print(groups.list_groups())
@@ -64,8 +66,8 @@ def test_employee_list(groups):
     print(groups.list_employees())
     assert 0
 
-# def test_groups_archive(groups, prebuilt_sample_project):
-    # assert groups.archive(prebuilt_sample_project['project_id'])
+def test_groups_archive(groups, prebuilt_sample_project):
+    assert groups.archive(prebuilt_sample_project['project_id'])
 
 
 
