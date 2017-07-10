@@ -33,9 +33,7 @@ class GroupsService(service_template.ServiceTemplate):
 
         self._logger.info('Start Create Google Group for Project ID %s: %s', project_id, title)
 
-        # service = self._create_admin_service()
         group = self._admin.groups()
-
         slug = self._format_slug(project_id, title)
         reg = r'^([\w]+-[\w]+)'
 
@@ -49,7 +47,7 @@ class GroupsService(service_template.ServiceTemplate):
         try:
             create_response = group.insert(body=grp_info).execute()
             self._logger.info('Created Google Group %s (ID: %s) with email address %s', grp_info['name'], project_id, grp_info['email'])
-            self._logger.debug(create_response)
+            self._logger.debug('Create response = %s', create_response)
         except errors.HttpError as err:
             self._logger.error(err.message)
             if err.resp.status == 409:
@@ -57,13 +55,15 @@ class GroupsService(service_template.ServiceTemplate):
             else:
                 raise GroupsServiceError(err)
 
-# Still need try/except here - also great a loop which cycles through all employees in our directory - use 
-        # With the group created, let's add users.
-        membs = {
-            'email' : 'employees@lucidsf.com'
-        }
-        add_users = self._admin.members().insert(groupKey=grp_info['email'], body=membs).execute()
-        self._logger.debug('Added %s to %s', membs, grp_info['name'])
+        # With the group created, let's add some members.
+        emp_group = self.list_employees()
+
+        try: 
+            for i in emp_group:
+                add_users = self._admin.members().insert(groupKey=grp_info['email'], body=({'email' : i})).execute()
+                self._logger.debug('Added %s to %s', i, grp_info['name']) 
+        except errors.HttpError as err:
+            self._logger.debug('Failed try while adding members: {}'.format(err))
 
         return create_response['id']
 
@@ -148,9 +148,13 @@ class GroupsService(service_template.ServiceTemplate):
         print([r['name'] for r in response['groups']])
     
     def list_employees(self):
-        response = self._admin.members().list('employees@lucidsf.com')
+        employee = self._admin.members()
+        l = employee.list(groupKey='employees@lucidsf.com').execute()
+        
+        response = [r['email'] for r in l['members']]
 
-        print([r['name'] for r in response['members']])
+        # print([r['email'] for r in response['members']])
+        return response
 
     def _create_admin_service(self):
         scopes = ['https://www.googleapis.com/auth/admin.directory.group']

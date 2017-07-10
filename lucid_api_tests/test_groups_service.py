@@ -48,7 +48,7 @@ def prebuilt_sample_project(request, sample_project, groups):
 
 def test_groups_prevent_duplicate_create(groups, prebuilt_sample_project):
     with pytest.raises(GroupsServiceError):
-        groups.create(
+        assert groups.create(
             prebuilt_sample_project['project_id'],
             prebuilt_sample_project['project_title'])
 
