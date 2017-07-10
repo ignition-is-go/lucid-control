@@ -63,7 +63,8 @@ class GroupsService(service_template.ServiceTemplate):
                 add_users = self._admin.members().insert(groupKey=grp_info['email'], body=({'email' : i})).execute()
                 self._logger.debug('Added %s to %s', i, grp_info['name']) 
         except errors.HttpError as err:
-            self._logger.debug('Failed try while adding members: {}'.format(err))
+            self._logger.error('Failed try while adding members: {}'.format(err))
+            raise GroupsServiceError('Problem adding members to group!')
 
         return create_response['id']
 
