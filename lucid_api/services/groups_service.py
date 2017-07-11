@@ -116,7 +116,7 @@ class GroupsService(service_template.ServiceTemplate):
     def archive(self, project_id):
         '''
         Archives an existing google group.
-        Read: Change the isArchived to true.
+        Read: Change archiveOnly to true.
         '''
 
         self._logger.info("Started Archive Google Group for Project ID %s", project_id)
@@ -150,6 +150,9 @@ class GroupsService(service_template.ServiceTemplate):
 
     
     def get_group_id(self, project_id):
+        '''
+        Get the google group id (internal identifier)
+        '''
         group = self._admin.groups()
 
         response = group.list(customer='my_customer').execute()
@@ -162,20 +165,26 @@ class GroupsService(service_template.ServiceTemplate):
         raise GroupsServiceError("Could not find group #{}".format(project_id))
         
     def list_groups(self):
+        '''
+        Print a list of groups to stdout
+        '''
         group = self._admin.groups()
 
         response = group.list(customer='my_customer').execute()
 
         # For debugging purposes only
-        print([r['name'] for r in response['groups']])
+        # print([r['name'] for r in response['groups']])
+
+        return response
     
     def list_employees(self):
+        '''
+        Get a list of employees (members of the employees@lucidsf.com group)
+        '''
         employee = self._admin.members()
         l = employee.list(groupKey='employees@lucidsf.com').execute()
         
         response = [r['email'] for r in l['members']]
-
-        # print([r['email'] for r in response['members']])
         return response
 
     def _create_admin_service(self):
