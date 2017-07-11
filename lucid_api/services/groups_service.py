@@ -47,11 +47,15 @@ class GroupsService(service_template.ServiceTemplate):
         # Setup our default settings.
         dir_info = {
             "showInGroupDirectory" : "true", # let's make sure this group is in the directory
+            "whoCanPostMessage" : "ALL_MEMBERS_CAN_POST", # this should be the default but...
+            "whoCanViewMembership" : "ALL_IN_DOMAIN_CAN_VIEW", # everyone should be able to view the group
+            "includeInGlobalAddressList" : "true", # In case anyone decides to become an Outlook user
+            "isArchived" : "true", # We want to keep all the great messages
         }
 
         try:
             create_response = group.insert(body=grp_info).execute()
-            create_settings = grp_settings.patch(groupUniqueId=grp_info['email'], body=dir_info).execute() # This is where I left off - groupUniqueId unexpected arg
+            create_settings = grp_settings.patch(groupUniqueId=grp_info['email'], body=dir_info).execute() 
             self._logger.info('Created Google Group %s (ID: %s) with email address %s', grp_info['name'], project_id, grp_info['email'])
             self._logger.debug('Create response = %s', create_response)
         except errors.HttpError as err:
@@ -112,7 +116,7 @@ class GroupsService(service_template.ServiceTemplate):
     def archive(self, project_id):
         '''
         Archives an existing google group.
-        Read: Change the ShowInDirectory to False.
+        Read: Change the isArchived to true.
         '''
 
         self._logger.info("Started Archive Google Group for Project ID %s", project_id)
@@ -124,17 +128,23 @@ class GroupsService(service_template.ServiceTemplate):
             self._logger.error("Group with project ID %s does not exist.", project_id)
             raise GroupsServiceError("Can't archive, no project ID # %s", project_id)
         
-        group = self._admin.groups()
-        grp_info = { "showInGroupDirectory" : "false", }
+        grp_settings = self._group.groups()
+
+        em = "p-{}@lucidsf.com".format(project_id)
+        dir_info = { 
+            "archiveOnly" : "true", # archive that bad boy
+            "whoCanPostMessage" : "NONE_CAN_POST", # this is a requirement for archiveOnly
+            "includeInGlobalAddressList" : "true", # don't need this anymore
+        }
         
         # 2. Remove the group from the directory
         try:
-            create_response = self._admin.groups().patch(groupKey=group_id, body=grp_info).execute()
-            self._logger.info("Removed group with ID # %s from directory.", project_id)
-            return create_response.body['ok']
+            create_settings = grp_settings.patch(groupUniqueId=em, body=dir_info).execute()
+            self._logger.info("Archived group ID # %s.", project_id)
+            return ['id']
         except GroupsServiceError as err:
-            self._logger.error("Unable to remove Google Group with ID # %s from directory", project_id)
-            GroupsServiceError("Ack! Can't remove ID # %s from directory because: %s", project_id, err.message)
+            self._logger.error("Unable to archive Google Group with ID # %s.", project_id)
+            GroupsServiceError("Ack! Can't archive ID # %s because: %s", project_id, err.message)
         
         return ['id']
 
@@ -190,7 +200,7 @@ class GroupsService(service_template.ServiceTemplate):
                 scopes= scopes)
             credentials = credentials.create_delegated('developer@lucidsf.com')
             http = credentials.authorize(httplib2.Http())
-            service = discovery.build('admin', 'directory_v1', credentials=credentials)
+            service = discovery.build('groupssettings', 'v1', credentials=credentials)
 
             return service
 
