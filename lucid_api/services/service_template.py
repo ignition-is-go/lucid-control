@@ -19,7 +19,7 @@ class ServiceTemplate(object):
     _pretty_name = "Generic Service"
     
 
-    def _setup_logger(self, level=constants.LOG_LEVEL, to_file=False):
+    def _setup_logger(self, level=constants.LOG_LEVEL, to_file=True):
         '''
         Sets up the logger for the service
 

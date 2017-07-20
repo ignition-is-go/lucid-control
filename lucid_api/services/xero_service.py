@@ -12,6 +12,7 @@ import logging
 import constants
 import re
 import service_template 
+import os
 
 class XeroService(service_template.ServiceTemplate):
 
@@ -29,12 +30,14 @@ class XeroService(service_template.ServiceTemplate):
         
         self._logger = self._setup_logger(level='debug', to_file=True)
         
-
+        self._omit = os.environ['XERO_OMMIT']
         
     def create(self, project_id, title, silent=None):
         '''
         Creates a new Xero tracking category
         '''
+        if self._omit: return True
+        
         self._logger.info("Attempting to create Xero category for #%s",project_id)
         slug = self._format_slug(project_id, title)
         #check if the tracking category exists:
@@ -63,6 +66,8 @@ class XeroService(service_template.ServiceTemplate):
         '''
         Rename the Xero tracking category with the project_id
         '''
+        if self._omit: return True
+
         self._logger.info("Attempting to rename Xero category for #%s to %s", project_id, new_title)
 
         try:
@@ -86,6 +91,8 @@ class XeroService(service_template.ServiceTemplate):
         '''
         Archive the tracking category for project_id
         '''
+        if self._omit: return True
+
         self._logger.info("Attempting to archive Xero category for #%s", project_id)
 
         try:
@@ -118,6 +125,7 @@ class XeroService(service_template.ServiceTemplate):
             str: Xero tracking category option ID (or False)
         '''
         self._xero.populate_tracking_categories()
+        project_id = int(project_id)
 
         self._logger.info("Starting search for %s", str(project_id))
         for option in self._xero.TCShow.options.all():

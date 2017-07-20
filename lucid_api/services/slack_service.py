@@ -11,6 +11,7 @@ import constants
 import requests.sessions
 import os
 import re
+import simplejson as json
 
 
 class SlackService(service_template.ServiceTemplate):
@@ -30,6 +31,9 @@ class SlackService(service_template.ServiceTemplate):
         self._slack_bot = slacker.Slacker(bot_token)
         self._slack_team = slacker.Slacker(team_token)
 
+        # get user info for the slack bot
+        self._bot_info = self._slack_bot.auth.test().body
+
         self._logger = self._setup_logger(to_file=True)
 
 
@@ -38,7 +42,7 @@ class SlackService(service_template.ServiceTemplate):
         Handles the process of creating a new slack channel, including adding people to it
         '''
         self._logger.info('Start Create Slack for ProjectID %s: %s',project_id, title)
-
+        create_success = False
         # first, look to see if the channel exists
         try:
             channel = self._find(project_id)
@@ -50,10 +54,30 @@ class SlackService(service_template.ServiceTemplate):
                 # create the channel first
                 create_response = self._slack_team.channels.create(name=slug)
                 channel = create_response.body['channel']
+                create_success = bool(create_response.body['ok'])
+                logger.debug("Slack Create Response: %s", create_response.body)
 
                 self._logger.info("Successfully created channel for #%s", project_id)
 
             except slacker.Error as err:
+                if slacker.Error.message == "is_archived":
+                    #we managed to try and make a channel which has the exact name as this one and is archived
+                    self._logger.warn("EDGE CASE: Channel %s exists and is archived", slug)
+                    if len(slug) == 21:
+                        slug = slug[0:-1] + "_"
+                    else: slug += "_"
+
+                    self._logger.debug("Reattempting with slug: %s", slug)
+                    try:
+                        create_response = self._slack_team.channels.create(name=slug)
+                        channel = create_response.body['channel']
+                        self._logger.info("Compromise slug %s success. Channel created", slug)
+                        create_success = bool(create_response.body['ok'])
+
+                    except slacker.Error as err2:
+                        self._logger.error("Another slack error: %s", err2.message)
+                        raise SlackServiceError("Channel {} could not be created (is one already archived?)".format(slug))
+
                 # whoops!
                 self._logger.error("Error Creating Slack Channel for project # %s: %s", project_id, err)
                 raise SlackServiceError("Could not create channel for #%s, Slack API error: %s", project_id, err.message)
@@ -66,28 +90,36 @@ class SlackService(service_template.ServiceTemplate):
             #even if the channel was created already, try and invite before we throw exceptions
             
             try:
+
                 #invite the bot user
                 invite_bot_response = self._slack_team.channels.invite(
                     channel=channel['id'],
-                    user=os.environ.get('SLACK_APP_BOT_USERID')
+                    user= self._bot_info['user_id']
                     )
                 self._logger.info("Successfully invited bot to channel for #%s", project_id)
-                
-                if not silent:
+
+            except slacker.Error as err:
+                self._logger.error("Error inviting the Lucid Control Bot to the Slack Channel for project # %s because slacker.Error: %s", project_id, err)
+                raise SlackServiceError("Could not invite Lucid Control Bot to channel for #%s, Slack API error: %s", project_id, err.message)
+
+            try:
+                if not silent and os.environ['SLACK_INVITE_USERGROUP'] is not "" :
                     invite_group_response = self._slack_team.usergroups.update(
-                        usergroup='S5J987J02',
+                        usergroup=os.environ['SLACK_INVITE_USERGROUP'],
                         channels=channel['id']
                     )
                     self._logger.info("Successfully invited usergroup channel for #%s", project_id)
                     
                     #check for everyone's success
-                    return bool(create_response.body['ok'] and 
+                    return bool(create_success and 
                         invite_bot_response.body['ok'] and
                         invite_group_response.body['ok'])
 
+
                 else: 
                     # since we're not inviting the usergroup, don't check them for success
-                    return bool(create_response.body['ok'] and 
+                    self._logger.info("Create::%s | Invite::%s", create_success, invite_bot_response.body['ok'])
+                    return bool(create_success and 
                         invite_bot_response.body['ok'])
 
             except slacker.Error as err:
@@ -252,6 +284,31 @@ class SlackService(service_template.ServiceTemplate):
         ).body
 
         return response['ok']    
+    def respond_to_url(self, url, text="", ephemeral=True, attachments=[]):
+        '''respond to a slack action or command'''
+
+        message = {
+            'text': text,
+            'attachments': attachments,
+            'parse': True
+        }
+
+        if ephemeral: 
+            message['response_type'] = 'ephemeral'
+        
+        hook = slacker.IncomingWebhook(url)
+
+        response = hook.post(message)
+
+        self._logger.info("Posted to %s", url)
+        self._logger.info("Response: %s", response)
+
+        return response
+
+        if response.status_code in range(200,299):
+            return True
+        else:
+            raise SlackServiceError("Slack returned an error: {}".format(response.contents))
 
     def get_project_id(self, slack_channel_id="", slack_channel_name=""):
         '''Takes a slack channel ID and returns a project_id from it'''
@@ -261,18 +318,18 @@ class SlackService(service_template.ServiceTemplate):
 
         self._logger.info("Starting search for project ID for channel: %s", slack_channel_id)
 
-        if slack_channel_id is not None and slack_channel_name is None:
-            try:
-                channel_response = self._slack_team.channels.info(slack_channel_id)
-                if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
+        try:
+            search = slack_channel_id if slack_channel_id is not None else "#"+slack_channel_name
+            channel_response = self._slack_team.channels.info(search)
+            if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
 
-            except slacker.Error or SlackServiceError as err:
-                self._logger.error("Had an issue with accessing the team slack API: %s", err.message)
-                raise SlackServiceError("Couldn't find the requested channel")
+        except slacker.Error or SlackServiceError as err:
+            self._logger.error("Had an issue with accessing the team slack API: %s", err.message)
+            raise SlackServiceError("Couldn't find the requested channel")
 
-            else:
-                self._logger.debug("Got info back: %s", channel_response)
-                slack_channel_name = channel_response.body['channel']['name']
+        else:
+            self._logger.debug("Got info back: %s", channel_response)
+            slack_channel_name = channel_response.body['channel']['name']
         
         self._logger.debug("Searching for slack channel name = %s", slack_channel_name)
         m = re.match(self._DEFAULT_REGEX, slack_channel_name)
@@ -292,6 +349,7 @@ class SlackService(service_template.ServiceTemplate):
             
             raise SlackServiceError('Channel could not be associated with a project ID')
 
+    
     def get_id(self, project_id):
         '''
         Uses the project id to return a slack channel id
@@ -308,16 +366,27 @@ class SlackService(service_template.ServiceTemplate):
     def get_link(self, project_id):
         return ""
     
+    def get_user(self, user_id):
+        '''gets a user's info based on slack id'''
+        try:
+            user = self._slack_team.users.info(user_id).body['user']
+            return user
+        except Exception as err:
+            self._logger.error("Couldn't find user for uid %s because: %s", user_id, err.message)
+            raise SlackServiceError("User not found._({})_".format(err.message))
+
     def _find(self, project_id):
         '''
         Finds and returns a slack channel dictionary for the given project number
         '''
+        project_id = int(project_id)
         self._logger.info('Searching for channel for #%s',project_id)
 
         channels = self._slack_team.channels.list(exclude_archived=True,exclude_members=True)
     
         for channel in channels.body['channels']:
             m = re.match(self._DEFAULT_REGEX, channel['name'])
+            self._logger.debug("Checking channel %s", channel['name'])
             if m and int(m.group('project_id')) == project_id:
                 self._logger.info('Found channel for #%s: %s',project_id,channel)
                 return channel

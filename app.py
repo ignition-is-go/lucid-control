@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request, render_template, make_response, jsonify
 import requests
-import json
+import simplejson as json
 from slackclient import SlackClient
 import datetime
 import hashlib
@@ -1106,14 +1106,16 @@ def lucid_create():
         logger.info("Confirmed Slack token")
         
         command_text = request.form.get('text')
+        channel_name = request.form.get('channel_name')
+        callback_url = request.form.get('response_url')
         logger.debug("Preparing to thread lucid_api.create(%s)", command_text)
-        t = Thread(target=lucid_api.create, args=[command_text])
+        t = Thread(target=lucid_api.create_from_slack, args=[request.form])
         t.start()
         logger.info("Lucid API Create Thread Away, returning 200 to Slack")
 
-        waiting_message = {'text': 'Working to create now...', 'response_type': 'ephemeral'}
-        return jsonify(waiting_message)
-        # return "", 200, {'ContentType':'application/json'}
+        # waiting_message = {'text': '...', 'response_type': 'ephemeral'}
+        # return jsonify(waiting_message)
+        return "", 200, {'ContentType':'application/json'}
     
 
 @app.route('/lucid-rename', methods=['POST'])
@@ -1136,8 +1138,7 @@ def lucid_rename():
         command_text = request.form.get('text')
         channel_name = request.form.get('channel_name')
         logger.debug("Preparing to thread lucid_api.rename(%s, %s)", channel_name, command_text)
-        t = Thread(target=lucid_api.rename_from_slack, 
-            args=[channel_name, command_text]) 
+        t = Thread(target=lucid_api.rename_from_slack, args=[request.form]) 
         t.start()
         logger.info("Lucid API Rename Thread Away, returning 200 to Slack")
         waiting_message = {'text': 'Working to rename now...', 'response_type': 'ephemeral'}
@@ -1166,8 +1167,7 @@ def lucid_archive():
         print "Preparing to thread lucid_api.archive(%s)" % channel_name
 
         logger.debug("Preparing to thread lucid_api.archive(%s)", channel_name)
-        t = Thread(target=lucid_api.archive_from_slack, 
-            args=[channel_name]) 
+        t = Thread(target=lucid_api.archive_from_slack, args=[request.form]) 
         t.start()    
         
         logger.info("Lucid API Archive Thread Away, returning 200 to Slack")
@@ -1175,6 +1175,72 @@ def lucid_archive():
         return jsonify(waiting_message)
         # return "{", 200, {'ContentType':'application/json'}
 
+@app.route("/lucid-action-response", methods=['POST'])
+def lucid_action_handler():
+    slack_data = json.loads(request.form.get('payload'))
+    token = slack_data['token']
+    if token is None:
+        token = request.form.get("token")
+    logger.info("Verification token sent=%s", token)
 
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    else:
+        # we've verified it's our slack app a-knockin'
+        logger.info("Confirmed Slack token")
+
+        if "challenge" in slack_data.keys():
+            logger.info("Responding to challenge: %s", slack_data['challenge'])
+            return slack_data['challenge']
+        
+        elif "callback_id" in slack_data.keys():
+            logger.info("Routing Action: %s", slack_data['callback_id'])
+            func_name = slack_data['callback_id']
+            func = getattr(lucid_api, func_name)
+
+            logger.debug("Preparing to thread %s for action:%s - %s", func_name, slack_data['channel']['name'],slack_data['actions'])
+            t = Thread(target=func,args=[slack_data])
+            t.start()
+            logger.debug("Thread started!")
+            return "", 200, {'ContentType':'application/json'}
+
+            
+@app.route("/lead", methods=['POST'])
+def new_lead():
+    '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
+    
+    token = request.form.get('token')
+    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
+        # this didn't come from slack
+        return (
+            'Invalid Slack Verification Token. Commands disabled '
+            'until token is corrected. Try setting the '
+            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
+        )
+    
+    else:
+        # we've verified it's our slack app a-knockin'
+        logger.info("Confirmed Slack token")
+
+        channel_name = request.form.get('channel_name')
+
+        logger.debug("Preparing to thread lucid_api.archive(%s)", channel_name)
+        t = Thread(target=lucid_api.lead_create, args=[request.form]) 
+        t.start()    
+        
+        logger.info("Lucid API lead_create Thread Away, returning 200 to Slack")
+        waiting_message = {'text': 'Working on that lead...', 'response_type': 'ephemeral'}
+        return jsonify(waiting_message)
+        # return "{", 200, {'ContentType':'application/json'}
+
+@app.route("/test")
+def test():
+    return "Test good"
+    
 if __name__ == '__main__':
     app.run()
