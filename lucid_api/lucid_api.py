@@ -1,6 +1,6 @@
 import logging
-import os, sys
-from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service
+import os ,sys
+from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service, groups_service
 from services.service_template import ServiceException
 #import all_the_functions
 import requests
@@ -38,6 +38,7 @@ lucid_data = lucid_data_service.LucidDataService()
 slack = slack_service.SlackService()
 xero = xero_service.XeroService()
 ftrack = ftrack_service.FtrackService()
+google_groups = groups_service.GroupsService()
 dropbox = dropbox_service.DropboxService()
 
 #put these in order of desired execution
@@ -46,6 +47,7 @@ service_collection = [
     slack,
     ftrack,
     xero,
+    groups_service,
     dropbox
 ]
 

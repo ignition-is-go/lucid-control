@@ -54,9 +54,9 @@ class FtrackService(service_template.ServiceTemplate):
                 api_key=api_key,
                 api_user=api_user
                 )
-            self._logger.info('Initializing FTrack Server as: %s with API user %s', server_url, api_user)
+            self._logger.info('Initializing %s with API user %s', server_url, api_user)
         except TypeError as e:
-            self._logger.error("Seems that some environment variables may be missing")
+            self._logger.error("Environment variables may be missing")
             raise e
 
     def is_connected(self):
@@ -80,7 +80,7 @@ class FtrackService(service_template.ServiceTemplate):
 
         slug = self._format_slug(project_id,title)
 
-        self._logger.info('Start create project for %s', slug)
+        self._logger.info('Project: %s', slug)
 
         try:
             self._find(project_id)
@@ -95,7 +95,7 @@ class FtrackService(service_template.ServiceTemplate):
                 'full_name': slug,
                 'project_schema': lucid_schema
             })
-            self._logger.debug('Creating project %s (ID: %s)', slug, project_id)
+            self._logger.debug('Project: %s (ID: %s)', slug, project_id)
 
             # add default components:
             # TODO: Add default items from sample project
@@ -136,13 +136,13 @@ class FtrackService(service_template.ServiceTemplate):
         '''
         new_slug = self._format_slug(project_id,new_title)
 
-        self._logger.info('Start project rename - change project %s to %s', project_id, new_slug)
+        self._logger.info('Changing project %s to %s', project_id, new_slug)
 
         try:
             project = self._find(project_id)
         
         except FtrackServiceError:
-            self._logger.debug('Unable to rename project %s as it already exists!', project['full_name'])
+            self._logger.debug('Project %s already exists!', project['full_name'])
             return False
         
         else:
@@ -166,7 +166,7 @@ class FtrackService(service_template.ServiceTemplate):
             bool: Success or not
         '''
 
-        self._logger.info('Start project archive for %s', project_id)
+        self._logger.info('Starting for %s', project_id)
 
         try:
             project = self._find(project_id)
@@ -178,11 +178,11 @@ class FtrackService(service_template.ServiceTemplate):
         else:
             if unarchive:
                 new_status = "active"
-                self._logger.debug('Setting flag for project %s to be unarchived.', project_id)
+                self._logger.debug('Unarchive flag set for project %s', project_id)
             else:
                 # hidden is the ftrack version of archived
                 new_status = "hidden"
-                self._logger.debug('Setting flag for project %s to be archived.', project_id)
+                self._logger.debug('Archive flag set for project %s', project_id)
 
             project['status'] = new_status
             self._server.commit()
@@ -204,7 +204,7 @@ class FtrackService(service_template.ServiceTemplate):
             str: URL for the project
         '''
         
-        self._logger.info('Start get link for %s', project_id)
+        self._logger.info('Start for %s', project_id)
 
         try:
             project = self._find(project_id)
@@ -231,12 +231,12 @@ class FtrackService(service_template.ServiceTemplate):
         '''
         finds an ftrack project by project_id
         '''
-        self._logger.info("Trying to find Project ID # %s", project_id)
+        self._logger.info("Finding Project ID # %s", project_id)
 
         projects = self._server.query('Project where name is "{}"'.format(project_id))
 
         if len(projects) > 1:
-            self._logger.debug("Got more than one hit on the project number=%s", project_id)
+            self._logger.debug("Found multiple projects with Project ID%s", project_id)
             for project in projects:
                 self._logger.debug("Project#: %s\t Title: %s",
                                    project['name'],
