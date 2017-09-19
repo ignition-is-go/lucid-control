@@ -4,11 +4,11 @@ import requests
 import simplejson as json
 import datetime
 import hashlib
-import xml.etree.ElementTree as ET
-import dropbox
+# import xml.etree.ElementTree as ET
+# import dropbox
 import constants
-from xero import Xero
-from xero.auth import PrivateCredentials
+# from xero import Xero
+# from xero.auth import PrivateCredentials
 import re
 from threading import Thread
 import logging
