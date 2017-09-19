@@ -30,15 +30,22 @@ class XeroService(service_template.ServiceTemplate):
         
         self._logger = self._setup_logger(level='debug', to_file=True)
         
-        self._omit = os.environ['XERO_OMMIT']
+        self._omit = bool(os.environ['XERO_OMIT'])
+
+        self._logger.info("Initialized XeroService instance. XERO_OMIT=%s", self._omit)
+
         
     def create(self, project_id, title, silent=None):
         '''
         Creates a new Xero tracking category
         '''
-        if self._omit: return True
-        
+        # if ommiting the service, just return true.
         self._logger.info("Attempting to create Xero category for #%s",project_id)
+
+        if self._omit:
+            self._logger.warn("Omit set to TRUE. Skipping.")
+            return True
+        
         slug = self._format_slug(project_id, title)
         #check if the tracking category exists:
         try:
@@ -66,9 +73,12 @@ class XeroService(service_template.ServiceTemplate):
         '''
         Rename the Xero tracking category with the project_id
         '''
-        if self._omit: return True
 
         self._logger.info("Attempting to rename Xero category for #%s to %s", project_id, new_title)
+        
+        if self._omit:
+            self._logger.warn("Omit set to TRUE. Skipping.")
+            return True
 
         try:
             option = self._find(project_id)
@@ -91,9 +101,12 @@ class XeroService(service_template.ServiceTemplate):
         '''
         Archive the tracking category for project_id
         '''
-        if self._omit: return True
 
         self._logger.info("Attempting to archive Xero category for #%s", project_id)
+        
+        if self._omit:
+            self._logger.warn("Omit set to TRUE. Skipping.")
+            return True
 
         try:
             option = self._find(project_id)
