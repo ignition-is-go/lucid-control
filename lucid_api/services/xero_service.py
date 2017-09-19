@@ -29,8 +29,11 @@ class XeroService(service_template.ServiceTemplate):
         self._xero = Xero(credentials)
         
         self._logger = self._setup_logger(level='debug', to_file=True)
+
+        # can't figure out why heroku is reporting this as true...
+        self._logger.debug("os.environ['XERO_OMIT'] == %s ", os.environ['XERO_OMIT'])
         
-        self._omit = bool(os.environ['XERO_OMIT'])
+        self._omit = True if os.environ['XERO_OMIT'] is "True" else False
 
         self._logger.info("Initialized XeroService instance. XERO_OMIT=%s", self._omit)
 
