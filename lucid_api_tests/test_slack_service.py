@@ -30,8 +30,9 @@ def sample_project(request, sample_project_data, slack):
     try:
         slack.archive(sample_project_data['project_id'])
     except:
-        #something happened? Probably already tested archive
+        assert 0
         pass
+
 
 @pytest.fixture(scope='module')
 def prebuilt_sample_project(request, sample_project, slack):
@@ -39,8 +40,9 @@ def prebuilt_sample_project(request, sample_project, slack):
     assert slack.create(
             sample_project['project_id'],
             sample_project['project_title'],
-            invite=False)    
+            silent=False)    
     yield sample_project
+
 
 def test_slack_prevent_duplicate_create(slack, prebuilt_sample_project):
     
@@ -49,6 +51,7 @@ def test_slack_prevent_duplicate_create(slack, prebuilt_sample_project):
             prebuilt_sample_project['project_id'],
             prebuilt_sample_project['project_title']
             )
+
 
 def test_slack_rename(slack, prebuilt_sample_project):
     assert slack.rename(
@@ -63,13 +66,40 @@ def test_slack_post_basic(slack,prebuilt_sample_project):
         text
     )
 
+def test_find_channel_by_id(slack, prebuilt_sample_project):
+    assert isinstance(slack, SlackService)
+    project = prebuilt_sample_project
+    channel = slack._find(str(project['project_id']))
+    assert channel['name'] == slack._format_slug(
+        project['project_id'], project['project_title'])
+    
+
+def test_get_id_by_channel_name(slack):
+    assert isinstance(slack, SlackService)
+    channel_name = "122-purple_potato"
+    result_id = slack.get_project_id(slack_channel_name=channel_name)
+    print result_id
+    assert result_id == 122
+
+
 def test_slack_archive(slack, prebuilt_sample_project):
     assert slack.archive(
         prebuilt_sample_project['project_id'],
         )
 
-def test_find_channel_by_id(slack):
+def test_webhook(slack):
     assert isinstance(slack, SlackService)
-    channel = slack._find(110)
-    assert channel['name'] == "110-shall_we_"
+
+    url= 'https://hooks.slack.com/services/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'
+    print slack.respond_to_url(url, "Hook test", ephemeral=True)
+
+    assert 0
+
+def test_user_info(slack):
+    assert isinstance(slack, SlackService)
+    userid = "U5YMK71UZ"
+    user = slack.get_user(userid)
+    from pprint import pprint
+    pprint(user)
+    assert 0
     

@@ -194,7 +194,13 @@ class DropboxService(service_template.ServiceTemplate):
 
     def _get_schema(self):
         '''Gets the dropbox schema'''
-        schema = json.loads(os.environ['DROPBOX_FOLDER_SCHEMA'])
+        schema_raw = os.environ['DROPBOX_FOLDER_SCHEMA']
+        schema_swapped = schema_raw.replace('"','{sq}'
+            ).replace("'", '{dq}'
+            ).replace('{sq}', "'"
+            ).replace('{dq}', '"')
+            
+        schema = json.loads(schema_swapped)
         return schema
 
     def _find_schema(self, project_id, title=""):

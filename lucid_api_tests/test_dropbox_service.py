@@ -81,3 +81,8 @@ def test_dropbox_links(dropbox):
     print links
     assert 0
     
+def test_get_schema(dropbox):
+
+    schema = dropbox._get_schema()
+    print schema
+    assert 0 

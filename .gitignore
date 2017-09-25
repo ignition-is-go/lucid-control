@@ -9,6 +9,8 @@ env.json
 *.log
 .env
 
-ngrok*
 interact.py
+Procfile.local
 run.py
+ngrok*
+
