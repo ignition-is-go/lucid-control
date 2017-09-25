@@ -15,6 +15,8 @@ from apiclient import discovery, errors
 from oauth2client.service_account import ServiceAccountCredentials
 
 class GroupsService(service_template.ServiceTemplate):
+
+    _pretty_name = "Google Groups"
    
     def __init__(self):
         '''
