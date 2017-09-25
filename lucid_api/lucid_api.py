@@ -159,7 +159,7 @@ def archive(project_id, return_individual=False):
             if success: successes.append(s.get_pretty_name())
             else: failtures[s.get_pretty_name()] = "?"
         
-        except ServiceException as err:
+        except Exception as err:
             failtures[s.get_pretty_name()] = err.message
 
     slack_message = "*Archive Project Results*\n:white_check_mark: {success}\n{fail}".format(
