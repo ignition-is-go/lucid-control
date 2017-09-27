@@ -125,7 +125,7 @@ def rename(project_id, new_title):
             if success: successes.append(s.get_pretty_name())
             else: failtures[s.get_pretty_name()] = "?"
         
-        except ServiceException as err:
+        except Exception as err:
             failtures[s.get_pretty_name()] = err.message
 
     slack_message = "*Rename Project Results*\n:white_check_mark: {success}\n{fail}".format(
