@@ -14,6 +14,7 @@ import simplejson as json
 import os
 from lucid_api.services.groups_service import GroupsService, GroupsServiceError
 
+
 @pytest.fixture(scope='session')
 def groups():
     '''
@@ -21,6 +22,7 @@ def groups():
     '''
 
     return GroupsService()
+
 
 @pytest.fixture(scope='module')
 def sample_project(request, sample_project_data, groups):
@@ -36,6 +38,7 @@ def sample_project(request, sample_project_data, groups):
     #     #something happened? Probably already tested archive
     #     pass
 
+
 @pytest.fixture(scope='module')
 def prebuilt_sample_project(request, sample_project, groups):
     '''
@@ -46,25 +49,31 @@ def prebuilt_sample_project(request, sample_project, groups):
             sample_project['project_title'])
     yield sample_project
 
+
 def test_groups_prevent_duplicate_create(groups, prebuilt_sample_project):
     with pytest.raises(GroupsServiceError):
         assert groups.create(
             prebuilt_sample_project['project_id'],
             prebuilt_sample_project['project_title'])
 
+
 def test_groups_rename(groups, prebuilt_sample_project):
     assert groups.rename(prebuilt_sample_project['project_id'], "RENAME")
 
+
 def test_get_group_id(groups, prebuilt_sample_project):
     assert groups.get_group_id(prebuilt_sample_project['project_id'])
+
 
 def test_groups_list(groups):
     print(groups.list_groups())
     assert 0
 
+
 def test_employee_list(groups):
     print(groups.list_employees())
     assert 0
+
 
 def test_groups_archive(groups, prebuilt_sample_project):
     assert groups.archive(prebuilt_sample_project['project_id'])
