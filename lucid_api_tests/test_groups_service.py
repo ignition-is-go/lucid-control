@@ -14,7 +14,6 @@ import simplejson as json
 import os
 from lucid_api.services.groups_service import GroupsService, GroupsServiceError
 
-
 @pytest.fixture(scope='session')
 def groups():
     '''
