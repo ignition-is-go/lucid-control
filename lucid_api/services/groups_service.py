@@ -129,9 +129,8 @@ class GroupsService(service_template.ServiceTemplate):
             raise GroupsServiceError("Can't archive, no project ID # %s", project_id)
         
         grp_settings = self._group.groups()
+        em = self.get_group_email(project_id)
 
-
-        em = "p-{}@lucidsf.com".format(project_id)
         dir_info = { 
             "archiveOnly" : "true", # archive that bad boy
             "whoCanPostMessage" : "NONE_CAN_POST", # this is a requirement for archiveOnly
@@ -163,7 +162,24 @@ class GroupsService(service_template.ServiceTemplate):
                 return i['id']
         
         raise GroupsServiceError("Could not find group #{}".format(project_id))
-        
+
+    def get_group_email(self, project_id):
+        '''
+        Get the google group email address
+        '''
+        group = self._admin.groups()
+
+        response = group.list(customer='my_customer').execute()
+        project_id = str(project_id)
+
+        group_id = self.get_group_id(project_id)
+
+        for i in response['groups']:
+            if group_id in i['id']:
+                return i['email']
+
+        raise GroupsServiceError("Could not find group_id #{}".format(group_id))
+
     def list_groups(self):
         '''
         Print a list of groups to stdout
