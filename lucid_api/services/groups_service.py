@@ -15,7 +15,8 @@ from apiclient import discovery, errors
 from oauth2client.service_account import ServiceAccountCredentials
 
 class GroupsService(service_template.ServiceTemplate):
-
+    _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Z])-(?P<project_id>\d{4})')
+    _DEFAULT_FORMAT = "{typecode}-{project_id:04d}"
     _pretty_name = "Google Groups"
    
     def __init__(self):
@@ -37,10 +38,14 @@ class GroupsService(service_template.ServiceTemplate):
         group = self._admin.groups()
         grp_settings = self._group.groups()
         slug = self._format_slug(project_id, title)
-        reg = r'^([\w]+-[\w]+)'
+
+        # TODO: Remove this line when testing of the new DEFAULT_FORMAT/REGEX is complete
+        # reg = r'^([\w]+-[\w]+)'
 
         grp_info = {
-            "email" : "{}@lucidsf.com".format(re.match(reg, slug).group()), # email address of the group
+            "email" : "{}@lucidsf.com".format(slug), # email address for the group
+            # TODO: Remove this line when testing of the new DEFAULT_FORMAT/REGEX is complete
+            # "email" : "{}@lucidsf.com".format(re.match(reg, slug).group()), # email address of the group
             "name" : slug, # group name
             "description" : "Group Email for {}".format(slug), # group description
         }
