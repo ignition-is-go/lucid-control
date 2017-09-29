@@ -39,13 +39,8 @@ class GroupsService(service_template.ServiceTemplate):
         grp_settings = self._group.groups()
         slug = self._format_slug(project_id, title)
 
-        # TODO: Remove this line when testing of the new DEFAULT_FORMAT/REGEX is complete
-        # reg = r'^([\w]+-[\w]+)'
-
         grp_info = {
             "email" : "{}@lucidsf.com".format(slug), # email address for the group
-            # TODO: Remove this line when testing of the new DEFAULT_FORMAT/REGEX is complete
-            # "email" : "{}@lucidsf.com".format(re.match(reg, slug).group()), # email address of the group
             "name" : slug, # group name
             "description" : "Group Email for {}".format(slug), # group description
         }
