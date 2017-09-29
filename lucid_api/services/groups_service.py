@@ -15,7 +15,8 @@ from apiclient import discovery, errors
 from oauth2client.service_account import ServiceAccountCredentials
 
 class GroupsService(service_template.ServiceTemplate):
-
+    _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Z])-(?P<project_id>\d{4})')
+    _DEFAULT_FORMAT = "{typecode}-{project_id:04d}"
     _pretty_name = "Google Groups"
    
     def __init__(self):
@@ -27,7 +28,6 @@ class GroupsService(service_template.ServiceTemplate):
         self._admin = self._create_admin_service()
         self._group = self._create_groupsettings_service()
 
-
     def create(self, project_id, title, silent=False):
         '''
         Creates Google Groups Group and adds necessary users to it.
@@ -38,10 +38,9 @@ class GroupsService(service_template.ServiceTemplate):
         group = self._admin.groups()
         grp_settings = self._group.groups()
         slug = self._format_slug(project_id, title)
-        reg = r'^([\w]+-[\w]+)'
 
         grp_info = {
-            "email" : "{}@lucidsf.com".format(re.match(reg, slug).group()), # email address of the group
+            "email" : "{}@lucidsf.com".format(slug), # email address for the group
             "name" : slug, # group name
             "description" : "Group Email for {}".format(slug), # group description
         }
@@ -114,7 +113,6 @@ class GroupsService(service_template.ServiceTemplate):
 
         return ['id']
 
-    
     def archive(self, project_id):
         '''
         Archives an existing google group.
@@ -131,8 +129,8 @@ class GroupsService(service_template.ServiceTemplate):
             raise GroupsServiceError("Can't archive, no project ID # %s", project_id)
         
         grp_settings = self._group.groups()
+        em = self.get_group_email(project_id)
 
-        em = "p-{}@lucidsf.com".format(project_id)
         dir_info = { 
             "archiveOnly" : "true", # archive that bad boy
             "whoCanPostMessage" : "NONE_CAN_POST", # this is a requirement for archiveOnly
@@ -150,7 +148,6 @@ class GroupsService(service_template.ServiceTemplate):
         
         return ['id']
 
-    
     def get_group_id(self, project_id):
         '''
         Get the google group id (internal identifier)
@@ -165,7 +162,24 @@ class GroupsService(service_template.ServiceTemplate):
                 return i['id']
         
         raise GroupsServiceError("Could not find group #{}".format(project_id))
-        
+
+    def get_group_email(self, project_id):
+        '''
+        Get the google group email address
+        '''
+        group = self._admin.groups()
+
+        response = group.list(customer='my_customer').execute()
+        project_id = str(project_id)
+
+        group_id = self.get_group_id(project_id)
+
+        for i in response['groups']:
+            if group_id in i['id']:
+                return i['email']
+
+        raise GroupsServiceError("Could not find group_id #{}".format(group_id))
+
     def list_groups(self):
         '''
         Print a list of groups to stdout
@@ -189,31 +203,31 @@ class GroupsService(service_template.ServiceTemplate):
         response = [r['email'] for r in l['members']]
         return response
 
+    @property
     def _create_admin_service(self):
         scopes = ['https://www.googleapis.com/auth/admin.directory.group']
 
-        with open("auths/lucid-control-b5aa575292fb.json",'r') as fp:
-            credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-                json.load(fp),
-                scopes= scopes)
-            credentials = credentials.create_delegated('developer@lucidsf.com')
-            http = credentials.authorize(httplib2.Http())
-            service = discovery.build('admin', 'directory_v1', credentials=credentials)
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+            json.loads(os.environ['GOOGLE_SERVICE_AUTH'].replace("'", "\"")),
+            scopes=scopes)
+        credentials = credentials.create_delegated('developer@lucidsf.com')
+        http = credentials.authorize(httplib2.Http())
+        service = discovery.build('admin', 'directory_v1', credentials=credentials)
 
-            return service
+        return service
     
     def _create_groupsettings_service(self):
         scopes = ['https://www.googleapis.com/auth/apps.groups.settings']
 
-        with open("auths/lucid-control-b5aa575292fb.json", 'r') as fp:
-            credentials = ServiceAccountCredentials.from_json_keyfile_dict(
-                json.load(fp),
-                scopes= scopes)
-            credentials = credentials.create_delegated('developer@lucidsf.com')
-            http = credentials.authorize(httplib2.Http())
-            service = discovery.build('groupssettings', 'v1', credentials=credentials)
+        credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+            json.loads(os.environ['GOOGLE_SERVICE_AUTH'].replace("'", "\"")),
+            scopes=scopes)
+        credentials = credentials.create_delegated('developer@lucidsf.com')
+        http = credentials.authorize(httplib2.Http())
+        service = discovery.build('groupssettings', 'v1', credentials=credentials)
 
-            return service
+        return service
+
 
 class GroupsServiceError(service_template.ServiceException):
     pass
