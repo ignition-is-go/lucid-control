@@ -3,6 +3,7 @@ Ftrack service tests
 
 '''
 
+import make_envs
 from basic_test_data import sample_project_data
 import os, random
 import pytest
@@ -10,14 +11,6 @@ import ftrack_api
 import simplejson as json
 from lucid_api.services.ftrack_service import FtrackService
 
-
-
-#load env vars
-with open("env.json") as fp:
-    jstring = fp.read().decode('utf-16-le')
-    envs = json.loads(jstring)
-    for key, value in envs.items():
-        os.environ[key] = value
 
 def test_env_variables():
     '''
