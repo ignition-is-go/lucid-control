@@ -115,8 +115,13 @@ class GroupsService(service_template.ServiceTemplate):
 
     def archive(self, project_id):
         '''
-        Archives an existing google group.
-        Read: Change archiveOnly to true.
+
+        Archives an existing google group. (Read: Change archiveOnly to true.)
+
+        :param project_id: The ID of the project you want to archive.
+        :type str:
+        :return: True or False
+        :type bool:
         '''
 
         self._logger.info("Started Archive Google Group for Project ID %s", project_id)
@@ -141,12 +146,59 @@ class GroupsService(service_template.ServiceTemplate):
         try:
             create_settings = grp_settings.patch(groupUniqueId=em, body=dir_info).execute()
             self._logger.info("Archived group ID # %s.", project_id)
-            return ['id']
+            return True
         except GroupsServiceError as err:
             self._logger.error("Unable to archive Google Group with ID # %s.", project_id)
             GroupsServiceError("Ack! Can't archive ID # %s because: %s", project_id, err.message)
         
-        return ['id']
+        return False
+
+    def _format_slug(self, project_id, title=None):
+        project_id = int(project_id)
+        m = re.match(self._DEFAULT_REGEX, title)
+
+        if m is not None:
+            # this means we've matched the regex
+            if int(m.group('project_id')) == project_id:
+                # confirm the project id's match, so extract just the title
+                title = m.group('project_title')
+                typecode = m.group('typecode')
+        else:
+            typecode = "P"
+
+        return self._DEFAULT_FORMAT.format(
+            typecode=typecode,
+            project_id=project_id,
+            title=title
+            )
+
+    def _find(self, project_id):
+        '''
+
+        Get a pointer to the project_id for the requested project.
+
+        :param project_id: The ID of the project you want to locate.
+        :type str:
+        :return:
+        '''
+
+        if not project_id:
+            self._logger.error('No project ID supplied to _find.')
+            return
+
+        self._logger.info('Attempting to find project ID {id}'.format(id=project_id))
+
+        group = self._admin.groups()
+        response = group.list(customer='my_customer').execute()
+
+        for i in response['groups']:
+            if re.match(i['email'], r'^P-0*(?P<project_id>\d+)@', re.IGNORECASE):
+                # TODO: Is this actually returning an object? If not, how do we make an instance of this to return?
+                self._logger.info('Found project ID {id} in {em}.'.format(id=project_id, em=i['email']))
+                return response['groups']['email'][i]
+
+        self._logger.debug('Unable to find projecft ID {id}.'.format(id=project_id))
+
 
     def get_group_id(self, project_id):
         '''
