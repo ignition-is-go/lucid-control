@@ -29,7 +29,6 @@ class ServiceTemplate(object):
         
         logger = logging.getLogger(type(self).__name__)
         assert isinstance(logger, logging.Logger)
-        logger.info("INFO TEST")
 
         if level.lower()[0] == 'w': logger.setLevel(logging.WARN)
         if level.lower()[0] == 'e': logger.setLevel(logging.ERROR)
@@ -48,7 +47,14 @@ class ServiceTemplate(object):
             handler = logging.FileHandler(log_path)
             formatter = logging.Formatter('%(asctime)s | %(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
             handler.setFormatter(formatter)
-            logger.addHandler(handler)  
+            handler.set_name(type(self).__name__)
+            
+            for h in logger.handlers:
+                if h.name == type(self).__name__:
+                    # we found a duplicate, so don't create it
+                    handler = None
+
+            if handler is not None: logger.addHandler(handler)  
 
         elif constants.IS_HEROKU:
             handler = logging.StreamHandler(sys.stdout)
