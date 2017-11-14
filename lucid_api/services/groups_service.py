@@ -14,6 +14,7 @@ import re
 from apiclient import discovery, errors
 from oauth2client.service_account import ServiceAccountCredentials
 
+
 class GroupsService(service_template.ServiceTemplate):
     _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Z])-(?P<project_id>\d{4})')
     _DEFAULT_FORMAT = "{typecode}-{project_id:04d}"
@@ -48,7 +49,7 @@ class GroupsService(service_template.ServiceTemplate):
         # Setup our default settings.
         dir_info = {
             "showInGroupDirectory" : "true", # let's make sure this group is in the directory
-            "whoCanPostMessage" : "ALL_MEMBERS_CAN_POST", # this should be the default but...
+            "whoCanPostMessage" : "ANYONE_CAN_POST", # this should be the default but...
             "whoCanViewMembership" : "ALL_IN_DOMAIN_CAN_VIEW", # everyone should be able to view the group
             "includeInGlobalAddressList" : "true", # In case anyone decides to become an Outlook user
             "isArchived" : "true", # We want to keep all the great messages
@@ -198,7 +199,6 @@ class GroupsService(service_template.ServiceTemplate):
                 return response['groups']['email'][i]
 
         self._logger.debug('Unable to find projecft ID {id}.'.format(id=project_id))
-
 
     def get_group_id(self, project_id):
         '''
