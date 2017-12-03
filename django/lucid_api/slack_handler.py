@@ -22,7 +22,7 @@ def rename(request):
 def archive(request):
     pass
 
-def action_response(request);
+def action_response(request):
     ''' handles all slack action message responses'''
     logger = logging.getLogger(__name__+": action_handler")
     # slack tends to send json all bundled in the 'payload' form var

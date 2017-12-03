@@ -10,7 +10,6 @@ import dropbox
 import simplejson as json
 import os
 import re
-import constants
 import logging
 import datetime
 from werkzeug.urls import url_fix
@@ -25,7 +24,7 @@ class DropboxService(service_template.ServiceTemplate):
         self._logger = self._setup_logger(to_file=True)
         self._logger.info("Instantiated Dropbox!")
 
-        self._dbx = dropbox.Dropbox(constants.DROPBOX_ACCESS_TOKEN)
+        self._dbx = dropbox.Dropbox(os.environ.get('DROPBOX_ACCESS_TOKEN'))
         
     def create(self, project_id, title, silent=None):
         '''

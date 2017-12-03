@@ -9,7 +9,6 @@ K. Bjordahl
 from xero import Xero 
 from xero.auth import PrivateCredentials
 import logging
-import constants
 import re
 import service_template 
 import os
@@ -25,7 +24,7 @@ class XeroService(service_template.ServiceTemplate):
         if slug_regex is not None:
                 self._DEFAULT_REGEX = slug_regex
         
-        credentials = PrivateCredentials(constants.XERO_CONSUMER_KEY, constants.XERO_API_PRIVATE_KEY)
+        credentials = PrivateCredentials(os.environ.get('XERO_CONSUMER_KEY'), os.environ.get('XERO_API_PRIVATE_KEY'))
         self._xero = Xero(credentials)
         
         self._logger = self._setup_logger(level='debug', to_file=True)

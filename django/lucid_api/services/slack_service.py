@@ -7,7 +7,6 @@ K Bjordahl
 
 import service_template
 import slacker
-import constants
 import requests.sessions
 import os
 import re

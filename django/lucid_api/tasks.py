@@ -3,12 +3,11 @@ from celery import shared_task
 
 import logging
 import os ,sys
-from services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service, groups_service
-from services.service_template import ServiceException
+from .services import ftrack_service, xero_service, slack_service, lucid_data_service, dropbox_service, groups_service
+from .services.service_template import ServiceException
 #import all_the_functions
 import requests
-import constants
-
+from django.conf import settings
 
 # setup logging
 logger = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class Unbuffered(object):
 sys.stdout = Unbuffered(sys.stdout)
 
 logger = logging.getLogger(__name__)
-logger.setLevel(constants.LOG_LEVEL_TYPE)
+logger.setLevel(settings.LOG_LEVEL_TYPE)
 handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter('%(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
 handler.setFormatter(formatter)

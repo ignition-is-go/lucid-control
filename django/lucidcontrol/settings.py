@@ -130,3 +130,14 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
+
+# logging
+
+LOG_LEVEL = os.environ.get('LOG_LEVEL')
+
+if LOG_LEVEL:
+    if LOG_LEVEL.lower()[0] == 'w': LOG_LEVEL_TYPE = logging.WARN
+    if LOG_LEVEL.lower()[0] == 'e': LOG_LEVEL_TYPE = logging.ERROR
+    if LOG_LEVEL.lower()[0] == 'i': LOG_LEVEL_TYPE = logging.INFO
+    if LOG_LEVEL.lower()[0] == 'd': LOG_LEVEL_TYPE = logging.DEBUG
+    if LOG_LEVEL.lower()[0] == 'c': LOG_LEVEL_TYPE = logging.CRITICAL

@@ -10,7 +10,6 @@ import re
 import os
 import sys
 import logging
-import constants
 
 class ServiceTemplate(object):
 
@@ -19,7 +18,7 @@ class ServiceTemplate(object):
     _pretty_name = "Generic Service"
     
 
-    def _setup_logger(self, level=constants.LOG_LEVEL, to_file=True):
+    def _setup_logger(self, level=logging.DEBUG, to_file=True):
         '''
         Sets up the logger for the service
 
