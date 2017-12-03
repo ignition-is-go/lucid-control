@@ -16,3 +16,4 @@ run.py
 ngrok*
 
 
+*.sqlite3

@@ -1151,13 +1151,7 @@ def lucid_archive():
     '''This screens to confirm the trigger came from slack, then sends to lucid_api'''
     
     token = request.form.get('token')
-    if token != os.environ['SLACK_VERIFICATION_TOKEN']:
-        # this didn't come from slack
-        return (
-            'Invalid Slack Verification Token. Commands disabled '
-            'until token is corrected. Try setting the '
-            'SLACK_VERIFICATION_TOKEN environment variable in Heroku/LucidControl'
-        )
+    
     
     else:
         # we've verified it's our slack app a-knockin'
