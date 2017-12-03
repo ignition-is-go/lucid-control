@@ -47,7 +47,7 @@ service_collection = [
     slack,
     ftrack,
     xero,
-    groups_service,
+    google_groups,
     dropbox
 ]
 
@@ -81,7 +81,7 @@ def create(title, silent=False):
             if success: successes[s.get_pretty_name()] = s.get_link(project_id)
             else: failtures[s.get_pretty_name()] = "?"
         
-        except ServiceException as err:
+        except Exception as err:
             failtures[s.get_pretty_name()] = err.message
 
     logger.info("Service creation complete: Successes: %s \n\t\tFailtures: %s",
@@ -125,7 +125,7 @@ def rename(project_id, new_title):
             if success: successes.append(s.get_pretty_name())
             else: failtures[s.get_pretty_name()] = "?"
         
-        except ServiceException as err:
+        except Exception as err:
             failtures[s.get_pretty_name()] = err.message
 
     slack_message = "*Rename Project Results*\n:white_check_mark: {success}\n{fail}".format(
@@ -159,7 +159,7 @@ def archive(project_id, return_individual=False):
             if success: successes.append(s.get_pretty_name())
             else: failtures[s.get_pretty_name()] = "?"
         
-        except ServiceException as err:
+        except Exception as err:
             failtures[s.get_pretty_name()] = err.message
 
     slack_message = "*Archive Project Results*\n:white_check_mark: {success}\n{fail}".format(
