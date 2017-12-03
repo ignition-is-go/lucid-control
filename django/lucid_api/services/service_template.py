@@ -11,6 +11,9 @@ import os
 import sys
 import logging
 
+from django.conf import settings
+
+
 class ServiceTemplate(object):
 
     _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Z])-(?P<project_id>\d{4})-(?P<project_title>.+)')
@@ -18,7 +21,7 @@ class ServiceTemplate(object):
     _pretty_name = "Generic Service"
     
 
-    def _setup_logger(self, level=logging.DEBUG, to_file=True):
+    def _setup_logger(self, level=settings.LOG_LEVEL_TYPE, to_file=True):
         '''
         Sets up the logger for the service
 
@@ -28,20 +31,14 @@ class ServiceTemplate(object):
         
         logger = logging.getLogger(type(self).__name__)
         assert isinstance(logger, logging.Logger)
-        logger.info("INFO TEST")
 
-        if level.lower()[0] == 'w': logger.setLevel(logging.WARN)
-        if level.lower()[0] == 'e': logger.setLevel(logging.ERROR)
-        if level.lower()[0] == 'i': logger.setLevel(logging.INFO)
-        if level.lower()[0] == 'd': logger.setLevel(logging.DEBUG)
-        if level.lower()[0] == 'c': logger.setLevel(logging.CRITICAL)
 
         try:
             logging_path = os.environ['LOG_PATH']
         except KeyError:
             logging_path = "/logs"
 
-        if to_file and not constants.IS_HEROKU:
+        if to_file and not settings.IS_HEROKU:
             if not os.path.isdir(logging_path): os.mkdir(logging_path)
             log_path = os.path.join(logging_path, '{}.log'.format(type(self).__name__))
             handler = logging.FileHandler(log_path)

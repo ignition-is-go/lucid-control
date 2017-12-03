@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
 import os
+import logging
 import dj_database_url
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -133,7 +134,7 @@ CELERY_ENABLE_UTC = True
 
 # logging
 
-LOG_LEVEL = os.environ.get('LOG_LEVEL')
+LOG_LEVEL = str(os.environ.get('LOG_LEVEL',"info"))
 
 if LOG_LEVEL:
     if LOG_LEVEL.lower()[0] == 'w': LOG_LEVEL_TYPE = logging.WARN
@@ -141,3 +142,21 @@ if LOG_LEVEL:
     if LOG_LEVEL.lower()[0] == 'i': LOG_LEVEL_TYPE = logging.INFO
     if LOG_LEVEL.lower()[0] == 'd': LOG_LEVEL_TYPE = logging.DEBUG
     if LOG_LEVEL.lower()[0] == 'c': LOG_LEVEL_TYPE = logging.CRITICAL
+
+# heroku check
+IS_HEROKU = os.path.isdir("/app/.heroku")
+
+# local env hack
+if not IS_HEROKU:
+    import re
+    import os
+
+    with open('..\\.env','r') as fp:
+        document = fp.read()
+
+        # regex search for key and values in the .env file and assign to variables
+        d = re.findall(r'(?P<key>[\w\d_]+)=\"(?P<value>[^\"]*)\"\n?', document)
+
+        # write the key and value pairs to the os environment
+        for (key, value) in d:
+            os.environ[key] = value
