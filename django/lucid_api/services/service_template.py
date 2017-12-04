@@ -46,7 +46,7 @@ class ServiceTemplate(object):
             handler.setFormatter(formatter)
             logger.addHandler(handler)  
 
-        elif constants.IS_HEROKU:
+        elif settings.IS_HEROKU:
             handler = logging.StreamHandler(sys.stdout)
             formatter = logging.Formatter('%(levelname)-7s| %(module)s.%(funcName)s :: %(message)s')
             handler.setFormatter(formatter)

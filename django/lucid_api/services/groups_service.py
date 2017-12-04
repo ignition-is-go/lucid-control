@@ -26,7 +26,7 @@ class GroupsService(service_template.ServiceTemplate):
         '''
 
         self._logger = self._setup_logger(to_file=True)
-        # self._admin = self._create_admin_service()
+        self._admin = self._create_admin_service()
         self._group = self._create_groupsettings_service()
 
     def create(self, project_id, title, silent=False):
