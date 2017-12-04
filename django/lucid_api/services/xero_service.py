@@ -29,7 +29,7 @@ class XeroService(service_template.ServiceTemplate):
         
         self._logger = self._setup_logger(level='debug', to_file=True)
         
-        self._omit = os.environ['XERO_OMMIT']
+        self._omit = os.environ['XERO_OMIT']
         
     def create(self, project_id, title, silent=None):
         '''
