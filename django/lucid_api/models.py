@@ -46,6 +46,12 @@ class Project(models.Model):
         verbose_name="Project"
         verbose_name_plural="Projects"
 
+
+@receiver(models.signals.post_init, sender=Project)
+def execute_after_save(sender, instance, *args, **kwargs):
+    if created:
+        # do the create tasks here!
+        pass
  
 class ServiceConnection(models.Model):
     '''service connections to a project'''

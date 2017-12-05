@@ -33,7 +33,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         services_data = validated_data.pop('services')
-        album = Project.objects.create(**validated_data)
+        project = Project.objects.create(**validated_data)
         for service_data in services_data:
-            ServiceConnection.objects.create(album=album, **track_data)
-        return album
+            ServiceConnection.objects.create(project=project, **service_data)
+        return project
