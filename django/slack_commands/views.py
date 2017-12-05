@@ -1,11 +1,14 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import logging
 import simplejson as json
 
+from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from . import tasks
 
 def create(request):
-    assert(isinstance(request, HttpRequest))
     try:
         validate_slack(request.POST['token'])
     except InvalidSlackToken as e:

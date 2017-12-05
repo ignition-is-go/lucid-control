@@ -10,7 +10,7 @@ admin.site.register(ProjectType)
 
 class ServiceConnectionInline(admin.StackedInline):
     model = ServiceConnection
-    extra = 1
+    extra = 0
 
 class ProjectAdmin(admin.ModelAdmin):
     fieldsets = [

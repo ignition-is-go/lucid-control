@@ -20,7 +20,7 @@ class ProjectType(models.Model):
 
     @property
     def chr(self):
-        return str(character_code).upper()
+        return str(self.character_code).upper()
 
     def __str__(self):
         return self.description
@@ -53,6 +53,7 @@ class ServiceConnection(models.Model):
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
+        related_name="services",
     )
 
     service_list = (
@@ -69,9 +70,12 @@ class ServiceConnection(models.Model):
         choices=service_list
     )
 
+    # connection name is only necessary to disambiguate multiple connections to 
+    # the same service per project (slack? i dunno, maybe I'm planning too hard)
     connection_name = models.CharField(
         max_length=200,
-        blank=True
+        blank=True,
+        default=""
     )
 
     identifier = models.CharField(

@@ -33,6 +33,10 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
+    'material',
+    'material.frontend',
+    'material.admin',
+    'rest_framework',
     'lucid_api.apps.LucidApiConfig',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -76,7 +80,7 @@ WSGI_APPLICATION = 'lucidcontrol.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
-db_from_env = dj_database_url.config(conn_max_age=500)
+db_from_env = dj_database_url.config(conn_max_age=500, default="sqlite:///db.sqlite3")
 
 DATABASES = {
     'default': db_from_env

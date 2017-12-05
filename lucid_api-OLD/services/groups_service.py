@@ -255,7 +255,6 @@ class GroupsService(service_template.ServiceTemplate):
         response = [r['email'] for r in l['members']]
         return response
 
-    @property
     def _create_admin_service(self):
         scopes = ['https://www.googleapis.com/auth/admin.directory.group']
 
