@@ -6,18 +6,59 @@ from .models import Project, ServiceConnection, TemplateProject
 
 logger = logging.getLogger(__name__)
 
+class ServiceAction(object):
+    CREATE = 'create'
+    RENAME = 'rename'
+    ARCHIVE = 'archive'
+
 @shared_task
-def create_service(service_connection_id):
+def service_task(action, service_connection_id):
     ''' creates an element in a service, based on the service connection'''
+    logger.info("Got service task %s on %s: %s", action, project, service)
 
     service_connection = ServiceConnection.objects.get(pk=service_connection_id)
     project = service_connection.project
     service = service_connection.service
 
-    service_id = service.create(project.id, project.title, description=service_connection.connection_name)
-    service_connection.identifier = service_id
-    logger.info("Got id=%s from %s", service_id, service_connection.service_name)
-    service_connection.save()
+    try:
+        if action is ServiceAction.CREATE:
+            service_id, connection_name = service.create(
+                project.id, 
+                project.title, 
+                description=service_connection.connection_name
+                )
+        elif action is ServiceAction.RENAME:
+            service_id, connection_name = service.rename(
+                service.identifier, 
+                project.title, 
+                description=service_connection.connection_name
+                )
+        elif action is ServiceAction.ARCHIVE:
+            service_id, connection_name = service.archive(
+                service.identifier
+            )
+            service_connection.is_archived = True
+    except Exception as err:
+        logger.error("Error with %s on %s:%s.", action, project, service, exc_info=True)
+
+        project._message(
+            "Whoops... I seem to have had a problem while trying to {action}"
+            " {service} as part of {project}. \n"
+            "_{error}_".format(
+                action=action,
+                project=project,
+                service=service,
+                error=err.message
+            )
+        )
+
+    else:
+
+        service_connection.identifier = service_id
+        service_connection.connection_name = connection_name
+        logger.info("Got id=%s from %s", service_id, service_connection.service_name)
+        service_connection.save()
+
 
 
 

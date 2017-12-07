@@ -13,7 +13,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .models import Project, ServiceConnection, TemplateProject
-from .tasks import create_service
+from .tasks import service_task, ServiceAction
 
 logger = logging.getLogger(__name__)
 logger.info("Setting up signals!")
@@ -42,12 +42,18 @@ post_save.connect(
 logger.info("Connected template project handler")
 
 # Auto create new service connections if identifier is blank
-@receiver(post_save, sender=ServiceConnection)
+@receiver(post_save, sender=ServiceConnection, dispatch_uid="service_signals")
 def execute_after_create(sender, instance, created, raw, using, update_fields, *args, **kwargs):
-    # make a new connection only when we create new instances
     if created:
-        logger.info( "created service: %s=%s", instance.service_name, instance.identifier)
+        # make a new connection only when we create new instances
+        logger.info( "Got signal to create service: %s=%s", instance.service_name, instance.identifier)
         # if the identifier has been provided, we don't need to create it
         if instance.identifier == "":
-            create_service.delay(instance.id)
-        return
+            # send celery the creation task
+            service_task.delay(
+                ServiceAction.CREATE,
+                instance.id
+                )
+    
+
+    return

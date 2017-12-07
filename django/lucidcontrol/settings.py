@@ -16,6 +16,23 @@ import dj_database_url
 
 from kombu import Exchange, Queue
 
+# heroku check
+IS_HEROKU = os.path.isdir("/app/.heroku")
+
+# local env hack
+if not IS_HEROKU:
+    import re
+    import os
+
+    with open('../.env','r') as fp:
+        document = fp.read()
+
+        # regex search for key and values in the .env file and assign to variables
+        d = re.findall(r'(?P<key>[\w\d_]+)=\"(?P<value>[^\"]*)\"\n?', document)
+
+        # write the key and value pairs to the os environment
+        for (key, value) in d:
+            os.environ[key] = value
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -31,9 +48,6 @@ SECRET_KEY = 'p$t$je+)lah9bwozfj(w%n(6z!%vm*5mj0cj3wxk(foe4-p#&u'
 DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
-
-# heroku check
-IS_HEROKU = os.path.isdir("/app/.heroku")
 
 
 # Application definition
@@ -86,7 +100,7 @@ WSGI_APPLICATION = 'lucidcontrol.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
-db_from_env = dj_database_url.config(conn_max_age=500, default="sqlite:///db.sqlite3")
+db_from_env = dj_database_url.config(env="DATABASE_URL", conn_max_age=500, default="sqlite:///db.sqlite3")
 
 DATABASES = {
     'default': db_from_env
@@ -132,20 +146,6 @@ STATIC_URL = '/static/'
 
 
 
-# local env hack
-if not IS_HEROKU:
-    import re
-    import os
-
-    with open('../.env','r') as fp:
-        document = fp.read()
-
-        # regex search for key and values in the .env file and assign to variables
-        d = re.findall(r'(?P<key>[\w\d_]+)=\"(?P<value>[^\"]*)\"\n?', document)
-
-        # write the key and value pairs to the os environment
-        for (key, value) in d:
-            os.environ[key] = value
 
 # Celery Settings
 CELERY_BROKER_URL = os.environ.get('CLOUDAMQP_URL' )

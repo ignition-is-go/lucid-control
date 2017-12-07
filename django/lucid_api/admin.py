@@ -14,7 +14,7 @@ class ServiceConnectionInline(admin.StackedInline):
 
 class ProjectAdmin(admin.ModelAdmin):
     fieldsets = [
-        (None,               {'fields': ['type_code', 'title']}),
+        (None,               {'fields': ['type_code', 'title', 'is_archived']}),
     ]
     inlines = [ServiceConnectionInline]
 

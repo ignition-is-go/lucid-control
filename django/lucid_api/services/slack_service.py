@@ -50,10 +50,10 @@ class Service(service_template.ServiceTemplate):
         self._logger.info('Start Create Slack for ProjectID %s: %s',project_id, title)
         create_success = False
         
-        # we generate the channel slug using the project id and either the title or the description, if one is given
         slug = self._format_slug(
             project_id,
-            title if description is None else description
+            title,
+            description=description
             )
 
         try: 
@@ -128,13 +128,13 @@ class Service(service_template.ServiceTemplate):
             raise SlackServiceError("Could not invite bot+usergroup to channel for #%s, Slack API error: %s", project_id, err.message)
             
             
-        return channel['id']
+        return (channel['id'], channel['name_normalized'])
 
-    def rename(self, channel_id, new_title):
+    def rename(self, channel_id, new_title, description=None):
         '''
         Renames a slack channel based on it's channel ID
         '''
-        new_slug = self._format_slug(project_id,new_title)
+        new_slug = self._format_slug(project_id,new_title, description=description)
         self._logger.info('Start Rename Slack channel %s to %s',project_id, new_slug)
 
         try:
@@ -340,8 +340,6 @@ class Service(service_template.ServiceTemplate):
             raise SlackServiceError("Could not retrieve ID for the channel for #%s, because the project id could not be found", project_id)
         else:
             return channel['id']
-        
-    
     
     def get_link(self, project_id):
         return ""
@@ -374,14 +372,17 @@ class Service(service_template.ServiceTemplate):
         
         raise SlackServiceError("Couldn't find slack channel for project # %s", project_id)
 
-
-
-    def _format_slug(self, project_id, title):
+    def _format_slug(self, project_id, title, description=None):
         '''
         Makes a slack specific slug
         '''
         # m = re.match(self._DEFAULT_REGEX, title)
         # if m: title = m.group.title
+
+        # we generate the channel slug using the project id and either the title or the description, if one is given
+
+        title = title if description is None or description == "" else description
+
 
         slug = super(Service, self)._format_slug(project_id, title).lower()
 

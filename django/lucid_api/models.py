@@ -46,7 +46,8 @@ class ProjectType(models.Model):
 class Project(models.Model):
     ''' Lucid project '''
     type_code = models.ForeignKey(
-        ProjectType
+        ProjectType,
+        verbose_name="Type"
     )
     title = models.CharField(
         verbose_name="Project Title", 
@@ -59,6 +60,13 @@ class Project(models.Model):
 
     def __str__(self):
         return "{self.type_code.chr}-{self.id:04d} {self.title}".format(self=self)
+
+    def _message(self, message, ephemeral=False):
+        '''used by celery tasks to send messages to the project.
+
+        TODO: implement as slack message
+        '''
+        pass
 
     class Meta:
         verbose_name="Project"
@@ -73,13 +81,11 @@ class ServiceConnection(models.Model):
         on_delete=models.CASCADE,
         related_name="services"
     )
-
     service_name = models.CharField(
         max_length=200,
         verbose_name="Service Name",
         choices=SERVICE_LIST
     )
-
     # connection name is only necessary to disambiguate multiple connections to 
     # the same service per project (slack? i dunno, maybe I'm planning too hard)
     connection_name = models.CharField(
@@ -88,18 +94,30 @@ class ServiceConnection(models.Model):
         default="",
         help_text="Used by some connection types to differentiate multiple connections"
     )
-
     identifier = models.CharField(
         max_length=500,
         blank=True,
         help_text="If left blank, a new connection to this service will be created."
     )
+    is_messenger = models.BooleanField(
+        verbose_name="Messenger Channel",
+        help_text="If checked, this channel will receive all Lucid Control messages",
+        default=False,
+    )
+    is_archived = models.BooleanField(
+        verbose_name="Archived",
+        default=False
+    )
+
 
     @property
     def service(self):
         ''' returns an instance of the service class that this connection represents'''
         service_module = getattr(services, self.service_name)
         return service_module.Service()
+
+    def __str__(self):
+        return "{s.service_name}::{s.connection_name}".format(s=self)
 
 class TemplateProject(models.Model):
     ''' This model is used to define the template that is used to create new projects'''
