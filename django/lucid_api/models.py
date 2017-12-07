@@ -31,12 +31,12 @@ class ProjectType(models.Model):
         max_length=500,
         blank=False
     )
-    is_default = models.BooleanField(
-        verbose_name="Default Project Type",
-        help_text="If checked, this will be used as the type when creating new projects via the api"
-        default=False,
-        blank=False,
-    )
+    # is_default = models.BooleanField(
+    #     verbose_name="Default Project Type",
+    #     help_text="If checked, this will be used as the type when creating new projects via the api",
+    #     default=False,
+    #     blank=False,
+    # )
 
     @property
     def chr(self):
@@ -52,13 +52,10 @@ class ProjectType(models.Model):
 class Project(models.Model):
     ''' Lucid project '''
 
-    # get default type
-    default_type = ProjectType.objects.filter(is_default=True)[0]
-
     type_code = models.ForeignKey(
         ProjectType,
         verbose_name="Type",
-        default=default_type,
+        default="P",
     )
     title = models.CharField(
         verbose_name="Project Title", 

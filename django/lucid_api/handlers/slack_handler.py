@@ -13,7 +13,7 @@ TEAM_TOKEN = os.environ.get("SLACK_APP_TEAM_TOKEN")
 
 logger = logging.getLogger(__name__)
 
-def send_confirmation(slack_message)
+def send_confirmation(slack_message):
     ''' 
     send a confirmation for the command which was issued
     
