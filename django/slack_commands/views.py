@@ -2,27 +2,22 @@
 from __future__ import unicode_literals
 
 import logging
+import requests
 import simplejson as json
 
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
-from . import tasks
+from .slack_handler import send_confirmation, check_confirmation
 
-def create(request):
+def slash_command(request, command):
+    ''' handles the initial slash commands and sends a confirmation'''
     try:
         validate_slack(request.POST['token'])
     except InvalidSlackToken as e:
         return HttpResponse(e.message)
     else:
-        # we've verified the slack app, let's go!
-        tasks.create_from_slack.delay(request.POST)
-        return HttpResponse()
-    pass
-
-def rename(request):
-    pass
-
-def archive(request):
+        # we've validated the command came from our slack
+        send_confirmation(request.POST)
     pass
 
 def action_response(request):
@@ -47,16 +42,11 @@ def action_response(request):
             return slack_data['challenge']
         
         elif "callback_id" in slack_data.keys():
-            logger.info("Routing Action: %s", slack_data['callback_id'])
-            func_name = slack_data['callback_id']
-            func = getattr(api, func_name)
+            channel_id, command, arg = check_confirmation(slack_data)
 
-            logger.debug("Preparing to thread %s for action:%s - %s", func_name, slack_data['channel']['name'],slack_data['actions'])
-            # TODO: celery task here
-            # t = Thread(target=func,args=[slack_data])
-            # t.start()
-            # logger.debug("Thread started!")
-            return "", 200, {'ContentType':'application/json'}
+            # send to celery task
+
+
 
 
 def validate_slack(token):

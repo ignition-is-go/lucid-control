@@ -62,8 +62,30 @@ def service_task(action, service_connection_id):
         logger.info("Got id=%s from %s", service_id, service_connection.service_name)
         service_connection.save()
 
+@shared_task
+def execute_slash_command(command, arg, channel):
+    '''
+    Handles exectuing a slash command into the Lucid REST API
+    ### Params:
+    - **command**: the command to issue (create, rename, archive)
+    - **args**: the argument that was sent with the original slash command
+    - **channel_id**: the slack channel id that the command was issued in
+    
+    '''
 
+    logger.info("Executing slash command: %s '%s' from channel %s",command, arg, channel)
 
+    if command.lower() == "create":
+        # for create, we don't care about the initial channel, just the name of the new channel
+        new_project = Project(
+            title=arg
+        )
+        new_project.save()
+    
+    # TODO: rename and archive commands
+    
+    return
+    
 
 # create task
 

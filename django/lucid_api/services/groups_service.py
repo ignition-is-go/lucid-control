@@ -29,7 +29,7 @@ class Service(service_template.ServiceTemplate):
         self._admin = self._create_admin_service()
         self._group = self._create_groupsettings_service()
 
-    def create(self, project_id, title, silent=False):
+    def create(self, project_id, title, silent=False, description=None):
         '''
         Creates Google Groups Group and adds necessary users to it.
         '''
@@ -38,7 +38,7 @@ class Service(service_template.ServiceTemplate):
 
         group = self._admin.groups()
         grp_settings = self._group.groups()
-        slug = self._format_slug(project_id, title)
+        slug = self._format_slug(project_id, title, description=description)
 
         grp_info = {
             "email" : "{}@lucidsf.com".format(slug), # email address for the group
@@ -80,19 +80,12 @@ class Service(service_template.ServiceTemplate):
 
         return create_response['id']
 
-    def rename(self, project_id, new_title):
+    def rename(self, group_id, new_title):
         '''
         Renames an existing google group.
         '''
 
-        self._logger.info('Start Rename Google Group for Project ID %s to %s', project_id, new_title)
-
-        # 1. Check to see if the group even exists
-        try:
-            group_id = self.get_group_id(project_id)
-        except GroupsServiceError as err:
-            self._logger.debug('Group with project ID %s does not exist.', project_id)
-            raise GroupsServiceError("Could not find a project with ID # %s", project_id)
+        self._logger.info('Start Rename Google Group %s to %s', group_id, new_title)
         
         group = self._admin.groups()
         slug = self._format_slug(project_id, new_title)
@@ -154,7 +147,7 @@ class Service(service_template.ServiceTemplate):
         
         return False
 
-    def _format_slug(self, project_id, title=None):
+    def _format_slug(self, project_id, title=None, description=None):
         project_id = int(project_id)
         m = re.match(self._DEFAULT_REGEX, title)
 
