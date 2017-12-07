@@ -223,3 +223,19 @@ if LOG_LEVEL:
     if LOG_LEVEL.lower()[0] == 'i': LOG_LEVEL_TYPE = logging.INFO
     if LOG_LEVEL.lower()[0] == 'd': LOG_LEVEL_TYPE = logging.DEBUG
     if LOG_LEVEL.lower()[0] == 'c': LOG_LEVEL_TYPE = logging.CRITICAL
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers':{
+        'console':{
+            'class': 'logging.StreamHandler'
+        },
+    },
+    'loggers': {
+        'lucid_api': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        }
+    }
+}

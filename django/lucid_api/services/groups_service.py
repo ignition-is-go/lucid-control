@@ -15,7 +15,7 @@ from apiclient import discovery, errors
 from oauth2client.service_account import ServiceAccountCredentials
 
 
-class GroupsService(service_template.ServiceTemplate):
+class Service(service_template.ServiceTemplate):
     _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Z])-(?P<project_id>\d{4})')
     _DEFAULT_FORMAT = "{typecode}-{project_id:04d}"
     _pretty_name = "Google Groups"

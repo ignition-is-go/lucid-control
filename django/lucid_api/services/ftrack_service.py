@@ -17,7 +17,7 @@ import re
 from types import *
 import service_template
 
-class FtrackService(service_template.ServiceTemplate):
+class Service(service_template.ServiceTemplate):
 
     _server = None
     _connected = None

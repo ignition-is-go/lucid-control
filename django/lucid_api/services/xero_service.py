@@ -13,7 +13,7 @@ import re
 import service_template 
 import os
 
-class XeroService(service_template.ServiceTemplate):
+class Service(service_template.ServiceTemplate):
 
     _pretty_name = "Xero"
 

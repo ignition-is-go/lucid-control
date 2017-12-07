@@ -16,7 +16,7 @@ from werkzeug.urls import url_fix
 
 os.path.normpath
 
-class DropboxService(service_template.ServiceTemplate):
+class Service(service_template.ServiceTemplate):
 
     _pretty_name = "Dropbox"
     def __init__(self):

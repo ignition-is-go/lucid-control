@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Project
 from .serializers import ProjectSerializer
-from .tasks import create, rename, archive
+# from .tasks import create, rename, archive
 
 
 @api_view(['GET', 'POST'])
@@ -25,7 +25,7 @@ def project_list(request, format=None):
             project = serializer.save()
             # kick off celery task here
             # TODO: does this work? 
-            create.delay(project.title)
+            # create.delay(project.title)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
