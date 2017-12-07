@@ -2,13 +2,14 @@
 from __future__ import unicode_literals
 import logging
 
+from django.http.response import JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import Project
 from .serializers import ProjectSerializer
 from .handlers.slack_handler import send_confirmation, check_confirmation
-# from .tasks import create, rename, archive
+from .tasks import execute_slash_command
 
 
 @api_view(['GET', 'POST'])
@@ -70,6 +71,7 @@ def slash_command(request, command):
     else:
         # we've validated the command came from our slack
         send_confirmation(request.POST)
+        return JsonResponse()
     pass
 
 def action_response(request):
@@ -97,6 +99,10 @@ def action_response(request):
             channel_id, command, arg = check_confirmation(slack_data)
 
             # send to celery task
+            execute_slash_command.delay(command, arg, channel_id)
+
+            return JsonResponse()
+
 
 def validate_slack(token):
     if token != os.environ['SLACK_VERIFICATION_TOKEN']:
