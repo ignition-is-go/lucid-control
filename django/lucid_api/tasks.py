@@ -14,26 +14,30 @@ class ServiceAction(object):
 @shared_task
 def service_task(action, service_connection_id):
     ''' creates an element in a service, based on the service connection'''
-    logger.info("Got service task %s on %s: %s", action, project, service)
 
     service_connection = ServiceConnection.objects.get(pk=service_connection_id)
     project = service_connection.project
     service = service_connection.service
 
+    logger.info("Got service task %s on %s: %s", action, project, service)
+
+    # defaults. this works because we only get here if service_id is blank
+    service_id = ""
+    connection_name = service_connection.connection_name
     try:
-        if action is ServiceAction.CREATE:
+        if action == ServiceAction.CREATE:
             service_id, connection_name = service.create(
                 project.id, 
                 project.title, 
                 description=service_connection.connection_name
                 )
-        elif action is ServiceAction.RENAME:
+        elif action == ServiceAction.RENAME:
             service_id, connection_name = service.rename(
                 service.identifier, 
                 project.title, 
                 description=service_connection.connection_name
                 )
-        elif action is ServiceAction.ARCHIVE:
+        elif action == ServiceAction.ARCHIVE:
             service_id, connection_name = service.archive(
                 service.identifier
             )
@@ -53,7 +57,6 @@ def service_task(action, service_connection_id):
         )
 
     else:
-
         service_connection.identifier = service_id
         service_connection.connection_name = connection_name
         logger.info("Got id=%s from %s", service_id, service_connection.service_name)

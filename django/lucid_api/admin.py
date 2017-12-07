@@ -6,7 +6,6 @@ from django.contrib import admin
 from .models import Project, ProjectType, ServiceConnection, TemplateProject, TemplateServiceConnection
 # Register your models here.
 
-admin.site.register(ProjectType)
 
 class ServiceConnectionInline(admin.StackedInline):
     model = ServiceConnection
@@ -19,6 +18,8 @@ class ProjectAdmin(admin.ModelAdmin):
     inlines = [ServiceConnectionInline]
 
 admin.site.register(Project, ProjectAdmin)
+
+admin.site.register(ProjectType)
 
 #### TEMPLATE PROJECT STUFF
 

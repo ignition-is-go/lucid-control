@@ -109,7 +109,6 @@ class ServiceConnection(models.Model):
         default=False
     )
 
-
     @property
     def service(self):
         ''' returns an instance of the service class that this connection represents'''
@@ -118,6 +117,9 @@ class ServiceConnection(models.Model):
 
     def __str__(self):
         return "{s.service_name}::{s.connection_name}".format(s=self)
+
+    class Meta():
+        verbose_name="Service Connection"
 
 class TemplateProject(models.Model):
     ''' This model is used to define the template that is used to create new projects'''
@@ -144,3 +146,7 @@ class TemplateServiceConnection(models.Model):
         blank=True,
         default=""
     )
+
+    class Meta():
+        verbose_name ="Template Project"
+        verbose_name_plural = "Template Project"
