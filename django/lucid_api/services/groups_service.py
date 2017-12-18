@@ -29,20 +29,28 @@ class Service(service_template.ServiceTemplate):
         self._admin = self._create_admin_service()
         self._group = self._create_groupsettings_service()
 
-    def create(self, project_id, title, silent=False, description=None):
+    def create(self, service_connection_id):
         '''
         Creates Google Groups Group and adds necessary users to it.
         '''
 
-        self._logger.info('Start Create Google Group for Project ID %s: %s', project_id, title)
-
         group = self._admin.groups()
         grp_settings = self._group.groups()
-        slug = self._format_slug(project_id, title, description=description)
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
 
+        self._logger.info('Start Create Create Google Group for %s: %s',connection, project.title)
+        create_success = False
+        
+        slug = self._format_slug(
+            project.id,
+            project.title,
+            description=connection.connection_name
+            )
         grp_info = {
             "email" : "{}@lucidsf.com".format(slug), # email address for the group
-            "name" : slug, # group name
+            "name" : self._format_email_name(connection), # group name
             "description" : "Group Email for {}".format(slug), # group description
         }
 
@@ -56,9 +64,15 @@ class Service(service_template.ServiceTemplate):
         }
 
         try:
+            # make the group via google api
             create_response = group.insert(body=grp_info).execute()
             create_settings = grp_settings.patch(groupUniqueId=grp_info['email'], body=dir_info).execute() 
-            self._logger.info('Created Google Group %s (ID: %s) with email address %s', grp_info['name'], project_id, grp_info['email'])
+            
+            # store the email as the identifier in django
+            connection.identifier = grp_info['email']
+            connection.save()
+
+            self._logger.info('Created Google Group %s with email address %s', grp_info['name'], grp_info['email'])
             self._logger.debug('Create response = %s', create_response)
         except errors.HttpError as err:
             self._logger.error(err.message)
@@ -80,12 +94,22 @@ class Service(service_template.ServiceTemplate):
 
         return create_response['id']
 
-    def rename(self, group_id, new_title):
+    def rename(self, service_connection_id):
         '''
         Renames an existing google group.
         '''
 
-        self._logger.info('Start Rename Google Group %s to %s', group_id, new_title)
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
+
+        slug = self._format_slug(
+            project.id,
+            project.title,
+            description=connection.connection_name
+            )
+
+        self._logger.info('Start Rename Google Group for Project# %s to %s', project.id, slug)
         
         group = self._admin.groups()
         slug = self._format_slug(project_id, new_title)
@@ -93,13 +117,18 @@ class Service(service_template.ServiceTemplate):
         # 2. Create the JSON request for the changes we want
         grp_info = {
             # We leave out 'email' because we want the address to remain the same.
-            "name" : slug, # new group name
+            # new group name
+            "name" : self._format_email_name(connection), 
             "description" : "Group Email for {}".format(slug), # new group description
         } 
 
         # 3. Perform actual rename here. 
         try:
-            create_response = self._admin.groups().patch(groupKey=group_id, body=grp_info).execute()
+            create_response = self._admin.groups().patch(
+                groupKey=connection.identifier,
+                body=grp_info
+                ).execute()
+
             self._logger.debug("Renamed Group ID %s to %s", project_id, slug)
         except GroupsServiceError as err:
             self._logger.error('Unable to rename group %s to %s', project_id, new_title)
@@ -120,15 +149,19 @@ class Service(service_template.ServiceTemplate):
 
         self._logger.info("Started Archive Google Group for Project ID %s", project_id)
 
-        # 1. Check to see if the group even exists
+        # 1. get info from database
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        
         try:
-            group_id = self.get_group_id(project_id)
-        except GroupsServiceError as err:
-            self._logger.error("Group with project ID %s does not exist.", project_id)
+            connection = ServiceConnection.objects.get(pk=service_connection_id)
+            project = connection.project
+            group_name = self._format_email_name(connection)
+        except Exception as err:
+            self._logger.error("Group with project ID %s does not exist.", project_id, exc_info=True)
             raise GroupsServiceError("Can't archive, no project ID # %s", project_id)
         
         grp_settings = self._group.groups()
-        em = self.get_group_email(project_id)
+        email = self.get_group_email(project_id)
 
         dir_info = { 
             "archiveOnly" : "true", # archive that bad boy
@@ -136,10 +169,14 @@ class Service(service_template.ServiceTemplate):
             "includeInGlobalAddressList" : "true", # don't need this anymore
         }
         
-        # 2. Remove the group from the directory
+        # 2. issue the command to google's api
         try:
-            create_settings = grp_settings.patch(groupUniqueId=em, body=dir_info).execute()
-            self._logger.info("Archived group ID # %s.", project_id)
+            create_settings = grp_settings.patch(
+                groupUniqueId=connection.identifier, 
+                body=dir_info).execute()
+
+            connection.is_archived = True
+            self._logger.info("Archived group %s.", group_name)
             return True
         except GroupsServiceError as err:
             self._logger.error("Unable to archive Google Group with ID # %s.", project_id)
@@ -148,6 +185,9 @@ class Service(service_template.ServiceTemplate):
         return False
 
     def _format_slug(self, project_id, title=None, description=None):
+        '''
+        Formats the project id and title into a slug for the email address of the group.
+        '''
         project_id = int(project_id)
         m = re.match(self._DEFAULT_REGEX, title)
 
@@ -165,6 +205,18 @@ class Service(service_template.ServiceTemplate):
             project_id=project_id,
             title=title
             )
+
+    def _format_email_name(self, connection):
+        '''
+        formats the directory name for the email based on the connection
+        
+        {ProjectID}-{ProjectTitle} | {connection_name}
+        '''
+
+        return "{} | {}".format(
+            connection.project, 
+            connection.connection_name
+            ),
 
     def _find(self, project_id):
         '''

@@ -20,9 +20,13 @@ logger.info("Setting up signals!")
 
 # @receiver(post_save, sender=Project)
 def execute_after_create_project(sender, instance, created, raw, using, update_fields, *args, **kwargs):
-    # Template project assembly on new project
-    logger.info("Got signal for create project: %s", instance.title)
+    '''
+    Handles automation on creation or change of a project
+    '''
+
     if created:
+        # Template project assembly on new project
+        logger.info("Got CREATE signal on %s", instance.title)
         template = TemplateProject.objects.all()[0]
         for template_connection in template.services.all():
             new_service = ServiceConnection( 
@@ -32,7 +36,44 @@ def execute_after_create_project(sender, instance, created, raw, using, update_f
             )
             new_service.save()
 
-    # catch renames here as well
+    # catch rename and archive here as well
+    else:
+        # NOTE: it's possible that a rename and an archive event to happen concurrently
+        changed_fields = instance.get_dirty_fields().keys()
+        logger.info("Project %s has changed fields: %s", instance, changed_fields)
+
+        # RENAME CASE
+        if "title" in changed_fields:
+            logger.info("Got RENAME signal on %s", instance)
+            # iterate through all services and perform the action
+            for service in instance.services.all():
+                service_task.delay(
+                    ServiceAction.RENAME,
+                    service.id
+                )     
+
+        # ARCHIVE/UNARCHIVE CASE
+        if "is_archived" in changed_fields:
+            if instance.is_archived:
+                # ARCHIVE CASE
+                logger.info("Got ARCHIVE signal on %s", instance)
+                # iterate through all services and perform the action
+                for service in instance.services.all():
+                    service_task.delay(
+                        ServiceAction.ARCHIVE,
+                        service.id
+                    ) 
+
+            else:
+                # UNARCHIVE CASE
+                logger.info("Got UNARCHIVE signal on %s", instance)
+                # iterate through all services and perform the action
+                for service in instance.services.all():
+                    service_task.delay(
+                        ServiceAction.UNARCHIVE,
+                        service.id
+                    )
+
     
 post_save.connect(
     execute_after_create_project, 
@@ -43,7 +84,7 @@ logger.info("Connected template project handler")
 
 # Auto create new service connections if identifier is blank
 @receiver(post_save, sender=ServiceConnection, dispatch_uid="service_signals")
-def execute_after_create(sender, instance, created, raw, using, update_fields, *args, **kwargs):
+def execute_after_create_service(sender, instance, created, raw, using, update_fields, *args, **kwargs):
     if created:
         # make a new connection only when we create new instances
         logger.info( "Got signal to create service: %s=%s", instance.service_name, instance.identifier)

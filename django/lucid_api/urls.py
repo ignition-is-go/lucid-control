@@ -13,7 +13,7 @@ urlpatterns = [
         name="Slack Action Response"
     ),
     url(
-        r'^slack/<str:command>/$', 
+        r'^slack/(?P<command>[a-z]+)/$', 
         views.slash_command, 
         name="Slack Command"
     ),

@@ -13,6 +13,8 @@ import re
 import simplejson as json
 import logging
 
+from django.apps import apps
+
 
 class Service(service_template.ServiceTemplate):
 
@@ -40,20 +42,29 @@ class Service(service_template.ServiceTemplate):
         # self._logger = self._setup_logger(to_file=False)
 
 
-    def create(self, project_id, title, silent=False, description=None):
+    def create(self, service_connection_id):
         '''
         Handles the process of creating a new slack channel, including adding people to it
 
         TODO: Implement description?
 
         '''
-        self._logger.info('Start Create Slack for ProjectID %s: %s',project_id, title)
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
+
+        self._logger.info(
+            'Start Create Slack for %s: %s',
+            connection,
+            project.title
+            )
+            
         create_success = False
         
         slug = self._format_slug(
-            project_id,
-            title,
-            description=description
+            project.id,
+            project.title,
+            description=connection.connection_name
             )
 
         try: 
@@ -61,9 +72,12 @@ class Service(service_template.ServiceTemplate):
             create_response = self._slack_team.channels.create(name=slug)
             channel = create_response.body['channel']
             create_success = bool(create_response.body['ok'])
+            if create_success:
+                connection.identifier = channel['id']
+                connection.save()
             self._logger.debug("Slack Create Response: %s", create_response.body)
 
-            self._logger.info("Successfully created channel for #%s", project_id)
+            self._logger.info("Successfully created channel for %s", slug)
 
         except slacker.Error as err:
             if slacker.Error.message == "is_archived":
@@ -85,8 +99,8 @@ class Service(service_template.ServiceTemplate):
                     raise SlackServiceError("Channel {} could not be created (is one already archived?)".format(slug))
 
             # whoops!
-            self._logger.error("Error Creating Slack Channel for project # %s: %s", project_id, err)
-            raise SlackServiceError("Could not create channel for #%s, Slack API error: %s", project_id, err.message)
+            self._logger.error("Error Creating Slack Channel for project # %s: %s", slug, err)
+            raise SlackServiceError("Could not create channel for #%s, Slack API error: %s", slug, err.message)
 
         try:
 
@@ -95,19 +109,20 @@ class Service(service_template.ServiceTemplate):
                 channel=channel['id'],
                 user= self._bot_info['user_id']
                 )
-            self._logger.info("Successfully invited bot to channel for #%s", project_id)
+            self._logger.info("Successfully invited bot to channel for %s", slug)
 
         except slacker.Error as err:
-            self._logger.error("Error inviting the Lucid Control Bot to the Slack Channel for project # %s because slacker.Error: %s", project_id, err)
-            raise SlackServiceError("Could not invite Lucid Control Bot to channel for #%s, Slack API error: %s", project_id, err.message)
+            self._logger.error("Error inviting the Lucid Control Bot to the Slack Channel %s because slacker.Error: %s", slug, err)
+            raise SlackServiceError("Could not invite Lucid Control Bot to channel %s, Slack API error: %s", slug, err.message)
 
         try:
-            if not silent and os.environ['SLACK_INVITE_USERGROUP'] is not "" :
+            # try to invite the user group and the bot
+            if os.environ['SLACK_INVITE_USERGROUP'] is not "" :
                 invite_group_response = self._slack_team.usergroups.update(
                     usergroup=os.environ['SLACK_INVITE_USERGROUP'],
                     channels=channel['id']
                 )
-                self._logger.info("Successfully invited usergroup channel for #%s", project_id)
+                self._logger.info("Successfully invited usergroup channel %s", slug)
                 
                 #check for everyone's success
                 if not bool(create_success and 
@@ -124,51 +139,158 @@ class Service(service_template.ServiceTemplate):
                     raise SlackServiceError("Didn't successfully add Lucid Control Bot to the channel")
 
         except slacker.Error as err:
-            self._logger.error("Error inviting the proper people to the Slack Channel for project # %s because slacker.Error: %s", project_id, err)
-            raise SlackServiceError("Could not invite bot+usergroup to channel for #%s, Slack API error: %s", project_id, err.message)
+            # failed to invite user group and bot
+            self._logger.error(
+                "Error inviting the proper people to the Slack Channel for project # %s because slacker.Error: %s",
+                slug,
+                err
+                )
+            raise SlackServiceError(
+                "Could not invite bot+usergroup to channel %s, Slack API error: %s",
+                slug,
+                err.message
+                )
             
             
         return (channel['id'], channel['name_normalized'])
 
-    def rename(self, channel_id, new_title, description=None):
+    def rename(self, service_connection_id):
         '''
-        Renames a slack channel based on it's channel ID
+        Renames the slack channel related to *service_connection_id* based on the current value 
+        of ServiceConnection.project.title
+
+        ### Args:
+        - **service_connection_id**: the primary key of the service connection this slack channel is related to
+
+        ### Returns:
+        *Nothing.* This method updates the ServiceConnection on it's own
+
+        ### Raises:
+        *services.slack_service.**SlackServiceError***: if archive fails 
         '''
-        new_slug = self._format_slug(project_id,new_title, description=description)
-        self._logger.info('Start Rename Slack channel %s to %s',project_id, new_slug)
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
+        
+        # generate slug based on the current project name, which has already changed, since
+        # we got here via a signal on that change
+
+        new_slug = self._format_slug(
+            project.id,
+            project.title,
+            description=connection.connection_name
+            )
+        self._logger.info('Start Rename Slack channel %s to %s',connection.connection_name, new_slug)
 
         try:
             rename_response = self._slack_team.channels.rename(
-                channel=channel_id,
+                channel=connection.identifier,
                 name=new_slug
             )
-            self._logger.info("Finished Rename Slack for ProjectID %s to %s",project_id, rename_response.body['channel']['name'])
-            return rename_response.body['ok']
+            connection.connection_name = rename_response.body['channel']['name_normalized']
+            connection.save()
+
+            self._logger.info(
+                "Finished Rename Slack for ProjectID %s to %s",
+                project.id, 
+                rename_response.body['channel']['name']
+                )
+            
         
         except slacker.Error as err:
-            self._logger.error('Could not rename #%s to %s because slacker.Error: %s',project_id,new_slug,err.message)
-            raise SlackServiceError("Could not rename channel for #%s, Slack API error: %s", project_id, err.message)
+            self._logger.error(
+                'Could not rename #%s to %s because slacker.Error: %s',
+                project_id,
+                new_slug,
+                err.message
+                )
+            raise SlackServiceError(
+                "Could not rename channel for #%s, Slack API error: %s",
+                project_id,
+                err.message
+                )
         
-    def archive(self, channel_id):
+    def archive(self, service_connection_id):
         '''
-        Archive the slack channel based on the channel ID
+        Archive the slack channel related to *service_connection_id*
+
+        ### Args:
+        - **service_connection_id**: the primary key of the service connection this slack channel is related to
+
+        ### Returns:
+        *Nothing.* This method updates the ServiceConnection on it's own
+
+        ### Raises:
+        *services.slack_service.**SlackServiceError***: if archive fails 
         '''
-        self._logger.info('Archiving Slack for Channel %s',project_id, )
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        self._logger.info('Archiving Slack for Channel %s', connection.connection_name )
 
         try:
             archive_response = self._slack_team.channels.archive(
-                channel=channel_id,
+                channel=connection.identifier,
             )
-            self._logger.info("Finished Archive Slack for ProjectID %s",project_id)
+            connection.is_archived = True
+            connection.save()
+
+            self._logger.info("Finished Archive Slack for %s",connection)
             return archive_response.body['ok']
         
         except slacker.Error as err:
-            self._logger.error('Could not Archive #%s because slacker.Error: %s',project_id,err.message)
-            raise SlackServiceError("Could not Archive channel for #%s, Slack API error: %s", project_id, err.message)
+            self._logger.error(
+                'Could not Archive %s because slacker.Error: %s',
+                connection,
+                err.message
+                )
+            raise SlackServiceError(
+                "Could not Archive channel for %s, Slack API error: %s",
+                connection,
+                err.message
+                )
+
+    def unarchive(self, service_connection_id):
+        '''
+        Archive the slack channel related to *service_connection_id*
+
+        ### Args:
+        - **service_connection_id**: the primary key of the service connection this slack channel is related to
+
+        ### Returns:
+        *Nothing.* This method updates the ServiceConnection on it's own
+
+        ### Raises:
+        *services.slack_service.**SlackServiceError***: if archive fails 
+        '''
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        self._logger.info('Unarchiving Slack for Channel %s', connection.connection_name )
+
+        try:
+            archive_response = self._slack_team.channels.unarchive(
+                channel=connection.identifier,
+            )
+            connection.is_archived = False
+            connection.save()
+
+            self._logger.info("Finished Unarchive Slack for %s",connection)
+            return archive_response.body['ok']
+        
+        except slacker.Error as err:
+            self._logger.error(
+                'Could not Unarchive %s because slacker.Error: %s',
+                connection,
+                err.message
+                )
+            raise SlackServiceError(
+                "Could not Unarchive channel for %s, Slack API error: %s",
+                connection,
+                err.message
+                )
                 
     def post_to_project(self, channel_id, text, user=None, attachments=None, pinned=False, unfurl_links=True):
         '''
-        Posts a message into the project's slack channel.abs
+        Posts a message into the project's slack channel.
 
         Args:
             channel_id (int): the Slack channel ID number

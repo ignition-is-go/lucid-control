@@ -6,14 +6,13 @@ from __future__ import unicode_literals
 import os
 import logging
 
-import slacker
+from ..services.slack_service import Service as SlackService
 
-BOT_TOKEN = os.environ.get("SLACK_APP_BOT_TOKEN")
-TEAM_TOKEN = os.environ.get("SLACK_APP_TEAM_TOKEN")
+
 
 logger = logging.getLogger(__name__)
 
-def send_confirmation(slack_message):
+def send_confirmation(slack_message, url_command):
     ''' 
     send a confirmation for the command which was issued
     
@@ -24,11 +23,11 @@ def send_confirmation(slack_message):
     **Nothing**
     '''
     # setup slack
-    slack = slacker.Slacker(BOT_TOKEN)
+    slack = SlackService()
 
     url = slack_message['response_url']
     title = slack_message.get('text', ' ')
-    command = slack_message['command'][1:].title().replace("_"," ").strip()
+    command = url_command
 
     slack.respond_to_url(url, ephemeral=True, attachments=[{
         "title": "Confirm that you would like to {} {}?".format(command, title),
@@ -74,7 +73,9 @@ def check_confirmation(slack_message):
     if 'actions' not in slack_message.keys():
         raise AttributeError("Message does not contain an action!")
     
-
+    # setup slack
+    slack = SlackService()
+    
     # handling actions from interactive message
     action = slack_message['actions'][0]
     logger.info("Dealing with actions %s", action)
@@ -84,43 +85,14 @@ def check_confirmation(slack_message):
         command = slack_message['callback_id']
         arg = action['name']
         channel = slack_message['channel']['id']
-        logger.info("User has confirmed %s", title)
+        logger.info("User has confirmed %s %s on channel %s", command, arg, channel)
 
-
-    
         callback_url = slack_message['response_url']
         slack.respond_to_url(callback_url,
-            "Working on renaming *{}* to *{}* right now for you".format(channel, title),
+            "Working on running *{} {}* right now for you".format(command, arg),
             ephemeral=True)
-        try:
-            #first see if we can get the slack channel from the channel name    
-            project_id = slack.get_project_id(slack_channel_id=channel)
-        except slack_service.SlackServiceError as err:
-            # couldn't find the project nubmer in the channel name
-            response = ":crying_cat_face: That doesn't appear to work from here! _(the project id can't be discerned from the channel name)_"
-
-            if callback_url is None:
-                slack.post_basic(channel, response)
-            else:
-                slack.respond_to_url(callback_url,text=response)
         
-        else: 
-            try:
-                #try to rename
-                rename(project_id, title)
-            except slack_service.SlackServiceError as err:
-                #error while renaming
-                logger.error("Slack rename error: %s", err)
-
-                slack.respond_to_url(callback_url,
-                    text="Error creating renaming slack channel: *{}*".format(err.message),
-                    ephemeral=True)
-            
-            else:
-                #rename success
-                slack.respond_to_url(callback_url,
-                "Successfully renamed *{}* for you!".format(title),
-                ephemeral=True)
+        return (channel, command, arg)
 
     elif action['value'] == "False":
         # user canceled
@@ -128,3 +100,5 @@ def check_confirmation(slack_message):
         slack.respond_to_url(callback_url,
             "Ok, nevermind!",
             ephemeral=True)
+
+        raise UserWarning("User canceled the action")

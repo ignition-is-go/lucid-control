@@ -10,58 +10,51 @@ class ServiceAction(object):
     CREATE = 'create'
     RENAME = 'rename'
     ARCHIVE = 'archive'
+    UNARCHIVE = 'unarchive'
 
 @shared_task
 def service_task(action, service_connection_id):
-    ''' creates an element in a service, based on the service connection'''
+    ''' 
+    creates an element in a service, based on the service connection. This is just
+    a thin wrapper over the individual services, which all handle their own model
+    interactions
 
-    service_connection = ServiceConnection.objects.get(pk=service_connection_id)
-    project = service_connection.project
-    service = service_connection.service
+    ### Args:
+    - **action**: a reference to ServiceAction.CREATE, ServiceAction.RENAME or 
+    ServiceAction.ARCHIVE
+    - **service_connection_id**: the primary key of the service connection to act on
+    '''
+    connection = ServiceConnection.objects.get(pk=service_connection_id)
+    service = connection.service
+    logger.info("Got service task %s on service_connection_id %s", action, connection)
 
-    logger.info("Got service task %s on %s: %s", action, project, service)
-
-    # defaults. this works because we only get here if service_id is blank
-    service_id = ""
-    connection_name = service_connection.connection_name
     try:
         if action == ServiceAction.CREATE:
-            service_id, connection_name = service.create(
-                project.id, 
-                project.title, 
-                description=service_connection.connection_name
-                )
+            service.create(service_connection_id)
         elif action == ServiceAction.RENAME:
-            service_id, connection_name = service.rename(
-                service.identifier, 
-                project.title, 
-                description=service_connection.connection_name
-                )
+            service.rename(service_connection_id)
         elif action == ServiceAction.ARCHIVE:
-            service_id, connection_name = service.archive(
-                service.identifier
-            )
-            service_connection.is_archived = True
+            service.archive(service_connection_id)
+        elif action == ServiceAction.UNARCHIVE:
+            service.unarchive(service_connection_id)
     except Exception as err:
-        logger.error("Error with %s on %s:%s.", action, project, service, exc_info=True)
+        logger.error("Error with %s on %s.", action, connection, exc_info=True)
 
+        project = connection.project
         project._message(
             "Whoops... I seem to have had a problem while trying to {action}"
             " {service} as part of {project}. \n"
             "_{error}_".format(
                 action=action,
                 project=project,
-                service=service,
+                service=connection,
                 error=err.message
             )
         )
 
     else:
-        service_connection.identifier = service_id
-        service_connection.connection_name = connection_name
-        logger.info("Got id=%s from %s", service_id, service_connection.service_name)
-        service_connection.save()
-
+        # project._message()
+        pass 
 @shared_task
 def execute_slash_command(command, arg, channel):
     '''

@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import logging
-import os
-import simplejson as json
 
-from django.http.response import JsonResponse, HttpResponse
+from django.http.response import JsonResponse
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -72,8 +70,8 @@ def slash_command(request, command):
         return HttpResponse(e.message)
     else:
         # we've validated the command came from our slack
-        send_confirmation(request.POST, command)
-        return HttpResponse("")
+        send_confirmation(request.POST)
+        return JsonResponse()
     pass
 
 def action_response(request):
@@ -98,15 +96,12 @@ def action_response(request):
             return slack_data['challenge']
         
         elif "callback_id" in slack_data.keys():
-            try:
-                channel_id, command, arg = check_confirmation(slack_data)
-                # send to celery task
-                execute_slash_command.delay(command, arg, channel_id)
+            channel_id, command, arg = check_confirmation(slack_data)
 
-            except:
-                pass
+            # send to celery task
+            execute_slash_command.delay(command, arg, channel_id)
 
-            return HttpResponse("")
+            return JsonResponse()
 
 
 def validate_slack(token):
