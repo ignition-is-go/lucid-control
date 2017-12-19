@@ -64,23 +64,19 @@ class ServiceTemplate(object):
     def get_link_dict(self, project_id):
         return {self.get_pretty_name(): self.get_link(project_id)}
         
-    def _format_slug(self, project_id, title):
-        project_id = int(project_id)
-        m = re.match(self._DEFAULT_REGEX, title)
+    def _format_slug(self, connection):
+        '''
+        Formats the slug based on the connection data.
 
-        if m is not None:
-            # this means we've matched the regex
-            if int(m.group('project_id')) == project_id:
-                # confirm the project id's match, so extract just the title
-                title = m.group('project_title')
-                typecode = m.group('typecode')
-        else:
-            typecode = "P"
+        ### Args:
+        - **connection**: a *connection* model object from lucid-api
+        '''
 
         return self._DEFAULT_FORMAT.format(
-            typecode=typecode,
-            project_id=project_id,
-            title=title
+            typecode=connection.project.type_code.character_code,
+            project_id=connection.project.id,
+            title=connection.project.title,
+            connection_name=connection.connection_name
             )
 
 class ServiceException(Exception):

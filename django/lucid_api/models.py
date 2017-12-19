@@ -103,7 +103,8 @@ class ServiceConnection(models.Model):
     service_name = models.CharField(
         max_length=200,
         verbose_name="Service Name",
-        choices=SERVICE_LIST
+        choices=SERVICE_LIST,
+        blank=False
     )
     # connection name is only necessary to disambiguate multiple connections to 
     # the same service per project (slack? i dunno, maybe I'm planning too hard)

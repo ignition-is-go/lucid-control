@@ -14,10 +14,12 @@ import re
 from apiclient import discovery, errors
 from oauth2client.service_account import ServiceAccountCredentials
 
+from django.apps import apps
+
 
 class Service(service_template.ServiceTemplate):
     _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Z])-(?P<project_id>\d{4})')
-    _DEFAULT_FORMAT = "{typecode}-{project_id:04d}"
+    _DEFAULT_FORMAT = "{typecode}-{project_id:04d}-{connection_name}"
     _pretty_name = "Google Groups"
    
     def __init__(self):
@@ -43,11 +45,8 @@ class Service(service_template.ServiceTemplate):
         self._logger.info('Start Create Create Google Group for %s: %s',connection, project.title)
         create_success = False
         
-        slug = self._format_slug(
-            project.id,
-            project.title,
-            description=connection.connection_name
-            )
+        slug = self._format_slug(connection)
+
         grp_info = {
             "email" : "{}@lucidsf.com".format(slug), # email address for the group
             "name" : self._format_email_name(connection), # group name
@@ -58,6 +57,7 @@ class Service(service_template.ServiceTemplate):
         dir_info = {
             "showInGroupDirectory" : "true", # let's make sure this group is in the directory
             "whoCanPostMessage" : "ANYONE_CAN_POST", # this should be the default but...
+            "allowExternalMembers" : "true",
             "whoCanViewMembership" : "ALL_IN_DOMAIN_CAN_VIEW", # everyone should be able to view the group
             "includeInGlobalAddressList" : "true", # In case anyone decides to become an Outlook user
             "isArchived" : "true", # We want to keep all the great messages
@@ -84,6 +84,10 @@ class Service(service_template.ServiceTemplate):
         # With the group created, let's add some members.
         emp_group = self.list_employees()
 
+        # don't add users for test projects
+        if project.type_code.character_code == "X":
+            return 
+
         try: 
             for i in emp_group:
                 add_users = self._admin.members().insert(groupKey=grp_info['email'], body=({'email' : i})).execute()
@@ -92,7 +96,7 @@ class Service(service_template.ServiceTemplate):
             self._logger.error('Failed try while adding members: {}'.format(err))
             raise GroupsServiceError('Problem adding members to group!')
 
-        return create_response['id']
+        return 
 
     def rename(self, service_connection_id):
         '''
@@ -103,17 +107,14 @@ class Service(service_template.ServiceTemplate):
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
 
-        slug = self._format_slug(
-            project.id,
-            project.title,
-            description=connection.connection_name
-            )
+        slug = self._format_slug(connection)
+
+        # trim dangling "-"
+        if slug[-1]=="-": slug = slug[0:-1]
 
         self._logger.info('Start Rename Google Group for Project# %s to %s', project.id, slug)
         
         group = self._admin.groups()
-        slug = self._format_slug(project_id, new_title)
-
         # 2. Create the JSON request for the changes we want
         grp_info = {
             # We leave out 'email' because we want the address to remain the same.
@@ -161,7 +162,6 @@ class Service(service_template.ServiceTemplate):
             raise GroupsServiceError("Can't archive, no project ID # %s", project_id)
         
         grp_settings = self._group.groups()
-        email = self.get_group_email(project_id)
 
         dir_info = { 
             "archiveOnly" : "true", # archive that bad boy
@@ -184,27 +184,18 @@ class Service(service_template.ServiceTemplate):
         
         return False
 
-    def _format_slug(self, project_id, title=None, description=None):
+    def _format_slug(self, connection):
         '''
-        Formats the project id and title into a slug for the email address of the group.
+        Formats the slug based on the connection data.
+
+        ### Args:
+        - **connection**: a *connection* model object from lucid-api
         '''
-        project_id = int(project_id)
-        m = re.match(self._DEFAULT_REGEX, title)
 
-        if m is not None:
-            # this means we've matched the regex
-            if int(m.group('project_id')) == project_id:
-                # confirm the project id's match, so extract just the title
-                title = m.group('project_title')
-                typecode = m.group('typecode')
-        else:
-            typecode = "P"
+        slug = super(Service, self)._format_slug(connection).replace(" ","-").strip("-")
 
-        return self._DEFAULT_FORMAT.format(
-            typecode=typecode,
-            project_id=project_id,
-            title=title
-            )
+        self._logger.info("Slug=%s", slug)
+        return slug
 
     def _format_email_name(self, connection):
         '''
@@ -213,69 +204,73 @@ class Service(service_template.ServiceTemplate):
         {ProjectID}-{ProjectTitle} | {connection_name}
         '''
 
-        return "{} | {}".format(
-            connection.project, 
+        name = "{} | {}".format(
+            connection.project.__str__(), 
             connection.connection_name
-            ),
+            ).strip("| ")
 
-    def _find(self, project_id):
-        '''
+        return name
 
-        Get a pointer to the project_id for the requested project.
 
-        :param project_id: The ID of the project you want to locate.
-        :type str:
-        :return:
-        '''
+    # NOTE: shouldn't need this now that we have a database KJB 12/18/17
+    # def _find(self, project_id):
+    #     '''
 
-        if not project_id:
-            self._logger.error('No project ID supplied to _find.')
-            return
+    #     Get a pointer to the project_id for the requested project.
 
-        self._logger.info('Attempting to find project ID {id}'.format(id=project_id))
+    #     :param project_id: The ID of the project you want to locate.
+    #     :type str:
+    #     :return:
+    #     '''
 
-        group = self._admin.groups()
-        response = group.list(customer='my_customer').execute()
+    #     if not project_id:
+    #         self._logger.error('No project ID supplied to _find.')
+    #         return
 
-        for i in response['groups']:
-            if re.match(i['email'], r'^P-0*(?P<project_id>\d+)@', re.IGNORECASE):
-                # TODO: Is this actually returning an object? If not, how do we make an instance of this to return?
-                self._logger.info('Found project ID {id} in {em}.'.format(id=project_id, em=i['email']))
-                return response['groups']['email'][i]
+    #     self._logger.info('Attempting to find project ID {id}'.format(id=project_id))
 
-        self._logger.debug('Unable to find projecft ID {id}.'.format(id=project_id))
+    #     group = self._admin.groups()
+    #     response = group.list(customer='my_customer').execute()
 
-    def get_group_id(self, project_id):
-        '''
-        Get the google group id (internal identifier)
-        '''
-        group = self._admin.groups()
+    #     for i in response['groups']:
+    #         if re.match(i['email'], r'^P-0*(?P<project_id>\d+)@', re.IGNORECASE):
+    #             # TODO: Is this actually returning an object? If not, how do we make an instance of this to return?
+    #             self._logger.info('Found project ID {id} in {em}.'.format(id=project_id, em=i['email']))
+    #             return response['groups']['email'][i]
 
-        response = group.list(customer='my_customer').execute()
-        project_id = str(project_id)
+    #     self._logger.debug('Unable to find projecft ID {id}.'.format(id=project_id))
 
-        for i in response['groups']:
-            if project_id in i['name']:
-                return i['id']
+    # def get_group_id(self, project_id):
+    #     '''
+    #     Get the google group id (internal identifier)
+    #     '''
+    #     group = self._admin.groups()
+
+    #     response = group.list(customer='my_customer').execute()
+    #     project_id = str(project_id)
+
+    #     for i in response['groups']:
+    #         if project_id in i['name']:
+    #             return i['id']
         
-        raise GroupsServiceError("Could not find group #{}".format(project_id))
+    #     raise GroupsServiceError("Could not find group #{}".format(project_id))
 
-    def get_group_email(self, project_id):
-        '''
-        Get the google group email address
-        '''
-        group = self._admin.groups()
+    # def get_group_email(self, project_id):
+    #     '''
+    #     Get the google group email address
+    #     '''
+    #     group = self._admin.groups()
 
-        response = group.list(customer='my_customer').execute()
-        project_id = str(project_id)
+    #     response = group.list(customer='my_customer').execute()
+    #     project_id = str(project_id)
 
-        group_id = self.get_group_id(project_id)
+    #     group_id = self.get_group_id(project_id)
 
-        for i in response['groups']:
-            if group_id in i['id']:
-                return i['email']
+    #     for i in response['groups']:
+    #         if group_id in i['id']:
+    #             return i['email']
 
-        raise GroupsServiceError("Could not find group_id #{}".format(group_id))
+    #     raise GroupsServiceError("Could not find group_id #{}".format(group_id))
 
     def list_groups(self):
         '''

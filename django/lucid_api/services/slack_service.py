@@ -61,11 +61,7 @@ class Service(service_template.ServiceTemplate):
             
         create_success = False
         
-        slug = self._format_slug(
-            project.id,
-            project.title,
-            description=connection.connection_name
-            )
+        slug = self._format_slug(connection)
 
         try: 
             # create the channel first
@@ -175,11 +171,7 @@ class Service(service_template.ServiceTemplate):
         # generate slug based on the current project name, which has already changed, since
         # we got here via a signal on that change
 
-        new_slug = self._format_slug(
-            project.id,
-            project.title,
-            description=connection.connection_name
-            )
+        new_slug = self._format_slug(connection)
         self._logger.info('Start Rename Slack channel %s to %s',connection.connection_name, new_slug)
 
         try:
@@ -475,26 +467,26 @@ class Service(service_template.ServiceTemplate):
             self._logger.error("Couldn't find user for uid %s because: %s", user_id, err.message)
             raise SlackServiceError("User not found._({})_".format(err.message))
 
-    def _find(self, project_id):
-        '''
-        Finds and returns a slack channel dictionary for the given project number
-        '''
-        project_id = int(project_id)
-        self._logger.info('Searching for channel for #%s',project_id)
+    # def _find(self, project_id):
+    #     '''
+    #     Finds and returns a slack channel dictionary for the given project number
+    #     '''
+    #     project_id = int(project_id)
+    #     self._logger.info('Searching for channel for #%s',project_id)
 
-        channels = self._slack_team.channels.list(exclude_archived=True,exclude_members=True)
+    #     channels = self._slack_team.channels.list(exclude_archived=True,exclude_members=True)
     
-        self._logger.debug("Stepping through existing channels")
-        for channel in channels.body['channels']:
-            m = re.match(self._DEFAULT_REGEX, channel['name'])
-            self._logger.debug("Checking channel %s", channel['name'])
-            if m and int(m.group('project_id')) == project_id:
-                self._logger.info('Found channel for #%s: %s',project_id,channel)
-                return channel
+    #     self._logger.debug("Stepping through existing channels")
+    #     for channel in channels.body['channels']:
+    #         m = re.match(self._DEFAULT_REGEX, channel['name'])
+    #         self._logger.debug("Checking channel %s", channel['name'])
+    #         if m and int(m.group('project_id')) == project_id:
+    #             self._logger.info('Found channel for #%s: %s',project_id,channel)
+    #             return channel
         
-        raise SlackServiceError("Couldn't find slack channel for project # %s", project_id)
+    #     raise SlackServiceError("Couldn't find slack channel for project # %s", project_id)
 
-    def _format_slug(self, project_id, title, description=None):
+    def _format_slug(self, connection):
         '''
         Makes a slack specific slug
         '''
@@ -503,21 +495,17 @@ class Service(service_template.ServiceTemplate):
 
         # we generate the channel slug using the project id and either the title or the description, if one is given
 
-        title = title if description is None or description == "" else description
-
-
-        slug = super(Service, self)._format_slug(project_id, title).lower()
-
-        # slack has a character max, let's prep for it
-        if len(slug) > 21:
-            slug = slug[0:21]
-            
-            # check to make sure we don't dangle a '-'
-            if slug[-1:] == "-":
-                slug = slug[0:-1]
+        slug = self._DEFAULT_FORMAT.format(
+            title = connection.project.title if connection.description == "" else connection.description,
+            typecode = connection.project.type_code.character_code
+        )
 
         # lets use underscores instead of spaces and fix basic duplicates
         slug = slug.replace(" ", "_").replace("--","-").replace("__", "_")
+
+        # slack has a character max, let's prep for it and fix dangling "-"
+        if len(slug) > 21:
+            slug = slug[0:21].strip("_-")
         
 
         return slug
