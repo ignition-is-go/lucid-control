@@ -15,6 +15,7 @@ from apiclient import discovery, errors
 from oauth2client.service_account import ServiceAccountCredentials
 
 from django.apps import apps
+from celery.utils.log import get_task_logger
 
 
 class Service(service_template.ServiceTemplate):
@@ -27,7 +28,7 @@ class Service(service_template.ServiceTemplate):
         Creates necessary services with Google Admin and Groups; also setups the logger.
         '''
 
-        self._logger = self._setup_logger(to_file=True)
+        self._logger = get_task_logger(__name__)
         self._admin = self._create_admin_service()
         self._group = self._create_groupsettings_service()
 
@@ -194,7 +195,7 @@ class Service(service_template.ServiceTemplate):
 
         slug = super(Service, self)._format_slug(connection).replace(" ","-").strip("-")
 
-        self._logger.info("Slug=%s", slug)
+        self._logger.info("Email Slug=%s", slug)
         return slug
 
     def _format_email_name(self, connection):

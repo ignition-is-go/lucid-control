@@ -23,6 +23,7 @@ class ServiceTemplate(object):
 
     def _setup_logger(self, level=settings.LOG_LEVEL_TYPE, to_file=True):
         '''
+        DEPRECIATED AFTER MOVE TO DJANGO/CELERY
         Sets up the logger for the service
 
         Args:

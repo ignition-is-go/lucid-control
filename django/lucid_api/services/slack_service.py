@@ -14,19 +14,20 @@ import simplejson as json
 import logging
 
 from django.apps import apps
+from celery.utils.log import get_task_logger
 
 
 class Service(service_template.ServiceTemplate):
 
     _DEFAULT_REGEX = re.compile(r'^(?P<project_id>\d{1,4})-(?P<project_title>.+)')
-    _DEFAULT_FORMAT = "{project_id:d}-{title}"
+    _DEFAULT_FORMAT = "{project_id:d}-{connection_name}-{title}"
     _pretty_name = "Slack"
 
     def __init__(self, team_token=None, bot_token=None):
         '''
         Creates the necessary slacker sessions, using env vars if kwargs are not supplied
         '''
-        self._logger = logging.getLogger(__name__)
+        self._logger = get_task_logger(__name__)
 
         self._logger.info("Created Slack Service instance")
 
@@ -495,10 +496,8 @@ class Service(service_template.ServiceTemplate):
 
         # we generate the channel slug using the project id and either the title or the description, if one is given
 
-        slug = self._DEFAULT_FORMAT.format(
-            title = connection.project.title if connection.description == "" else connection.description,
-            typecode = connection.project.type_code.character_code
-        )
+        slug = super(Service, self)._format_slug(connection)
+
 
         # lets use underscores instead of spaces and fix basic duplicates
         slug = slug.replace(" ", "_").replace("--","-").replace("__", "_")
@@ -507,7 +506,7 @@ class Service(service_template.ServiceTemplate):
         if len(slug) > 21:
             slug = slug[0:21].strip("_-")
         
-
+        self._logger.info("Slack Slug=%s", slug)
         return slug
 
 class SlackServiceError(service_template.ServiceException):

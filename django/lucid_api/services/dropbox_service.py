@@ -14,8 +14,6 @@ import logging
 import datetime
 from werkzeug.urls import url_fix
 
-os.path.normpath
-
 class Service(service_template.ServiceTemplate):
 
     _pretty_name = "Dropbox"
@@ -26,13 +24,16 @@ class Service(service_template.ServiceTemplate):
 
         self._dbx = dropbox.Dropbox(os.environ.get('DROPBOX_ACCESS_TOKEN'))
         
-    def create(self, project_id, title, silent=None):
+    def create(self, service_connection_id):
         '''
         Creates dropbox folder based on the schema in the ENV
         '''
-        project_id = str(project_id)
-        self._logger.info('Attempting to create Dropbox folder schema for #%s: %s',
-            project_id, title)
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
+
+        self._logger.info('Attempting to create Dropbox folder schema for %s',
+            project)
         
         slug = self._format_slug(project_id,title)
         schema = self._get_schema()
