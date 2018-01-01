@@ -1,2 +1,2 @@
 web: cd django & gunicorn lucidcontrol.wsgi --log-file=-
-worker: cd django & celery worker -A lucidcontrol worker -l debug 
+worker: cd django & celery worker -A lucidcontrol worker --beat -l info 

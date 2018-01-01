@@ -1,21 +1,27 @@
 from __future__ import absolute_import, unicode_literals
-import logging
 import os
 
 from celery import shared_task
-from .models import Profile, Workday, WorkdayOption
+from .models import Profile, Workday, WorkdayOption, WorkdayResponse
 from django.conf import settings
 
 import slacker
 import arrow
 
+from celery.utils.log import get_task_logger
+import logging
+logger = logging.getLogger(__name__)
+# logger = get_task_logger(__name__)
+
 @shared_task
 def setup_daily_checkin():
     '''
-    Checks in with all users based on their TZ in slack.
+    TODO: make this update the crontab stuff
 
-    Should be triggered at 00:00:00 UTC daily
+    This task updates the celery beat crontab tasks based on the user's current
+    timezone as listed in Slack
     '''
+
     users = Profile.objects.filter(is_active=True)
 
     # this date will be used to decide the date
@@ -44,25 +50,35 @@ def setup_daily_checkin():
         send_nag_message.apply_async((checkin.id), eta=post_time.datetime)
 
 @shared_task()
-def send_nag_message( workday_id ):
+def send_workday_checkin( user_profile_id ):
     '''
     Sends an individual message to ask a user to check in for today (based on Pacific TZ)
     '''
 
+    logger.info("Sending workday checkin for user_profile_id: %s", user_profile_id)
+
     slacker_instance = slacker.Slacker(os.environ.get("LUCILLE_BOT_TOKEN"))
-    workday = Workday.objects.get(workday_id)
+    user = Profile.objects.get(pk=user_profile_id)
 
-    # because Lucille lives in CA, where Lucid is HQ'd
-    today = arrow.get(workday.date)
+    # create the checkin, or use the existing one
+    today, created = Workday.objects.get_or_create(
+        user=user,
+        date=arrow.now().date(),
+    )
+    logger.debug("%s workday #%s :: %s", 
+        "Created" if created else "Got",
+        today.id, today)
+    
+    today_str = today.date_arrow.format("ddd, MMM D, YYYY")
+    checkin_str = today.date_arrow.format("MM/DD/YY")
 
-    today_str = today.format("ddd, MMM D, YYYY")
-    checkin_str = today.format("MM/DD/YY")
-    actions = [option.as_json() for option 
-        in WorkdayOption.objects.filter(is_active=True)]
-
+    # TODO: Update this to show the running totals for each type of day off
+    option_set = WorkdayOption.objects.filter(is_active=True)
+    
+    actions = [option.as_json() for option in option_set]
     try:
         obj = slacker_instance.chat.post_message(
-            channel="@{}".format(workday.user.slack_user),
+            channel="@{}".format(user.slack_user),
             text="",
             as_user=True,
             attachments=[{
@@ -70,7 +86,10 @@ def send_nag_message( workday_id ):
                         "text" : ":spiral_calendar_pad: Check in for *{}*".format(today_str),
                         "mrkdwn_in": ["text"],
                         "fallback": "Time to check in!",
-                        "callback_id": workday.id,
+                        "callback_id": "{callback}={id}".format(
+                            callback="handle_workday",
+                            id=today.id,
+                            ),
                         "color": "#3AA3E3",
                         "attachment_type": "default",
                         "actions": actions
@@ -78,15 +97,19 @@ def send_nag_message( workday_id ):
             )
 
         if obj.body['ok']:
-            workday.is_posted = True
-            workday.save()
+            today.is_posted = True
+            today.slack_message_ts = obj.body['ts']
+            today.save()
 
         #TODO: setup end-of-day closeout task here
+        closeout_time = arrow.now().shift(hours=+16)
+
 
     except slacker.Error as e:
         raise e
 
-def update_initial_message( data ):
+@shared_task
+def handle_workday( data ):
     '''
     Handles updating the original Interactive message to show the chosen response
     '''
@@ -94,34 +117,49 @@ def update_initial_message( data ):
     original_ts = data['message_ts']
     user = data['user']['name']
     channel = data['channel']['id']
-    workday_id = data['callback_id']
-    workday = Workday.objects.get(workday_id)
-    checkin_date = workday.date.format
-    status = data['actions'][0]['value']
-    
-    logger = logging.getLogger(__name__)
+    # we have to decompose the callback id we sent to slack to get the workday out of it
+    _, workday_id = data['callback_id'].split("=", 1)
+    today = Workday.objects.get(pk=workday_id)
+    checkin_date = arrow.get(today.date).format("ddd, MMM D, YYYY")
+    status_id = data['actions'][0]['value']
+
     logger.debug("Updating message for checkin #%s", workday_id)
 
-    #TODO: get data from updated workday entry
+    # store the response in the DB
+    response, created = WorkdayResponse.objects.get_or_create(
+        workday=today,
+        response=WorkdayOption.objects.get(pk=status_id),
+        slack_action_ts=data['action_ts']
+    )
+    logger.debug("%s response #%s :: %s", 
+        "Created" if created else "Got",
+        response.id, response)
 
-    update_response = get_slack().chat.update(
-        ts=original_ts,
-        text="",
-        channel=channel,
-        attachments=[{
-            "text" : "{2} Thanks! I've marked you as *{0}* on *{1}*".format(
-                status, 
-                checkin_date, 
-                icon
-                ),
-            "mrkdwn_in": ["text"],
-            "actions": []
-        }]
-        )
+    slack = slacker.Slacker(os.environ.get('LUCILLE_BOT_TOKEN'))
 
-    print(update_response.body)
-    sys.stdout.flush()
+    try:
+        update_response = slack.chat.update(
+            ts=original_ts,
+            text="",
+            channel=channel,
+            attachments=[{
+                "text" : "{icon} Thanks! I've marked you as *{status}* on *{date}*".format(
+                    status=response.response, 
+                    date=checkin_date, 
+                    icon=response.response.emoji
+                    ),
+                "mrkdwn_in": ["text"],
+                "actions": []
+            }]
+            )
+        logger.debug(update_response.body)
 
-    return update_response.successful
+    except:
+        logger.error("Couldn't update the Slack interactive message", exc_info=True)
+    
+ 
+    pass
 
-        
+@shared_task
+def test():
+    logger.info("Testing! %s", arrow.utcnow().isoformat())

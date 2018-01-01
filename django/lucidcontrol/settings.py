@@ -212,8 +212,9 @@ CELERYD_MAX_TASKS_PER_CHILD = 1000
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TIMEZONE = TIME_ZONE
+CELERY_TIMEZONE = 'UTC'
 CELERY_ENABLE_UTC = True
+CELERYBEAT_SCHEDULER = 'djcelery.schedulers.DatabaseScheduler'
 
 # logging
 
@@ -236,6 +237,10 @@ LOGGING = {
     },
     'loggers': {
         'lucid_api': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+        'checkin': {
             'handlers': ['console'],
             'level': 'DEBUG',
         }

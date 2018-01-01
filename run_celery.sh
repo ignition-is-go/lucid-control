@@ -7,4 +7,4 @@ sleep 10
 cd /app/django  
 # run Celery worker for our project myproject with Celery configuration stored in Celeryconf
 # su -m myuser -c "celery worker -A myproject.celeryconf -Q default -n default@%h"
-su -m myuser -c "celery -A lucidcontrol worker -l debug"
+su -m myuser -c "celery -A lucidcontrol worker -l debug --beat --scheduler django_celery_beat.schedulers:DatabaseScheduler"

@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import arrow
+
 from django.db import models
 from django.contrib.auth.models import User
+from django_celery_beat.models import CrontabSchedule
 
 class Profile(models.Model):
     '''
     Profile for a Checkin user. Has a one-to-one relationship to a django.contrib.auth User
     '''
-
+    
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -18,14 +21,23 @@ class Profile(models.Model):
         max_length=50,
         blank=False,
     )
+    # daily_checkin_beat = models.ForeignKey(
+    #     CrontabSchedule,
+    #     on_delete=models.CASCADE,
+    #     related_name="profile",
+    #     verbose_name="Daily Check-in Schedule",
+    #     blank=True
+    # )
     is_active = models.BooleanField(
         default=True,
     )
 
-    class Meta():
-        verbose_name="Checkin User",
-        verbose_name_plural="Users"
+    def __str__(self):
+        return self.user.get_username()
 
+    class Meta():
+        verbose_name="Checkin User"
+        verbose_name_plural="Users"
 
 
 class WorkdayOption(models.Model):
@@ -89,29 +101,33 @@ class WorkdayOption(models.Model):
         '''
         Return a JSON version of the option for use in slack messages
         '''
-        return dict(
-            name=workday_option,
+        action_button = dict(
+            name="workday_option",
             text="{} {}".format(self.emoji, self.name),
             type="button",
             value=self.id,
             style=self.style,
-            confirm=dict(
+        )
+
+        if self.require_confirmation:
+            action_button['confirm']=dict(
                 title="Are you sure?",
                 text=self.confirmation_text,
                 ok_text="Yes",
                 dismiss_text="No"
-            ) if self.require_confirmation else None
-        )
+            )
+
+        return action_button
     
     def __str__(self):
         return self.name
-    
+
 
 class Workday(models.Model):
     ''' 
     A record of a checkin for a single user for a day.
 
-    This is created when the checkin is scheduled
+    This is created when the checkin is posted
     '''
 
     date = models.DateField(
@@ -129,10 +145,6 @@ class Workday(models.Model):
         auto_now_add=True,
         blank=False,
     )
-    checkin_time = models.DateTimeField(
-        help_text="When the checkin is scheduled for",
-        blank=False,
-    )
     is_posted = models.BooleanField(
         help_text="Whether the check-in has been sent",
         default=False,
@@ -142,6 +154,36 @@ class Workday(models.Model):
         auto_now=True,
         blank=False,
     )
+    slack_message_ts = models.CharField(
+        max_length=100,
+        verbose_name="Slack message_ts",
+        default="",
+        blank=True,
+        null=True
+    )
+
+    def __str__(self):
+        return "{date} - {name}".format(
+            date = self.date,
+            name = self.user.user.get_username()
+        )
+
+    @property
+    def date_arrow(self):
+        ''' return the date as arrow object'''
+        return arrow.get(self.date)
+    
+
+class WorkdayResponse(models.Model):
+    '''
+    a user response to the workday checkin
+    '''
+    workday = models.ForeignKey(
+        Workday,
+        on_delete=None,
+        blank=False,
+        related_name="responses",
+    )
     response = models.ForeignKey(
         WorkdayOption,
         on_delete=models.CASCADE,
@@ -149,7 +191,19 @@ class Workday(models.Model):
         blank=True,
         limit_choices_to={'is_active': True}
     )
+    timestamp = models.DateTimeField(
+        auto_now_add=True,
+    )
+    slack_action_ts = models.CharField(
+        max_length=100,
+        verbose_name="Slack action_ts",
+        # unique=True,
+        default=""
+    )
 
+    class Meta():
+        verbose_name="Option"
+        verbose_name_plural="Options"
 
 # class EffortLog(models.Model):
 #     '''
