@@ -39,6 +39,7 @@ services:
       - .:/app
     ports:
       - "8000:8000"
+      - "8001:80"
 
   
   # Celery worker
