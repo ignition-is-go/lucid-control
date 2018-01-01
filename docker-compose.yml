@@ -50,3 +50,12 @@ services:
     command: /app/run_celery.sh
     volumes:
       - .:/app
+
+  # Celery beat
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /app/run_beat.sh
+    volumes:
+      - .:/app
