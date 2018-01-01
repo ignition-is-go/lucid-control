@@ -34,7 +34,9 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: web
-    command: /app/run_web.sh
+    command: /app/run_waitress.sh
+    environment:
+      - PORT=8000
     volumes:
       - .:/app
     ports:

@@ -39,7 +39,7 @@ def action_response(request):
             try:
                 callback, question_id = str(slack_data['callback_id']).split("=", 1)
                 func = getattr(tasks, callback)
-                func(slack_data)
+                func.delay(slack_data)
                 return HttpResponse("")
             except ValueError:
                 # bad callback, return 400
