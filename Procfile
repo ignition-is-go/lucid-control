@@ -1,2 +1,2 @@
 web: sh run_waitress.sh
-worker: cd django & celery worker -A lucidcontrol worker --beat -l info 
+worker: sh run_celery_worker_beat.sh

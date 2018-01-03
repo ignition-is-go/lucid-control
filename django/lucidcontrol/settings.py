@@ -69,6 +69,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Simplified static file serving.
+    # https://warehouse.python.org/project/whitenoise/
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # Django Stock
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -143,11 +147,18 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
-
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 
+# Extra places for collectstatic to find static files.
+STATICFILES_DIRS = (
+    os.path.join(BASE_DIR, 'static'),
+)
 
+# Simplified static file serving.
+# https://warehouse.python.org/project/whitenoise/
 
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Celery Settings
 CELERY_BROKER_URL = os.environ.get('CLOUDAMQP_URL' )
@@ -200,10 +211,6 @@ CELERY_TASK_RESULT_EXPIRES = 600
 # Set redis as celery result backend
 # CELERY_RESULT_BACKEND = 'redis://%s:%d/%d' % (REDIS_HOST, REDIS_PORT, REDIS_DB)  
 # CELERY_REDIS_MAX_CONNECTIONS = 1
-
-# Don't use pickle as serializer, json is much safer
-CELERY_TASK_SERIALIZER = "json"  
-CELERY_ACCEPT_CONTENT = ['application/json']
 
 CELERYD_HIJACK_ROOT_LOGGER = False  
 CELERYD_PREFETCH_MULTIPLIER = 1  
