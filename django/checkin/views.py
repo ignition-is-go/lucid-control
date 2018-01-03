@@ -4,13 +4,16 @@ import logging
 import json
 import os
 
+import arrow
+import slacker
+
 from django.shortcuts import render
-from django.http.response import HttpResponse, HttpResponseBadRequest
+from django.http.response import HttpResponse, HttpResponseBadRequest, JsonResponse
 from celery import Celery
 
 from . import tasks
 from .tasks import send_workday_checkin
-from .models import Profile
+from .models import Profile, Workday
 
 def action_response(request):
     ''' handles all slack action message responses'''
@@ -44,6 +47,64 @@ def action_response(request):
             except ValueError:
                 # bad callback, return 400
                 return HttpResponseBadRequest()
+
+def roll_call(request):
+    '''
+    does a roll call of today's checkins
+    '''
+
+    try:
+        validate_slack(request.POST['token'])
+    except InvalidSlackToken as e:
+        return HttpResponse(e.message)
+    else:
+        # verified it's slack!
+        # for getting local timezone, for now defaulting to PT
+        # slack = slacker.Slacker(os.environ.get("SLACK_APP_TEAM_TOKEN"))
+        # user_data = slack.users.info(user.slack_user)
+        # tz = user_data.body['user']['tz']
+        today = Workday.objects.filter(date=arrow.now('America/Los_Angeles').date())
+        
+        fields = []
+        fallback = ""
+        for checkin in today:
+            name = checkin.user.user.get_full_name() or checkin.user.user.__str__()
+            status = checkin.current_status.__str__()
+            fields.append(
+                {
+                    'title': name,
+                    'value': status,
+                    'short': True
+                }
+            )
+            fallback="|{}:{}\r".format(name, status)
+
+        message = dict(
+            text = "",
+            attachments = [dict(
+                fallback=fallback,
+                fields=fields
+            )],
+            response_type="ephemeral",
+            parse=True,
+            as_user=True
+        )
+
+        return JsonResponse(message)
+        # slack = slacker.Slacker(os.environ.get("LUCILLE_BOT_TOKEN"))
+        
+        # slack.chat.post_message(
+        #     channel=request.POST['channel_id'],
+        #     text=None,
+        #     as_user=True,
+        #     attachments=[dict(
+        #         fallback=fallback,
+        #         fields=fields
+        #     )],
+        # )
+
+
+        
 
 def test(request, user):
     '''

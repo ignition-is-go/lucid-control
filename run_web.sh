@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # wait for PSQL server to start
-sleep 10
+sleep 1
 
 cd /app/django  
 # prepare init migration

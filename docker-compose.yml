@@ -34,7 +34,7 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: web
-    command: /app/run_waitress.sh
+    command: /app/run_web.sh
     environment:
       - PORT=8000
     volumes:
@@ -53,11 +53,11 @@ services:
     volumes:
       - .:/app
 
-  # Celery beat
-  beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: /app/run_beat.sh
-    volumes:
-      - .:/app
+  # # Celery beat
+  # beat:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   command: /app/run_beat.sh
+  #   volumes:
+  #     - .:/app

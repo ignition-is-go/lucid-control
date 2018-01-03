@@ -9,6 +9,11 @@ urlpatterns = [
         name="Slack Action Response"
     ),
     url(
+        r'^roll-call/$',
+        views.roll_call,
+        name="Slack Roll Call"
+    ),
+    url(
         r'^nag/(?P<user>[a-z]+)/',
         views.test,
         name="Nag Test"

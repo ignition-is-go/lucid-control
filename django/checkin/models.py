@@ -2,10 +2,20 @@
 from __future__ import unicode_literals
 
 import arrow
+import math
 
 from django.db import models
+from django.db.models import Sum, Count, Q, Case, When
 from django.contrib.auth.models import User
-from django_celery_beat.models import CrontabSchedule
+from django_celery_beat.models import PeriodicTask
+
+TIME_OFF_TYPES = [
+    ('vacation', 'Vacation'),
+    ('sick', 'Sick'),
+    ('flex', 'Flex')
+]
+
+
 
 class Profile(models.Model):
     '''
@@ -21,19 +31,67 @@ class Profile(models.Model):
         max_length=50,
         blank=False,
     )
-    # daily_checkin_beat = models.ForeignKey(
-    #     CrontabSchedule,
-    #     on_delete=models.CASCADE,
-    #     related_name="profile",
-    #     verbose_name="Daily Check-in Schedule",
-    #     blank=True
-    # )
+    daily_task = models.OneToOneField(
+        PeriodicTask,
+        on_delete=models.CASCADE,
+        related_name="profile",
+        verbose_name="Daily Check-in Schedule",
+        blank=True,
+        null=True
+    )
     is_active = models.BooleanField(
         default=True,
     )
 
     def __str__(self):
         return self.user.get_username()
+
+
+    def days(self, time_off_type):
+        '''
+        determines the number of available days of *time_off_type*
+        '''
+
+        filters = dict(
+            # flex days are good for 1 year
+            flex=Q(date__gte=arrow.now().shift(years=-1).date()),
+            # vacation never expires
+            vacation=Q(date__lte=arrow.now().date()),
+            # sick days reset each year
+            sick=Q(date__year=arrow.now().year)
+        )
+        
+
+        try:
+            # get time off used
+            # use filter per type
+            used = self.workdays.filter(filters[time_off_type]).aggregate(
+                days=Sum(Case(
+                    When( response__time_off_type=time_off_type, then='response__time_off_adjustment' ),
+                    output_field=models.IntegerField()
+                ))
+            )['days']
+            # check for none value
+            if used is None: raise ValueError
+        except:
+            used = 0
+
+        try:
+            # get accrued time off
+            # use filter per type
+            accrued = self.accrued_days_off.filter(filters[time_off_type]).aggregate(
+                days=Sum(Case(
+                    When( type=time_off_type, then='amount' ),
+                    output_field=models.IntegerField()
+                ))
+            )['days']
+            # check for none value
+            if accrued is None: raise ValueError
+        except:
+            accrued = 0
+
+        return accrued, used
+        
 
     class Meta():
         verbose_name="Checkin User"
@@ -55,22 +113,19 @@ class WorkdayOption(models.Model):
         max_length=200,
         blank=True,
     )
-    flex_adjustment = models.FloatField(
-        verbose_name="Flex Days Adjustment",
-        help_text='Whether to add or remove flex days. Decimal days are acceptable'
+    time_off_type = models.CharField(
+        max_length=100,
+        choices=TIME_OFF_TYPES,
+        blank=True,
+        null=True,
     )
-    vacation_penalty = models.BooleanField(
-        verbose_name="Vacation Day Penalty",
-        help_text='Whether or not this day reduces vacation days',
-        default=False,
-    )
-    sick_penalty = models.BooleanField(
-        verbose_name="Sick Day Penalty",
-        help_text='Whether or not this day reduces sick days',
-        default=False,
+    time_off_adjustment = models.FloatField(
+        blank=False,
+        default=0,
     )
     is_active = models.BooleanField(
-        default = True
+        default = True,
+        verbose_name = "Enabled"
     )
     require_confirmation = models.BooleanField(
         help_text="Whether or not to require the user to confirm",
@@ -97,9 +152,13 @@ class WorkdayOption(models.Model):
         blank=False,
     )
 
-    def as_json(self):
+    def as_json(self, user=None):
         '''
         Return a JSON version of the option for use in slack messages
+
+        ###Args:
+        - **user**: a *Profile*-model object. If supplied, buttons will show the 
+        number of available days of each type, and be hidden if no days remain.
         '''
         action_button = dict(
             name="workday_option",
@@ -108,6 +167,19 @@ class WorkdayOption(models.Model):
             value=self.id,
             style=self.style,
         )
+
+        # check to see if we've supplied a user, and if so, display the number
+        # of available days of this type. Return None if there are no days left.
+        if user is not None and self.time_off_type is not None:
+            accrued, used = user.days(self.time_off_type)
+            remaining = accrued - used
+            if remaining <= 0:
+                # no more of this day type available, return no JSON option
+                return None
+            else:
+                action_button['text'] += " ({:0.0f})".format(
+                    math.floor(accrued-used)
+                    )
 
         if self.require_confirmation:
             action_button['confirm']=dict(
@@ -136,7 +208,7 @@ class Workday(models.Model):
     )
     user = models.ForeignKey(
         Profile,
-        on_delete=None,
+        on_delete=models.CASCADE,
         blank=False,
         related_name="workdays",
     )
@@ -161,11 +233,27 @@ class Workday(models.Model):
         blank=True,
         null=True
     )
+    response = models.ForeignKey(
+        WorkdayOption,
+        on_delete=None,
+        related_name="response",
+        blank=True,
+        null=True,
+        limit_choices_to={'is_active': True},
+        verbose_name="Status",
+    )
+    slack_action_ts = models.CharField(
+        max_length=100,
+        verbose_name="Slack action_ts",
+        # unique=True,
+        default=""
+    ) 
 
     def __str__(self):
-        return "{date} - {name}".format(
+        return "{date} - {name} - {status}".format(
             date = self.date,
-            name = self.user.user.get_username()
+            name = self.user,
+            status = self.current_status
         )
 
     @property
@@ -173,37 +261,40 @@ class Workday(models.Model):
         ''' return the date as arrow object'''
         return arrow.get(self.date)
     
+    @property
+    def current_status(self):
+        return self.response or "(waiting...)"
 
-class WorkdayResponse(models.Model):
+class DayOff(models.Model):
     '''
-    a user response to the workday checkin
+    An individually accrued amount of time off for a user
     '''
-    workday = models.ForeignKey(
-        Workday,
-        on_delete=None,
-        blank=False,
-        related_name="responses",
-    )
-    response = models.ForeignKey(
-        WorkdayOption,
+
+    user = models.ForeignKey(
+        Profile,
         on_delete=models.CASCADE,
-        related_name="response",
+        related_name="accrued_days_off",
+    )
+    date = models.DateField(
+        verbose_name="Issue Date",
+        blank=False,
+    )
+    type = models.CharField(
+        max_length=100,
+        choices=TIME_OFF_TYPES
+    )
+    amount = models.FloatField(
+        verbose_name="Days",
+        help_text='Number of days to add. Decimals OK',
+        blank=False,
+    )
+    note = models.TextField(
         blank=True,
-        limit_choices_to={'is_active': True}
+        null=True,
     )
     timestamp = models.DateTimeField(
-        auto_now_add=True,
+        auto_now_add=True
     )
-    slack_action_ts = models.CharField(
-        max_length=100,
-        verbose_name="Slack action_ts",
-        # unique=True,
-        default=""
-    )
-
-    class Meta():
-        verbose_name="Option"
-        verbose_name_plural="Options"
 
 # class EffortLog(models.Model):
 #     '''

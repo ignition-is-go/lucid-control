@@ -1,20 +1,20 @@
 from __future__ import absolute_import, unicode_literals
 import os
+import json
 
 from celery import shared_task
-from .models import Profile, Workday, WorkdayOption, WorkdayResponse
+from .models import Profile, Workday, WorkdayOption, DayOff
+from django_celery_beat.models import PeriodicTask, CrontabSchedule
 from django.conf import settings
 
 import slacker
 import arrow
 
 from celery.utils.log import get_task_logger
-import logging
-logger = logging.getLogger(__name__)
-# logger = get_task_logger(__name__)
+logger = get_task_logger(__name__)
 
 @shared_task
-def setup_daily_checkin():
+def update_user_timezones():
     '''
     TODO: make this update the crontab stuff
 
@@ -30,27 +30,49 @@ def setup_daily_checkin():
     slack = slacker.Slacker(os.environ.get("SLACK_APP_TEAM_TOKEN"))
 
     for user in users:
+        logger.info("Updating checkin time for %s", user)
         # for each user, get their timezone and schedule the nag task for 9am
         user_data = slack.users.info(user.slack_user)
         tz = user_data.body['user']['tz']
-        # sets checkin for 9am
-        post_time = arrow.now(tz).replace(hour=9,minute=0,second=0)
-        # If the post time is in the past, jump it a day ahead
-        if post_time < arrow.now(tz):
-            post_time.shift(days=+1)
-        # create a new checkin and save it
-        checkin = Workday(
-            user=user,
-            date=today.date,
-            scheduled=post_time,
-        )
-        checkin.save()
+        # sets checkin for 9am in that timezone
+        user_time = arrow.now(tz).replace(hour=9,minute=0,second=0)
+        # shift post time to now
+        server_time = user_time.to(settings.CELERY_TIMEZONE)
 
-        # set up celery task
-        send_nag_message.apply_async((checkin.id), eta=post_time.datetime)
+        logger.debug("Got user local time as %s, server time %s", user_time, server_time)
 
-@shared_task()
-def send_workday_checkin( user_profile_id ):
+        if user.daily_task is None:
+            # create the task and schedule
+            schedule = CrontabSchedule.objects.create(
+                minute=server_time.minute,
+                hour=server_time.hour,
+                day_of_week="*",
+                day_of_month="*",
+                month_of_year="*"
+            )
+            task = PeriodicTask.objects.create(
+                name='Daily-{}'.format(user),
+                task='checkin.tasks.send_workday_checkin',
+                crontab=schedule,
+                args=json.dumps([user.id]),
+            )
+            logger.debug("Creating task %s and assigning to %s", task, user)
+            user.daily_task = task
+        else:
+            # just update the schedule
+            user.daily_task.crontab.minute = server_time.minute
+            user.daily_task.crontab.hour = server_time.hour
+            logger.debug("Updating existing task %s for %s", user.daily_task, user)
+        
+        # Be sure to save!    
+        user.save()
+        logger.info("Updated %s's checkin time to %s (%s)",
+            user, user_time, server_time)
+
+            
+
+@shared_task(bind=True)
+def send_workday_checkin(self, user_profile_id):
     '''
     Sends an individual message to ask a user to check in for today (based on Pacific TZ)
     '''
@@ -72,10 +94,30 @@ def send_workday_checkin( user_profile_id ):
     today_str = today.date_arrow.format("ddd, MMM D, YYYY")
     checkin_str = today.date_arrow.format("MM/DD/YY")
 
+    # If the message has been posted before, wipe it clean
+    if len(today.slack_message_ts) > 0:
+        try:
+            ims = slacker_instance.im.list().body['ims']
+            for im in ims:
+                if im['user'] == user.slack_user:
+                    channel = im['id']
+                    break
+            
+            logger.debug("Channel should be %s", channel)
+            obj = slacker_instance.chat.update(
+                channel=channel,
+                text="_Check-in for {} was re-issued!_".format(today_str),
+                attachments=[],
+                ts=today.slack_message_ts,
+            )
+        except:
+            logger.warn("Couldn't wipe old message %s", today.slack_message_ts, exc_info=True)
+            pass
+
     # TODO: Update this to show the running totals for each type of day off
-    option_set = WorkdayOption.objects.filter(is_active=True)
+    option_set = WorkdayOption.objects.filter(is_active=True).order_by('sort_order')
     
-    actions = [option.as_json() for option in option_set]
+    actions = [option.as_json(user=user) for option in option_set]
     try:
         obj = slacker_instance.chat.post_message(
             channel="@{}".format(user.slack_user),
@@ -97,19 +139,23 @@ def send_workday_checkin( user_profile_id ):
             )
 
         if obj.body['ok']:
+            logger.info("Slack message successful")
             today.is_posted = True
             today.slack_message_ts = obj.body['ts']
             today.save()
+        else:
+            logger.error("Slack message failed: %s", obj.body)
 
         #TODO: setup end-of-day closeout task here
         closeout_time = arrow.now().shift(hours=+16)
 
 
     except slacker.Error as e:
-        raise e
+        logger.error("Slack API Error:", exc_info=True)
+        raise self.retry(exc=e, countdown=5)
 
-@shared_task
-def handle_workday( data ):
+@shared_task(bind=True)
+def handle_workday(self, data):
     '''
     Handles updating the original Interactive message to show the chosen response
     '''
@@ -117,23 +163,38 @@ def handle_workday( data ):
     original_ts = data['message_ts']
     user = data['user']['name']
     channel = data['channel']['id']
+    logger.debug("Channel: %s", channel)
     # we have to decompose the callback id we sent to slack to get the workday out of it
     _, workday_id = data['callback_id'].split("=", 1)
     today = Workday.objects.get(pk=workday_id)
     checkin_date = arrow.get(today.date).format("ddd, MMM D, YYYY")
-    status_id = data['actions'][0]['value']
+    # get the workday option based on the slack data
+    status = WorkdayOption.objects.get(pk=data['actions'][0]['value'])
 
-    logger.debug("Updating message for checkin #%s", workday_id)
+    logger.info("Updating checkin %s to %s", today, status)
+    logger.debug("Slack action: %s", data['actions'][0])
+    logger.debug("Status is object type: %s", type(status))
 
-    # store the response in the DB
-    response, created = WorkdayResponse.objects.get_or_create(
-        workday=today,
-        response=WorkdayOption.objects.get(pk=status_id),
-        slack_action_ts=data['action_ts']
-    )
-    logger.debug("%s response #%s :: %s", 
-        "Created" if created else "Got",
-        response.id, response)
+    #  THIS IS FOR THE OLD WorkdayResponse method... 
+    #  TODO: remove once safe
+    # # store the response in the DB
+    # response, created = WorkdayResponse.objects.get_or_create(
+    #     workday=today,
+    #     response=WorkdayOption.objects.get(pk=status_id),
+    #     slack_action_ts=data['action_ts']
+    # )
+    # logger.debug("%s response #%s :: %s", 
+    #     "Created" if created else "Got",
+    #     response.id, response)
+
+    # store the response
+    try:
+        today.response=status
+        today.slack_action_ts=data['action_ts']
+        today.save()
+    except Exception as e:
+        logger.error("Couldn't set response!", exc_info=True)
+        self.retry(exc=e)
 
     slack = slacker.Slacker(os.environ.get('LUCILLE_BOT_TOKEN'))
 
@@ -144,9 +205,9 @@ def handle_workday( data ):
             channel=channel,
             attachments=[{
                 "text" : "{icon} Thanks! I've marked you as *{status}* on *{date}*".format(
-                    status=response.response, 
+                    status=status, 
                     date=checkin_date, 
-                    icon=response.response.emoji
+                    icon=status.emoji
                     ),
                 "mrkdwn_in": ["text"],
                 "actions": []
@@ -160,6 +221,28 @@ def handle_workday( data ):
  
     pass
 
-@shared_task
-def test():
-    logger.info("Testing! %s", arrow.utcnow().isoformat())
+# TODO: closeout day task
+@shared_task(bind=True)
+def close_out_workday(self, workday_id):
+    pass
+    
+@shared_task(bind=True)
+def issue_flex_day(self):
+    '''
+    issues a flex day for the current day
+    '''
+
+    users = Profile.objects.filter(is_active=True)
+    arrow.utcnow().date()
+
+    for user in users:
+        # issue flex day
+        flex_day = DayOff.objects.get_or_create(
+            user=user,
+            date=today,
+            type='flex',
+            amount=1,
+            note="Automatically issued from 'issue_flex_day'",
+        )
+        logger.info("Flex day added for %s on %s",user,today )
+

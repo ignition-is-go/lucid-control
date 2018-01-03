@@ -243,6 +243,10 @@ LOGGING = {
         'checkin': {
             'handlers': ['console'],
             'level': 'DEBUG',
+        },
+        'lucidcontrol': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
         }
     }
 }
