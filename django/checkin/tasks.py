@@ -21,7 +21,7 @@ def update_user_timezones():
     This task updates the celery beat crontab tasks based on the user's current
     timezone as listed in Slack
     '''
-
+    logger.debug("Starting update_user_timezones")
     users = Profile.objects.filter(is_active=True)
 
     # this date will be used to decide the date
@@ -35,7 +35,7 @@ def update_user_timezones():
         user_data = slack.users.info(user.slack_user)
         tz = user_data.body['user']['tz']
         # sets checkin for 9am in that timezone
-        user_time = arrow.now(tz).replace(hour=9,minute=0,second=0)
+        user_time = arrow.now(tz).replace(hour=9,minute=1,second=0)
         # shift post time to now
         server_time = user_time.to(settings.CELERY_TIMEZONE)
 
@@ -58,18 +58,18 @@ def update_user_timezones():
             )
             logger.debug("Creating task %s and assigning to %s", task, user)
             user.daily_task = task
+            user.save()
+
         else:
             # just update the schedule
             user.daily_task.crontab.minute = server_time.minute
             user.daily_task.crontab.hour = server_time.hour
+            # save the schedule
+            user.daily_task.crontab.save()
             logger.debug("Updating existing task %s for %s", user.daily_task, user)
         
-        # Be sure to save!    
-        user.save()
         logger.info("Updated %s's checkin time to %s (%s)",
-            user, user_time, server_time)
-
-            
+            user, user_time, server_time)       
 
 @shared_task(bind=True)
 def send_workday_checkin(self, user_profile_id):
@@ -147,8 +147,9 @@ def send_workday_checkin(self, user_profile_id):
             logger.error("Slack message failed: %s", obj.body)
 
         #TODO: setup end-of-day closeout task here
-        closeout_time = arrow.now().shift(hours=+16)
+        closeout_time = arrow.now().shift(hours=+12)
 
+        close_out_workday.apply_async((today.id,), eta=closeout_time.datetime)
 
     except slacker.Error as e:
         logger.error("Slack API Error:", exc_info=True)
@@ -221,18 +222,81 @@ def handle_workday(self, data):
  
     pass
 
-# TODO: closeout day task
+
 @shared_task(bind=True)
 def close_out_workday(self, workday_id):
-    pass
+    '''
+    closes out a workday
+    '''
+    try:
+        today = Workday.objects.get(pk=workday_id)
+    except Workday.DoesNotExist:
+        logger.error("Workday #%s doesn't exist...", workday_id, exc_info=True)
+        raise Workday.DoesNotExist
     
+    if not isinstance(today.response, WorkdayOption):
+        # we don't have a response
+
+        # TODO: check with ftrack to see if the user is working on site
+
+
+
+        # if no other option, use a day off, in this order:
+        # NOTE: we have excluded flex, because the user is unreachable
+        days_off = ('vacation', 'sick')
+
+        for day_off_type in days_off:
+            accrued, used = user.days(day_off_type)
+            if accrued - used > 0:
+                # we have this type left, use it and move on
+                option = WorkdayOption.objects.filter(time_off_type=day_off_type)[0]
+                break
+        else:
+            # TODO: figure out what to do if they don't have any days left
+            # for now, they go negative on vacation days
+            option = WorkdayOption.objects.filter(time_off_type='vacation')[0]
+
+        today.response = option
+        today.save()
+    else:
+        # user has checked in today.
+        # let's see if they've worked over the last 7 days
+        # and if so, issue them a bonus flex day
+
+        recent = Workday.objects.filter(
+                user=today.user
+            ).filter(
+                date__gte=arrow.now().shift(years=-1).date()
+            ).order_by('-date').select_related('response')
+
+        # look through the days and break when we get a non-working one
+        working_count = 0
+        for day in recent:
+            if day.response.time_off_type is None:
+                # working day
+                working_count+=1
+            else:
+                break
+        
+        # now modulo divide by 7. every 7th day working they get a bonus.
+        if working_count % 7 == 0 and working_count > 6:
+            issue_flex_day(user_id=today.user.id, note="For working 7 days straight")
+
 @shared_task(bind=True)
-def issue_flex_day(self):
+def issue_flex_day(self, note=None, user_id=None):
     '''
     issues a flex day for the current day
+
+    ###Args:
+    - **note**:optional string to add to the note field
+    - **user_id**: optional, if supplied, only issue flex day to this user
     '''
 
-    users = Profile.objects.filter(is_active=True)
+    if user_id:
+        users = Profile.objects.get(pk=user_id)
+    else:
+        users = Profile.objects.filter(is_active=True)
+
     arrow.utcnow().date()
 
     for user in users:
@@ -242,7 +306,7 @@ def issue_flex_day(self):
             date=today,
             type='flex',
             amount=1,
-            note="Automatically issued from 'issue_flex_day'",
+            note="Automatically issued from 'issue_flex_day'. {}".format(note),
         )
         logger.info("Flex day added for %s on %s",user,today )
 
