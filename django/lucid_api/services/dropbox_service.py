@@ -14,12 +14,18 @@ import logging
 import datetime
 from werkzeug.urls import url_fix
 
+from django.apps import apps
+from celery.utils.log import get_task_logger
+
 class Service(service_template.ServiceTemplate):
 
     _pretty_name = "Dropbox"
+    _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Za-z])-(?P<project_id>\d{4})-(?P<project_title>[^\/]+)\/(?P<connection_name>.+)')
+    _DEFAULT_FORMAT = "{typecode}-{project_id:04d}-{title}/{connection_name}"
+
     def __init__(self):
 
-        self._logger = self._setup_logger(to_file=True)
+        self._logger = get_task_logger(__name__)
         self._logger.info("Instantiated Dropbox!")
 
         self._dbx = dropbox.Dropbox(os.environ.get('DROPBOX_ACCESS_TOKEN'))
@@ -32,264 +38,159 @@ class Service(service_template.ServiceTemplate):
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
 
-        self._logger.info('Attempting to create Dropbox folder schema for %s',
-            project)
-        
-        slug = self._format_slug(project_id,title)
-        schema = self._get_schema()
+        slug = self._format_slug(connection)
+        root = os.environ.get('DROPBOX_APP_ROOT')
 
-        responses = []
+        self._logger.info('Attempting to create Dropbox folder %s/%s', root, slug)
+                
         try:
-            for f in range(0, len(schema['folders'])):
-                folder = schema['folders'][f]
-                try:
-                    # look for the folder before making it
-                    self._logger.debug("Checking for existing in %s/",folder['root'])
-                    schema['folders'][f]['match'] = self._find_in_folder(project_id,
-                        folder['root'],
-                        title=title
-                        )
+            # make the folder
+            response = self._dbx.files_create_folder( slug )
+            self._logger.debug("Dbx Response: %s", response)
 
-                except DropboxServiceError:
-                    # didn't find the folder, so create it
-                    self._logger.debug("None found for existing in %s/",folder['root'])
-                    to_create = self._join_path(folder['root'], slug)
-                    self._logger.info( 'attempting to make: %s', to_create )
-                    response = self._dbx.files_create_folder( to_create )
-                    self._logger.debug("Dbx Response: %s", response)
-                    schema['folders'][f]['match'] = [response]
-                    responses.append(bool(
-                        response.path_lower == to_create.lower()
-                    ))
-
-                finally:
-                    # we can create subfolders safely
-                    for subfolder in folder['subfolders']:
-                        sub_path = self._join_path(folder['root'], slug, subfolder)
-                        self._logger.info('attempting to make: %s', 
-                            sub_path)
-                        response = self._dbx.files_create_folder(sub_path)
-                        self._logger.debug("Dbx Response: %s", response)
-                        responses.append(bool(
-                            response.path_lower == sub_path.lower()
-                        ))
-
-            self._logger.info("!!!CREATE RESULTS==%s", responses)
-            return not bool(False in responses)
-
-        except Exception as err:
-            self._logger.error("Error while creating dropbox folders for #%s: %s",
-                project_id, err.message)
+            connection.identifier = response.id
+            connection.state_message = "Created Successfully!"
+            connection.save()
+        
+        except dropbox.exceptions.InternalServerError or dropbox.exceptions.HttpError as err:
+            self._logger.error("Dropbox Error!", exc_info=True)
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
             raise err
 
-        # else:
-        #     self._logger.error("Cannot create folders for #%s, these already exist: %s",
-        #         project_id, folders)
-        #     raise DropboxServiceError("Cannot create folders, these already exist: %s", 
-        #         folders)
+        except Exception as err:
+            self._logger.error("Non-retry error:", exc_info=True)
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
 
-    def rename(self, project_id, title):
+    def rename(self, service_connection_id):
         '''
-        renames dropbox folder based on the schema in the ENV
+        renames dropbox folder 
         '''
-        self._logger.info("-=-=-=-=-=-=-=-=-=-=-=")
-        self._logger.info('Attempting to rename Dropbox folder schema for #%s to %s',
-            project_id, title)
+
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
+
+        slug = self._format_slug(connection)
+
+        self._logger.info('Attempting to rename Dropbox folder for %s: %s',
+            project, connection)
 
         try:
-            schema = self._find_schema(project_id)
-        except DropboxServiceError as err:
-            # this means the folders don't exist, so bail!
-           raise err
-        else:
-            self._logger.debug("Found at least one folder.")
-            responses = []
-            new_slug = self._format_slug(project_id, title)
-            
-            try:
-                for f in range(0, len(schema['folders'])):
-                    for folder in schema['folders'][f]['matches']:
-                        # assert isinstance(folder, dropbox.files.FolderMetadata)
-                        self._logger.debug("Working on %s",folder)
-                        path_parts = folder.path_lower.split("/")
-                        if not (path_parts[-1].lower() == folder.name.lower()):
-                            continue
-                        path = "/".join(path_parts[0:-1])
-                        rename_target = self._join_path(path, new_slug)
-                        self._logger.debug("Attempting to rename %s to %s",
-                            folder.path_lower, rename_target)
-                        response = self._dbx.files_move(
-                            folder.path_lower,
-                            rename_target
-                            )
-                        responses.append(bool(
-                            response.path_lower == rename_target.lower()
-                        ))
+            meta = self._dbx.files_get_metadata(connection.identifier)
+            self._logger.debug("Got Dropbox Metadata: %s", meta)
 
-                        self._logger.debug("Rename result: %s (%s)", 
-                            responses[-1],
-                            response)
-                self._logger.info("Finished with rename. Results: %s",responses)
-                return not bool(False in responses)
+            # move from the current path (via metadata) to the new slug path
+            response = self._dbx.files_move(meta.path_lower, slug)
+
+            if response.path_display <> slug:
+                raise DropboxServiceError("Move failed.")
+            else:
+                connection.state_message = "Moved successfully to {}".format(slug)
+                connection.save()
+
+        except DropboxServiceError as err:
+            self._logger.error("Couldn't move folder %s to %s", connection.identifier, slug, exc_info=True)
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
+            raise err
         
-            except Exception as err:
-                self._logger.error("Error while creating dropbox folders for #%s: %s",
-                    project_id, err.message)
+        except dropbox.exceptions.InternalServerError or dropbox.exceptions.HttpError as err:
+            self._logger.error("Dropbox Error!", exc_info=True)
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
+            raise err
+
+        except Exception as err:
+            self._logger.error("Non-retry error:", exc_info=True)
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
+    
+    def archive(self, service_connection_id):
+        '''
+        Archives the folder by moving the project folder into the archive root. 
+        Also checks to see if it has already been archived and avoids the duplication of effort.
+    
+        '''
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
+
+        # slug will generate the correct target folder based on whether or not the connection is archived
+        slug = self._format_slug(connection)
+
+        # remove the connection.connection_name from the slug to get the target project folder
+        target_folder = slug.rstrip("/"+connection.connection_name.lower())
+        self._logger.debug("Target archive folder is %s", target_folder)
+
+        meta = self._dbx.files_get_metadata(connection.identifier)
+
+        if target_folder in meta.path_lower:
+            # this folder has already been moved to the target folder
+            return
+        
+        else:
+            try:
+                # get the project folder by stripping connection.connection_name from the path
+                project_folder = meta.path_lower.rstrip("/"+connection.connection_name.lower())
+                # move project folder to the target folder
+                response = self._dbx.files_move(project_folder, target_folder)
+
+                if target_folder not in response.path_lower:
+                    # folder hasn't moved to the correct spot
+                    raise DropboxServiceError("Archive failed")
+                
+                connection.state_message = "{} Success!".format("Archive" if connection.is_archived else "Unarchive")
+                connection.save()
+
+            except DropboxServiceError as err:
+                self._logger.error("Couldn't move folder %s to %s", connection.identifier, slug, exc_info=True)
+                connection.state_message = "Error: {}".format(err)
+                connection.save()
+                raise err
+            
+            except dropbox.exceptions.InternalServerError or dropbox.exceptions.HttpError as err:
+                self._logger.error("Dropbox Error!", exc_info=True)
+                connection.state_message = "Error: {}".format(err)
+                connection.save()
                 raise err
 
-    
-    def archive(self, project_id):
-        '''Archives the folders associated with the project'''
-        self._logger.info('Attempting to archive Dropbox folder schema for #%s',
-            project_id)
+            except Exception as err:
+                self._logger.error("Non-retry error:", exc_info=True)
+                connection.state_message = "Error: {}".format(err)
+                connection.save()
 
-        try:
-            schema = self._find_schema(project_id)
-        except DropboxServiceError as err:
-            # this means the folders don't exist, so bail!
-            self._logger.error("Couldn't find folders for %s: %s",project_id,err.message)
-            raise err
-
-        try:
-            responses = []
-            year = str(datetime.date.today().year)
-            self._logger.debug("Got Schema, archiving as year=%s", year)
-            
-            # this is lazy, we should probably do a better job of getting 
-            # the proper slug for the archive folder name, but cest la vie
-            slug = schema['folders'][0]['matches'][0].name
-            
-            for folder in schema['folders']:
-                for match in folder['matches']:
-                    assert isinstance(match, dropbox.files.FolderMetadata)
-                    archive_target = self._join_path(
-                        schema['archive'],
-                        year,
-                        slug,
-                        folder['archive_target']
-                    )
-                    
-                    self._logger.debug("Attempting to move %s to %s", match.path_lower, archive_target)
-
-                    response = self._dbx.files_move(
-                        match.path_lower,
-                        archive_target
-                        )
-                    
-                    responses.append(bool(
-                        response.path_lower == archive_target.lower()
-                    ))
-
-                    self._logger.debug("!!!Move result: %s (%s)", 
-                        responses[-1],
-                        response)
-            self._logger.info("Finished with archive. Results: %s",responses)
-            return not bool(False in responses)
-    
-        except dropbox.exceptions.DropboxException as err:
-            self._logger.error("Error while creating dropbox folders for #%s: %s",
-                project_id, err.message)
-            raise DropboxServiceError("Error: %s",err.message)
-
-
-    def _get_schema(self):
-        '''Gets the dropbox schema'''
-        schema_raw = os.environ['DROPBOX_FOLDER_SCHEMA']
-        schema_swapped = schema_raw.replace('"','{sq}'
-            ).replace("'", '{dq}'
-            ).replace('{sq}', "'"
-            ).replace('{dq}', '"')
-            
-        schema = json.loads(schema_swapped)
-        return schema
-
-    def _find_schema(self, project_id, title=""):
+    def unarchive(self, service_connection_id):
         '''
-        Finds all the dropbox folders associated with this project
+        Unarchives the folder by moving the project folder into the active root using self.archive
+        
+        *With Dropbox, unarchiving is the same logic as archiving,
+        but we move into a different root folder, as determined by the archive state
+        on the service connection. So, we just redirect this to the archive method!*
+
         '''
-        self._logger.info("Starting Search in Dropbox for #%s", project_id)
-
-        # using the default format for dropbox, we ditch the title to give an easy match
-        project_code = self._format_slug(project_id,"")
-
-        schema = self._get_schema()
-        matches = []
-        error = None
-        
-        for f in range(0,len(schema['folders'])):
-            folder = schema['folders'][f]
-            try:
-                results = self._find_in_folder(project_id, folder['root'], title=title)
-                self._logger.info('Found drobox folder matching #%s: %s',
-                    project_id, results)
-                
-                schema['folders'][f]['matches'] = results
-            except DropboxServiceError as err:
-                error = DropboxServiceError("Found no Folders for {}".format(project_id))
-
-            except dropbox.exceptions.DropboxException as dbx_err:
-                self._logger.error("Had a problem with dropbox: %s",
-                    dbx_err.message)
-
-        if error is not None:
-            raise error  
-        else: return schema
+        self._logger.info('Attempting to unarchive Dropbox folder via rename...')
+        self.archive(service_connection_id)
 
 
-    def _find_in_folder(self, project_id, search_root, title=""):
-        '''iterates through a folder and returns the folders that match the project id'''
-        self._logger.info("Searching %s for %s",search_root,project_id)
-        try:
-            slug = self._format_slug(project_id,title)
-            files = self._dbx.files_list_folder(search_root).entries
-            matches = []
-            for f in files:
-                if f.name.startswith(slug):
-                    self._logger.debug("Found %s", f.name)
-                    matches.append(f)
-            if len(matches) == 0:
-                raise DropboxServiceError("Nothing found for {} in {}".format(
-                    project_id, search_root
-                )) 
-            return matches
-
-        except Exception as err:
-            raise err
-
-    def _find(self, project_id, title="" ,root=""):
-        '''
-        search using the dropbox search function
-        
-        NOTE: this will not find files which are very recently changed, due to indexing on Dropbox
-        '''
-
-        project_code = self._format_slug(project_id,title)
-        self._logger.info("Searching for [%s] in '%s'",project_code,root)
-        self._dbx.files
-        search = self._dbx.files_search(root, project_code)   
-        results = []
-        self._logger.debug("Search Results: %s", search)
-        for result in search.matches:
-            # if not isinstance(result, dropbox.files.SearchMatch): continue
-            if result.match_type.is_filename:
-                results.append(result.metadata)
-                self._logger.info("Found dropbox for #%s: %s", project_id, result.metadata)
-        
-        if len(results) > 0 : return results
-        else: raise DropboxServiceError("Couldn't find folders matching that project ID") 
-
-        
-    def _format_slug(self, project_id, title):
+    def _format_slug(self, connection,):
         '''Correctly formats  the slug for drobox'''
-        self._logger.info("Creating Dropbox Slug for #%s: %s", project_id, title)
-        project_id = str(project_id)
-        title = title.lower().replace(" ", "-")
-        slug = super(DropboxService, self)._format_slug(project_id, title)
-
+        # do the default one but replace spaces
+        slug = super(Service, self)._format_slug(connection).replace(" ", "-")
+        # remove non-filesafe chars
         re.sub(r'[\\/:*?\"<>|]+','',slug)
-        
-        self._logger.info("Made Dropbox Slug for #%s: %s = %s",project_id, title, slug)
+
+        # prepend the root, using the active unless is_archived
+        if connection.is_archived:
+            root = os.environ.get("DROPBOX_APP_ARCHIVE")
+        else:
+            root = os.environ.get("DROPBOX_APP_ROOT")
+
+        slug = self._join_path(root, slug).lower()
+
         return slug
+
 
     def _join_path(self, *args):
         '''Fixes paths to uniformly linux style'''
@@ -297,24 +198,19 @@ class Service(service_template.ServiceTemplate):
         self._logger.debug("Path is= %s",fixed_path)
         return fixed_path
 
-    def get_link_dict(self, project_id):
-        '''returns a dictionary of folder: link'''
-        try:
-            schema = self._find_schema(project_id)
+    
+    # TODO: Need to figure out how this gets used
+    # def get_link_dict(self, conn):
+    #     '''returns a dictionary of folder: link'''
+    #     try:
             
-            response = {}
-            for folder in schema['folders']:
-                if folder['matches'][0]:
-                    # we will lazily return the first match, i guess
-                    name = ":lucid-control-dropbox: " + folder['root'].replace("/", "")
-                    link = url_fix( "https://www.dropbox.com/home"+ folder['matches'][0].path_lower)
-                        
-                    response[name] = link
+    #         response = {}
+    #         meta = self._dbx.files_get_metadata()
 
-            return response
+    #         return response
             
-        except Exception as err:
-            self._logger.error("Had an error getting the link dicitonary: %s", err.message)
+    #     except Exception as err:
+    #         self._logger.error("Had an error getting the link dicitonary: %s", err.message)
 
 class DropboxServiceError(service_template.ServiceException):
     pass

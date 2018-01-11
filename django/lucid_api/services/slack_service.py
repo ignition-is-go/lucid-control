@@ -47,8 +47,6 @@ class Service(service_template.ServiceTemplate):
         '''
         Handles the process of creating a new slack channel, including adding people to it
 
-        TODO: Implement description?
-
         '''
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         connection = ServiceConnection.objects.get(pk=service_connection_id)
@@ -69,9 +67,14 @@ class Service(service_template.ServiceTemplate):
             create_response = self._slack_team.channels.create(name=slug)
             channel = create_response.body['channel']
             create_success = bool(create_response.body['ok'])
+            
+            connection.identifier = channel['id']
             if create_success:
-                connection.identifier = channel['id']
-                connection.save()
+                connection.state_message = "Created successfully!"
+            else:
+                connection.state_message = "Creation issue."
+            connection.save()
+
             self._logger.debug("Slack Create Response: %s", create_response.body)
 
             self._logger.info("Successfully created channel for %s", slug)
@@ -99,57 +102,17 @@ class Service(service_template.ServiceTemplate):
             self._logger.error("Error Creating Slack Channel for project # %s: %s", slug, err)
             raise SlackServiceError("Could not create channel for #%s, Slack API error: %s", slug, err.message)
 
-        try:
+        # invite the bot
+        self._invite_bot(connection)
+        connection.state_message += "\nBot invited successfully."
+        connection.save()
 
-            #invite the bot user
-            invite_bot_response = self._slack_team.channels.invite(
-                channel=channel['id'],
-                user= self._bot_info['user_id']
-                )
-            self._logger.info("Successfully invited bot to channel for %s", slug)
-
-        except slacker.Error as err:
-            self._logger.error("Error inviting the Lucid Control Bot to the Slack Channel %s because slacker.Error: %s", slug, err)
-            raise SlackServiceError("Could not invite Lucid Control Bot to channel %s, Slack API error: %s", slug, err.message)
-
-        try:
-            # try to invite the user group and the bot
-            if os.environ['SLACK_INVITE_USERGROUP'] is not "" :
-                invite_group_response = self._slack_team.usergroups.update(
-                    usergroup=os.environ['SLACK_INVITE_USERGROUP'],
-                    channels=channel['id']
-                )
-                self._logger.info("Successfully invited usergroup channel %s", slug)
+        # invite the usergroup
+        self._invite_usergroup(connection)
+        connection.state_message += "\nUsers invited successfully!"
+        connection.save()
                 
-                #check for everyone's success
-                if not bool(create_success and 
-                    invite_bot_response.body['ok'] and
-                    invite_group_response.body['ok']):
-                    raise SlackServiceError("Didn't successfully add everyone to the channel.")
-
-
-            else: 
-                # since we're not inviting the usergroup, don't check them for success
-                self._logger.info("Create::%s | Invite::%s", create_success, invite_bot_response.body['ok'])
-                if not bool(create_success and 
-                    invite_bot_response.body['ok']):
-                    raise SlackServiceError("Didn't successfully add Lucid Control Bot to the channel")
-
-        except slacker.Error as err:
-            # failed to invite user group and bot
-            self._logger.error(
-                "Error inviting the proper people to the Slack Channel for project # %s because slacker.Error: %s",
-                slug,
-                err
-                )
-            raise SlackServiceError(
-                "Could not invite bot+usergroup to channel %s, Slack API error: %s",
-                slug,
-                err.message
-                )
-            
-            
-        return (channel['id'], channel['name_normalized'])
+        return True
 
     def rename(self, service_connection_id):
         '''
@@ -180,7 +143,8 @@ class Service(service_template.ServiceTemplate):
                 channel=connection.identifier,
                 name=new_slug
             )
-            connection.connection_name = rename_response.body['channel']['name_normalized']
+            
+            connection.state_message = "Renamed successfully!"
             connection.save()
 
             self._logger.info(
@@ -218,13 +182,14 @@ class Service(service_template.ServiceTemplate):
         '''
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         connection = ServiceConnection.objects.get(pk=service_connection_id)
-        self._logger.info('Archiving Slack for Channel %s', connection.connection_name )
+        project = connection.project
+        self._logger.info('Archiving Slack for Channel %s-%s', project, connection.connection_name )
 
         try:
             archive_response = self._slack_team.channels.archive(
                 channel=connection.identifier,
             )
-            connection.is_archived = True
+            connection.state_message = "Archived successfully!"
             connection.save()
 
             self._logger.info("Finished Archive Slack for %s",connection)
@@ -263,11 +228,20 @@ class Service(service_template.ServiceTemplate):
             archive_response = self._slack_team.channels.unarchive(
                 channel=connection.identifier,
             )
-            connection.is_archived = False
+            connection.state_message = "Unarchived Successfully!"
+            connection.save()
+
+            # invite the bot
+            self._invite_bot(connection)
+            connection.state_message += "\nBot re-invited successfully."
+            connection.save()
+
+            # invite the usergroup
+            self._invite_usergroup(connection)
+            connection.state_message += "\nUsers re-invited successfully!"
             connection.save()
 
             self._logger.info("Finished Unarchive Slack for %s",connection)
-            return archive_response.body['ok']
         
         except slacker.Error as err:
             self._logger.error(
@@ -281,7 +255,7 @@ class Service(service_template.ServiceTemplate):
                 err.message
                 )
                 
-    def post_to_project(self, channel_id, text, user=None, attachments=None, pinned=False, unfurl_links=True):
+    def message(self, channel_id, text, user=None, attachments=None, pinned=False, unfurl_links=True, action=False):
         '''
         Posts a message into the project's slack channel.
 
@@ -304,15 +278,23 @@ class Service(service_template.ServiceTemplate):
         try:
             self._logger.debug("Attempting slack post: channel=%s text=%s attachments=%s",
                 channel_id, text, attachments)
-            post_response = self._slack_bot.chat.post_message(
-                channel=channel_id,
-                text=text,
-                as_user=as_user,
-                username=username,
-                attachments=attachments,
-                parse=True,
-                unfurl_links=unfurl_links
-            )
+            
+            if action:
+                post_response = self._slack_bot.chat.me_message(
+                    channel_id, text,
+                )
+            else:
+                post_response = self._slack_bot.chat.post_message(
+                    channel=channel_id,
+                    text=text,
+                    as_user=as_user,
+                    username=username,
+                    attachments=attachments,
+                    parse=True,
+                    unfurl_links=unfurl_links,
+                )
+
+            
 
             self._logger.debug("Posted to slack. Response: %s", post_response)
             if pinned and post_response.body['ok']:
@@ -332,9 +314,15 @@ class Service(service_template.ServiceTemplate):
             self._logger.error('Could not post to #%s because slacker.Error: %s', channel_id, err.message)
             raise SlackServiceError("Could not post to channel for #%s, Slack API error: %s", channel_id, err.message)
 
-    
     def update_pinned_message(self, channel_id, text, old_text_stub, attachments=None, unfurl_links=True):
-        '''Updates a pinned slack message with new text'''
+        '''Updates a pinned slack message with new text
+        ### Args
+        * channel_id: slack channel id
+        * text: message text
+        * old_text_stub: text in message to replace
+        * attachments: slack api attachment array
+        * unfurl_links: whether or not to unfold links into attachments (False keeps links as just linked text)
+        '''
         self._logger.info("Attempting to update a pinned message starting with [%s] in project %s to %s",
             old_text_stub, channel_id, text)
 
@@ -369,7 +357,9 @@ class Service(service_template.ServiceTemplate):
             raise SlackServiceError("Slack API Error: %s", err.message)
                 
     def post_basic(self, slack_channel_id, text):
-        '''basic slack post'''
+        '''basic slack post
+        slack_channel_id: 
+        '''
         response = self._slack_bot.chat.post_message(
             slack_channel_id,
             text,
@@ -405,56 +395,100 @@ class Service(service_template.ServiceTemplate):
         else:
             raise SlackServiceError("Slack returned an error: {}".format(response.contents))
 
-    def get_project_id(self, slack_channel_id="", slack_channel_name=""):
-        '''Takes a slack channel ID and returns a project_id from it'''
-        if slack_channel_id is None and slack_channel_name is None: 
-            self._logger.error("No name or id supplied for search")
-            raise SlackServiceError("Must supply either channel name or ID")
-
-        self._logger.info("Starting search for project ID for channel: %s", slack_channel_id)
-
+    def _invite_bot(self, connection):
         try:
-            search = slack_channel_id if slack_channel_id is not None else "#"+slack_channel_name
-            channel_response = self._slack_team.channels.info(search)
-            if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
+            #invite the bot user
+            invite_bot_response = self._slack_team.channels.invite(
+                channel=connection.identifier,
+                user= self._bot_info['user_id']
+                )
+            self._logger.info("Successfully invited bot to channel for %s", connection)
 
-        except slacker.Error or SlackServiceError as err:
-            self._logger.error("Had an issue with accessing the team slack API: %s", err.message)
-            raise SlackServiceError("Couldn't find the requested channel")
+        except slacker.Error as err:
+            self._logger.error("Error inviting the Lucid Control Bot to the Slack Channel %s because slacker.Error: %s", connection, err)
+            raise SlackServiceError("Could not invite Lucid Control Bot to channel %s, Slack API error: %s", connection, err.message)
 
-        else:
-            self._logger.debug("Got info back: %s", channel_response)
-            slack_channel_name = channel_response.body['channel']['name']
-        
-        self._logger.debug("Searching for slack channel name = %s", slack_channel_name)
-        m = re.match(self._DEFAULT_REGEX, slack_channel_name)
-        if m:
-            project_id = int(m.group('project_id'))
-            self._logger.info('Found a match as Project ID: %s', project_id)
-            return project_id
-        else:
-            previous_names = channel_response.body['channel']['previous_names']
-            self._logger.warn("Current name not a match, trying previous names: %s", previous_names)
-            for old_name in previous_names:
-                m = re.match(self._DEFAULT_REGEX, old_name)
-                if m:
-                    project_id = int(m.group('project_id'))
-                    self._logger.info('Found an old name match as Project ID: %s', project_id)
-                    return project_id
+    def _invite_usergroup(self, channel):
+        '''
+        invite the slack usergroup to the channel
+        '''
+        try:
+            # try to invite the user group and the bot
+            if os.environ['SLACK_INVITE_USERGROUP'] is not "" :
+                invite_group_response = self._slack_team.usergroups.update(
+                    usergroup=os.environ['SLACK_INVITE_USERGROUP'],
+                    channel=connection.identifier,
+                )
+                self._logger.info("Successfully invited usergroup channel %s", connection)
+                
+                #check for everyone's success
+                if not bool(invite_group_response.body['ok']):
+                    raise SlackServiceError("Didn't successfully add everyone to the channel.")
+
+
+        except slacker.Error as err:
+            # failed to invite user group and bot
+            self._logger.error(
+                "Error inviting the proper people to the Slack Channel for project # %s because slacker.Error: %s",
+                connection,
+                err
+                )
+            raise SlackServiceError(
+                "Could not invite usergroup to channel %s, Slack API error: %s",
+                connection,
+                err.message
+                )
             
-            raise SlackServiceError('Channel could not be associated with a project ID')
+    # def get_project_id(self, slack_channel_id="", slack_channel_name=""):
+    #     '''Takes a slack channel ID and returns a project_id from it'''
+    #     if slack_channel_id is None and slack_channel_name is None: 
+    #         self._logger.error("No name or id supplied for search")
+    #         raise SlackServiceError("Must supply either channel name or ID")
+
+    #     self._logger.info("Starting search for project ID for channel: %s", slack_channel_id)
+
+    #     try:
+    #         search = slack_channel_id if slack_channel_id is not None else "#"+slack_channel_name
+    #         channel_response = self._slack_team.channels.info(search)
+    #         if not channel_response.body['ok']: raise SlackServiceError("Response not OK, %s",channel_response.error)
+
+    #     except slacker.Error or SlackServiceError as err:
+    #         self._logger.error("Had an issue with accessing the team slack API: %s", err.message)
+    #         raise SlackServiceError("Couldn't find the requested channel")
+
+    #     else:
+    #         self._logger.debug("Got info back: %s", channel_response)
+    #         slack_channel_name = channel_response.body['channel']['name']
+        
+    #     self._logger.debug("Searching for slack channel name = %s", slack_channel_name)
+    #     m = re.match(self._DEFAULT_REGEX, slack_channel_name)
+    #     if m:
+    #         project_id = int(m.group('project_id'))
+    #         self._logger.info('Found a match as Project ID: %s', project_id)
+    #         return project_id
+    #     else:
+    #         previous_names = channel_response.body['channel']['previous_names']
+    #         self._logger.warn("Current name not a match, trying previous names: %s", previous_names)
+    #         for old_name in previous_names:
+    #             m = re.match(self._DEFAULT_REGEX, old_name)
+    #             if m:
+    #                 project_id = int(m.group('project_id'))
+    #                 self._logger.info('Found an old name match as Project ID: %s', project_id)
+    #                 return project_id
+            
+    #         raise SlackServiceError('Channel could not be associated with a project ID')
 
     
-    def get_id(self, project_id):
-        '''
-        Uses the project id to return a slack channel id
-        '''
-        try:
-            channel = self._find(project_id)
-        except SlackServiceError as err:
-            raise SlackServiceError("Could not retrieve ID for the channel for #%s, because the project id could not be found", project_id)
-        else:
-            return channel['id']
+    # def get_id(self, project_id):
+    #     '''
+    #     Uses the project id to return a slack channel id
+    #     '''
+    #     try:
+    #         channel = self._find(project_id)
+    #     except SlackServiceError as err:
+    #         raise SlackServiceError("Could not retrieve ID for the channel for #%s, because the project id could not be found", project_id)
+    #     else:
+    #         return channel['id']
     
     def get_link(self, project_id):
         return ""

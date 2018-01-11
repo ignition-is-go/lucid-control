@@ -9,7 +9,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('django_celery_beat', '0005_auto_20180102_1355'),
+        ('django_celery_beat', '0001_initial'),
         ('checkin', '0002_remove_profile_daily_checkin_beat'),
     ]
 

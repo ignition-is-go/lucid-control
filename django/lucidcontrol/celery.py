@@ -24,8 +24,7 @@ app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 
 @app.on_after_finalize.connect
 def setup_periodic_tasks(sender, **kwargs):
-    logger.info("Doing periodic tasks!")
-
+    logger.info("Doing the periodic tasks!")
 
 
 @app.task

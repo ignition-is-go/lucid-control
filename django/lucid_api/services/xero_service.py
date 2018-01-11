@@ -58,6 +58,7 @@ class Service(service_template.ServiceTemplate):
 
             # update the DB
             connection.identifier = response[0]['TrackingOptionID']
+            connection.state_message = "Created successfully"
             connection.save()
 
             self._logger.info("Finished Creating Xero tracking category %s:: %s", slug, response)
@@ -111,7 +112,8 @@ class Service(service_template.ServiceTemplate):
             response = self._xero.TCShow.options.delete(connection.identifier)[0]
             success = (response['IsArchived'] or response['IsDeleted']) and not response['IsActive']
             # update db
-            connection.is_archived = success
+            connection.state_message = "Archived successfully!"
+            connection.save()
             self._logger.info("Finished archiving Xero Tracking Category %s :: %s", project, success)
         except Exception as e:
             raise e

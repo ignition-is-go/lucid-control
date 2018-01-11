@@ -43,7 +43,7 @@ def execute_after_create_project(sender, instance, created, raw, using, update_f
         logger.info("Project %s has changed fields: %s", instance, changed_fields)
 
         # RENAME CASE
-        if "title" in changed_fields:
+        if "title" in changed_fields or "type_code" in changed_fields:
             logger.info("Got RENAME signal on %s", instance)
             # iterate through all services and perform the action
             for service in instance.services.all():
@@ -59,20 +59,15 @@ def execute_after_create_project(sender, instance, created, raw, using, update_f
                 logger.info("Got ARCHIVE signal on %s", instance)
                 # iterate through all services and perform the action
                 for service in instance.services.all():
-                    service_task.delay(
-                        ServiceAction.ARCHIVE,
-                        service.id
-                    ) 
-
+                    service.is_archived = True
+                    service.save()
             else:
                 # UNARCHIVE CASE
                 logger.info("Got UNARCHIVE signal on %s", instance)
                 # iterate through all services and perform the action
                 for service in instance.services.all():
-                    service_task.delay(
-                        ServiceAction.UNARCHIVE,
-                        service.id
-                    )
+                    service.is_archived = False
+                    service.save()
 
     
 post_save.connect(
@@ -96,5 +91,39 @@ def execute_after_create_service(sender, instance, created, raw, using, update_f
                 instance.id
                 )
     
+    else:
+        
+        # check for changes to name and archive state
+        # NOTE: it's possible that a rename and an archive event to happen concurrently
+        changed_fields = instance.get_dirty_fields().keys()
+        logger.info("Project %s has changed fields: %s", instance, changed_fields)
 
+        # RENAME CASE
+        if "connection_name" in changed_fields:
+            logger.info("Got connection RENAME signal on %s", instance)
+            # iterate through all services and perform the action
+            service_task.delay(
+                ServiceAction.RENAME,
+                instance.id
+            )     
+
+        # ARCHIVE/UNARCHIVE CASE
+        if "is_archived" in changed_fields:
+            if instance.is_archived:
+                # ARCHIVE CASE
+                logger.info("Got ARCHIVE signal on %s", instance)
+                # iterate through all services and perform the action
+                service_task.delay(
+                    ServiceAction.ARCHIVE,
+                    instance.id
+                ) 
+
+            else:
+                # UNARCHIVE CASE
+                logger.info("Got UNARCHIVE signal on %s", instance)
+                # iterate through all services and perform the action
+                service_task.delay(
+                    ServiceAction.UNARCHIVE,
+                    instance.id
+                )
     return

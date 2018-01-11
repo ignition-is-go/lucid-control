@@ -4,6 +4,9 @@ url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[requires]
+
+python = "2.7"
 
 [dev-packages]
 
@@ -35,7 +38,7 @@ pycrypto = "==2.6.1"
 pytz = "==2017.3"
 pyxero = "*"
 simplejson = "==3.11.1"
-slacker = "==0.9.50"
+slacker = "*"
 waitress = "*"
 whitenoise = "*"
 werkzeug = "*"

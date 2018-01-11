@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "73730196effbf480dd640279af26f1e327d83174b6b32fdebe79e40789e89912"
+            "sha256": "c4682cb2249cbf3aaeee5389cadb9ce6936794115d3fcc5ac6cce587befd722b"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -17,7 +17,9 @@
             "sys_platform": "linux2"
         },
         "pipfile-spec": 6,
-        "requires": {},
+        "requires": {
+            "python": "2.7"
+        },
         "sources": [
             {
                 "name": "pypi",
@@ -489,9 +491,9 @@
         },
         "slacker": {
             "hashes": [
-                "sha256:b570b68641467162f2a3a748bf50ac6b5a6888dbcc885a184c784dd8617cc62d"
+                "sha256:5d54950a1956c6faff3c82cd116aed4436cf0e322a72747d77b9189d5ec7f8cb"
             ],
-            "version": "==0.9.50"
+            "version": "==0.9.60"
         },
         "termcolor": {
             "hashes": [

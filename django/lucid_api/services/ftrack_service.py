@@ -17,11 +17,13 @@ import re
 from types import *
 import service_template
 
+from django.apps import apps
+from celery.utils.log import get_task_logger
+
 class Service(service_template.ServiceTemplate):
 
     _server = None
     _connected = None
-
     _pretty_name = "ftrack"
 
     def __init__(self, server_url=None, api_key=None, api_user=None, slug_regex=None):
@@ -34,11 +36,12 @@ class Service(service_template.ServiceTemplate):
         creates an API connection and connects to the server
         '''
         
-        self._logger = self._setup_logger(to_file=True)
+        self._logger = get_task_logger(__name__)
 
         try:
             if server_url is None:
                 server_url = os.environ.get('FTRACK_SERVER')
+                self._logger.debug("Server url is %s", server_url)
             
             if api_key is None:
                 api_key = os.environ.get('FTRACK_API_KEY')
@@ -71,31 +74,49 @@ class Service(service_template.ServiceTemplate):
         return self._connected
 
 
-    def create(self, project_id, title, silent=None):
+    def create(self, service_connection_id):
         '''
         creates a new ftrack project
         '''
         default_schema_name = os.environ.get("FTRACK_DEFAULT_SCHEMA_NAME")
         assert default_schema_name is not None, "Please set env var 'FTRACK_DEFAULT_SCHEMA_NAME'"
 
-        slug = self._format_slug(project_id,title)
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
 
-        self._logger.info('Project: %s', slug)
+        self._logger.info(
+            'Start Create ftrack for %s: %s',
+            connection,
+            project.title
+            )
+
+        slug = self._format_slug(connection)
+
 
         try:
-            self._find(project_id)
-        except FtrackServiceError:
-            #this means that _find failed to find an existing project! carry on...
-                
             lucid_schema = self._server.query(
                 'ProjectSchema where name is "{}"'.format(default_schema_name)).one()
 
-            project = self._server.create('Project', {
-                'name': project_id,
+            ft_project = self._server.create('Project', {
+                'name': project.id,
                 'full_name': slug,
                 'project_schema': lucid_schema
             })
-            self._logger.debug('Project: %s (ID: %s)', slug, project_id)
+            self._logger.debug('Created ftrack project for %s - %s (%s)', project, connection, ft_project)
+
+            # assign the general project scope
+            try:
+                general_scope = self._server.query("Scope where name is '{}'".format(project.type_code.description)).one()
+                ft_project['scopes'].append(general_scope)
+            except:
+                self._logger.warn("Couldn't assign scope for %s", connection)
+
+            # set the project number custom attribute:
+            try:
+                ft_project['custom_attributes']['project_id'] = project.id
+            except:
+                self._logger.warn("Couldn't set project_id custom attribute for %s", connection)
 
             # add default components:
             # TODO: Add default items from sample project
@@ -120,12 +141,22 @@ class Service(service_template.ServiceTemplate):
 
             self._server.commit()
 
-        # do a query check
-        check_project = self._find(project_id)
-        return bool(check_project['full_name'] == slug)
+            # save the reference to the db
+            connection.identifier = ft_project['id']
+            connection.state_message = "Created successfully!"
+            connection.save()
 
+        except ftrack_api.exception.ServerError or \
+            ftrack_api.exception.OperationError or \
+            ftrack_api.exception.ConnectionClosedError as err:
+            self._logger.error("Couldn't archive %s", connection, exc_info=True)
+            # log the state on the connection
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
+            # raising the error will cause the task to be retried
+            raise err
 
-    def rename(self, project_id, new_title):
+    def rename(self, service_connection_id):
         '''
         Rename an ftrack project
         Args:
@@ -134,28 +165,38 @@ class Service(service_template.ServiceTemplate):
 
         @return success boolean
         '''
-        new_slug = self._format_slug(project_id,new_title)
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
+        
+        # generate slug based on the current project name, which has already changed, since
+        # we got here via a signal on that change
 
-        self._logger.info('Changing project %s to %s', project_id, new_slug)
+        new_slug = self._format_slug(connection)
+
+        self._logger.info('Changing ftrack project %s to %s', project, new_slug)
 
         try:
-            project = self._find(project_id)
-        
-        except FtrackServiceError:
-            self._logger.debug('Project %s already exists!', project['full_name'])
-            return False
-        
-        else:
-            old_slug = project['full_name']
-            project['full_name'] = new_slug
+            ft_project = self._server.get('Project', connection.identifier)
+            old_slug = ft_project['full_name']
+            ft_project['full_name'] = new_slug
             self._server.commit()
-            self._logger.debug('Renamed project %s to %s', old_slug, project['full_name'])
+            self._logger.debug('Renamed project %s to %s', old_slug, ft_project['full_name'])
 
-            # do a query check
-            check_project = self._find(project_id)
-            return bool(check_project['full_name'] == new_slug)
+            connection.state_message = "Renamed Successfully to {}".format(new_slug)
+            connection.save()
 
-    def archive(self, project_id, unarchive=False):
+        except ftrack_api.exception.ServerError or \
+            ftrack_api.exception.OperationError or \
+            ftrack_api.exception.ConnectionClosedError as err:
+            self._logger.error("Couldn't archive %s", connection, exc_info=True)
+            # log the state on the connection
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
+            # raising the error will cause the task to be retried
+            raise err
+
+    def archive(self, service_connection_id):
         '''
         Archive an ftrack project
 
@@ -165,35 +206,32 @@ class Service(service_template.ServiceTemplate):
         Returns:
             bool: Success or not
         '''
-
-        self._logger.info('Starting for %s', project_id)
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id).select_related("project")
+        project = connection.project
+        self._logger.info('Archiving ftrack project for %s', project )
 
         try:
-            project = self._find(project_id)
-        
-        except FtrackServiceError:
-            self._logger.debug('Unable to find project %s to archive.', project_id)
-            return False
-        
-        else:
-            if unarchive:
-                new_status = "active"
-                self._logger.debug('Unarchive flag set for project %s', project_id)
-            else:
-                # hidden is the ftrack version of archived
-                new_status = "hidden"
-                self._logger.debug('Archive flag set for project %s', project_id)
-
-            project['status'] = new_status
+            # archive in ftrack
+            ft_project = self._server.get("Project", connection.identifier)
+            ft_project['status'] = 'hidden'
             self._server.commit()
+            # update the db
+            connection.state_message = "Archived successfully!"
+            connection.save()
+            # log it
             self._logger.debug('Status for project %s has been set to %s.', project_id, project['status'])
+        except ftrack_api.exception.ServerError or \
+            ftrack_api.exception.OperationError or \
+            ftrack_api.exception.ConnectionClosedError as err:
+            self._logger.error("Couldn't archive %s", connection, exc_info=True)
+            # log the state on the connection
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
+            # raising the error will cause the task to be retried
+            raise err
 
-            # do a query check
-            check_project = self._find(project_id)
-            return bool(check_project['status'] == new_status)
-
-        
-    def get_link(self, project_id):
+    def get_link(self, service_connection_id):
         '''
         Generates a deep-link into the ftrack client for the project
         
@@ -203,64 +241,20 @@ class Service(service_template.ServiceTemplate):
         Returns:
             str: URL for the project
         '''
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
         
-        self._logger.info('Start for %s', project_id)
+        self._logger.info('Get link for %s', connection)
 
         try:
-            project = self._find(project_id)
-        
-        except FtrackServiceError:
-            self._logger.debug('Unable to find project %s to create link.', project_id)
-            return False
-        
-        else:
-            url = "{server}/#entityType=show&entityId={project[id]}&itemId=projects&view=tasks".format(
-                project=project,
+            url = "{server}/#entityType=show&entityId={connection.identifier}&itemId=projects&view=tasks".format(
+                connection=connection,
                 server=self._server.server_url
             )
             self._logger.debug('Link created for project %s: %s ', project_id, url)
             return url
-
-
-    def get_link_dict(self, project_id):
-        '''gets a link dictionary with a link name for display'''
-
-        return {":lucid-control-ftrack: " + self.get_pretty_name() : self.get_link(project_id)}
-
-    def _find(self, project_id):
-        '''
-        finds an ftrack project by project_id
-        '''
-        self._logger.info("Finding Project ID # %s", project_id)
-
-        projects = self._server.query('Project where name is "{}"'.format(project_id))
-
-        if len(projects) > 1:
-            self._logger.debug("Found multiple projects with Project ID%s", project_id)
-            for project in projects:
-                self._logger.debug("Project#: %s\t Title: %s",
-                                   project['name'],
-                                   project['full_name']
-                                  )
-
-                # we return the first project who's full name has the project code
-                m = re.match(self._DEFAULT_REGEX, project['full_name'])
-                if m.group('project_id') is not None:
-                    self._logger.debug("%s has a project code", project['full_name'])
-                    test_number = int(m.group('project_id'))
-                    if test_number == int(project_id):
-                        return project
-            
-            # We didn't settle on a regex match, so now we give up            
-            raise FtrackServiceError("Found too many Project ID # {} \
-                                      and couldn't decide which to use"
-                                     .format(project_id))
-        elif len(projects) == 1:
-            self._logger.debug('Found project ID # %s', project_id)
-            return projects[0]
-        else:
-            self._logger.debug("Did not find project ID # %s",project_id)
-            raise FtrackServiceError("Couldn't find a match for {}".format(project_id))
+        except:
+            self._logger.error("Couldn't get link for %s", connection, exc_info=True)
 
 
     def create_lead(self, lead_text, user_email):

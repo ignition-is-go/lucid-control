@@ -2,9 +2,9 @@ from __future__ import absolute_import, unicode_literals
 import logging
 
 from celery import shared_task
-from .models import Project, ServiceConnection, TemplateProject
+from celery.utils.log import get_task_logger
 
-logger = logging.getLogger(__name__)
+from .models import Project, ServiceConnection, TemplateProject
 
 class ServiceAction(object):
     CREATE = 'create'
@@ -12,8 +12,8 @@ class ServiceAction(object):
     ARCHIVE = 'archive'
     UNARCHIVE = 'unarchive'
 
-@shared_task
-def service_task(action, service_connection_id):
+@shared_task(bind=True)
+def service_task(task, action, service_connection_id):
     ''' 
     creates an element in a service, based on the service connection. This is just
     a thin wrapper over the individual services, which all handle their own model
@@ -24,9 +24,16 @@ def service_task(action, service_connection_id):
     ServiceAction.ARCHIVE
     - **service_connection_id**: the primary key of the service connection to act on
     '''
+    logger = get_task_logger(__name__)
+
     connection = ServiceConnection.objects.get(pk=service_connection_id)
     service = connection.service
     logger.info("Got service task %s on service_connection_id %s", action, connection)
+
+    # if we don't have an identifier, we can't do anything but create
+    if connection.identifier == "" and action <> ServiceAction.CREATE:
+        logger.error("Cannot run %s for %s - NO IDENTIFIER on connection")
+        return
 
     try:
         if action == ServiceAction.CREATE:
@@ -37,23 +44,38 @@ def service_task(action, service_connection_id):
             service.archive(service_connection_id)
         elif action == ServiceAction.UNARCHIVE:
             service.unarchive(service_connection_id)
+        
+        message_project.delay(
+            int(connection.project.id),
+            "*{action}d* {connection}".format(action=action, connection=connection), 
+            action=True
+            )
+
     except Exception as err:
         logger.error("Error with %s on %s.", action, connection, exc_info=True)
 
+        connection.state_message = "Error while attempting to {}:\n{}".format(action, err)
+        connection.save()
+        
         project = connection.project
-        project._message(
-            "Whoops... I seem to have had a problem while trying to {action}"
-            " {service} as part of {project}. \n"
+        message_project.delay(
+            project.id,
+            "had a problem while trying to {action}"
+            " {service} as part of {project}. I'll retry in 10 seconds...\n"
             "_{error}_".format(
                 action=action,
                 project=project,
                 service=connection,
                 error=err.message
-            )
+            ),
+            action=True
         )
 
+        task.retry(exc=err, countdown=10)
+
     else:
-        # project._message()
+        # TODO: send success message!
+        
         pass 
 @shared_task
 def execute_slash_command(command, arg, channel):
@@ -65,6 +87,8 @@ def execute_slash_command(command, arg, channel):
     - **channel_id**: the slack channel id that the command was issued in
     
     '''
+    logger = get_task_logger(__name__)
+
 
     logger.info("Executing slash command: %s '%s' from channel %s",command, arg, channel)
 
@@ -78,7 +102,30 @@ def execute_slash_command(command, arg, channel):
     # TODO: rename and archive commands
     
     return
+
+@shared_task(bind=True, max_retries=3)
+def message_project(task, project_id, message_text, action=False, attachments=None, as_user=False, user=None):
+    '''
+    sends a message to a project's messenger channels
+    '''
+    logger = get_task_logger(__name__)
+
+    project = Project.objects.get(pk=project_id)
+    logger.info("Messaging %s", project)
     
+    try:
+        project.message(message_text, 
+            action=action,
+            attachments=attachments,
+            )
+
+    except Exception as err:
+        logger.error("Message failed!", exc_info=True)
+        if "user not in channel" in err.message:
+            # we can't solve this, so bail
+            return
+        else:
+            task.retry(err=err, countdown=15)
 
 # create task
 

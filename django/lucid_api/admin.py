@@ -7,11 +7,64 @@ from .models import Project, ProjectType, ServiceConnection, TemplateProject, Te
 # Register your models here.
 
 
-class ServiceConnectionInline(admin.StackedInline):
+class ServiceConnectionInlineExisting(admin.StackedInline):
     model = ServiceConnection
     extra = 0
+    verbose_name_plural = "Existing Service Connections"
+
+
+    fieldsets = [
+        (None, {
+            'fields':[
+                'service_name',
+                'connection_name',
+                'identifier',
+                'is_messenger',
+                'is_archived',
+                'state_message',
+            ]
+        })
+    ]
+
+    def get_readonly_fields(self, request, obj=None):
+        read_only = ['state_message']
+        
+        if obj:
+            # we're not creating, just updating
+            read_only.append('service_name')
+        
+        return self.readonly_fields + tuple(read_only)
+
+    def has_add_permission(self, request):
+        return False
+
+class ServiceConnectionInlineAdd(admin.StackedInline):
+    model = ServiceConnection
+    extra = 0
+    verbose_name_plural = "Add a Service Connection"
+
+    fieldsets = [
+        (None, {
+            'fields':[
+                'service_name',
+                'connection_name',
+                'identifier',
+                'is_messenger',
+                'is_archived',
+            ]
+        })
+    ]
+
+    def get_readonly_fields(self, request, obj=None):
+        read_only = ['state_message']
+        
+        return self.readonly_fields + tuple(read_only)
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 class ProjectAdmin(admin.ModelAdmin):
+    icon = '<i class="material-icons">work</i>'
     fieldsets = [
         (None,{'fields': [
             'type_code',
@@ -20,11 +73,14 @@ class ProjectAdmin(admin.ModelAdmin):
             ]}
         ),
     ]
-    inlines = [ServiceConnectionInline]
+    inlines = [ServiceConnectionInlineExisting, ServiceConnectionInlineAdd]
 
 admin.site.register(Project, ProjectAdmin)
 
-admin.site.register(ProjectType)
+class ProjectTypeAdmin(admin.ModelAdmin):
+    icon='<i class="material-icons">menu</i>'
+
+admin.site.register(ProjectType, ProjectTypeAdmin)
 
 #### TEMPLATE PROJECT STUFF
 
@@ -36,6 +92,7 @@ class TemplateProjectAdmin(admin.ModelAdmin):
     ''' for the template project editing '''
     fieldsets = []
     inlines = [TemplateServiceConnectionInline]
+    icon = '<i class="material-icons">add_to_photos</i>'
 
     # We disable the creation of new templates and deletion of the existing, there can only be one!
     def has_add_permission(self, request):

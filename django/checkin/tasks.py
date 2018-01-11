@@ -297,7 +297,7 @@ def issue_flex_day(self, note=None, user_id=None):
     else:
         users = Profile.objects.filter(is_active=True)
 
-    arrow.utcnow().date()
+    today=arrow.utcnow().date()
 
     for user in users:
         # issue flex day

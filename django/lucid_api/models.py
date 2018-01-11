@@ -74,25 +74,29 @@ class Project(DirtyFieldsMixin, models.Model):
     )
     is_archived = models.BooleanField(
         verbose_name="Archived",
+        help_text="This will automatically archive all connected services.",
         default=False
     )
 
     def __str__(self):
         return "{self.type_code.chr}-{self.id:04d} {self.title}".format(self=self)
 
-    def _message(self, message, ephemeral=False):
+    def message(self, message, **kwargs):
         '''used by celery tasks to send messages to the project.
 
         TODO: implement as slack message
         '''
-        pass
+        
+        for service in self.services.filter(is_messenger=True):
+            service.send(message, **kwargs)
+            
 
     class Meta:
         verbose_name="Project"
         verbose_name_plural="Projects"
 
 
-class ServiceConnection(models.Model):
+class ServiceConnection(DirtyFieldsMixin, models.Model):
     '''service connections to a project'''
 
     project = models.ForeignKey(
@@ -128,6 +132,12 @@ class ServiceConnection(models.Model):
         verbose_name="Archived",
         default=False
     )
+    state_message = models.CharField(
+        verbose_name="Status",
+        max_length=1000,
+        default="",
+        blank=True,
+    )
 
     @property
     def service(self):
@@ -135,8 +145,21 @@ class ServiceConnection(models.Model):
         service_module = getattr(services, self.service_name)
         return service_module.Service()
 
+    def send(self, message, **kwargs):
+        ''' send a message using this service.
+
+        *If this is not a messenger service, raise AttributeError*
+        '''
+        
+        if not self.is_messenger:
+            raise AttributeError("Not a messenger connection")
+        
+        response = self.service.message(self.identifier, message, **kwargs)
+
+        return response
+
     def __str__(self):
-        return "{s.service_name}::{s.connection_name}".format(s=self)
+        return "{s.service_name}::{s.project} - {s.connection_name}".format(s=self)
 
     class Meta():
         verbose_name="Service Connection"
