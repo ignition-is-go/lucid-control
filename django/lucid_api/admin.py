@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.contrib import admin
-from import_export.admin import ImportMixin
+from import_export.admin import ImportMixin, ImportExportActionModelAdmin
 
 from .models import Project, ProjectType, ServiceConnection, TemplateProject, TemplateServiceConnection
 # Register your models here.
@@ -65,8 +65,20 @@ class ServiceConnectionInlineAdd(admin.StackedInline):
         return False
 
 # projects is Import/Export enabled!
-class ProjectAdmin(ImportMixin, admin.ModelAdmin):
+class ProjectAdmin(ImportExportActionModelAdmin):
     icon = '<i class="material-icons">work</i>'
+
+    def is_active(self, obj=None):
+        '''for list display'''
+        return not obj.is_archived
+
+    is_active.short_description = "Active"
+    is_active.boolean = True
+
+    list_display = ('id', 'title', 'is_active')
+    list_display_links = ('id','title')
+    list_filter = ('is_archived',)
+
     fieldsets = [
         (None,{'fields': [
             'type_code',
