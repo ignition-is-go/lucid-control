@@ -20,7 +20,7 @@ from kombu import Exchange, Queue
 IS_HEROKU = os.path.isdir("/app/.heroku")
 
 # local env hack
-if not IS_HEROKU:
+if not IS_HEROKU and not os.environ.get("DATABASE_URL"):
     import re
     import os
 
@@ -53,6 +53,7 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
+    'material.theme.blue',
     'material',
     'material.frontend',
     'material.admin',
@@ -66,6 +67,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_celery_beat',
+    'import_export',
 ]
 
 MIDDLEWARE = [
@@ -113,6 +115,9 @@ db_from_env = dj_database_url.config(env="DATABASE_URL", conn_max_age=500, defau
 DATABASES = {
     'default': db_from_env
 }
+
+# Import-Export settings
+IMPORT_EXPORT_USE_TRANSACTIONS = True
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators

@@ -57,19 +57,19 @@ def service_task(task, action, service_connection_id):
         connection.state_message = "Error while attempting to {}:\n{}".format(action, err)
         connection.save()
         
-        project = connection.project
-        message_project.delay(
-            project.id,
-            "had a problem while trying to {action}"
-            " {service} as part of {project}. I'll retry in 10 seconds...\n"
-            "_{error}_".format(
-                action=action,
-                project=project,
-                service=connection,
-                error=err.message
-            ),
-            action=True
-        )
+        # project = connection.project
+        # message_project.delay(
+        #     project.id,
+        #     "had a problem while trying to {action}"
+        #     " {service}. I'll retry in 10 seconds...\n"
+        #     "_{error}_".format(
+        #         action=action,
+        #         project=project,
+        #         service=connection,
+        #         error=err.message
+        #     ),
+        #     action=True
+        # )
 
         task.retry(exc=err, countdown=10)
 

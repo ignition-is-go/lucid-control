@@ -25,6 +25,12 @@ def execute_after_create_project(sender, instance, created, raw, using, update_f
     '''
 
     if created:
+        # called when project is created
+        if instance.is_archived:
+            # if it's already archived, such as on a bulk import, cancel the signal
+            logger.warn("Skipping templating for already archived project - %s", instance)
+            return
+
         # Template project assembly on new project
         logger.info("Got CREATE signal on %s", instance.title)
         template = TemplateProject.objects.all()[0]
@@ -32,7 +38,8 @@ def execute_after_create_project(sender, instance, created, raw, using, update_f
             new_service = ServiceConnection( 
                 project=instance,
                 service_name=template_connection.service_name,
-                connection_name=template_connection.connection_name
+                connection_name=template_connection.connection_name,
+                is_messenger=template_connection.is_messenger,
             )
             new_service.save()
 

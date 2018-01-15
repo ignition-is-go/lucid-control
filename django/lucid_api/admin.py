@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.contrib import admin
+from import_export.admin import ImportMixin
 
 from .models import Project, ProjectType, ServiceConnection, TemplateProject, TemplateServiceConnection
 # Register your models here.
@@ -63,7 +64,8 @@ class ServiceConnectionInlineAdd(admin.StackedInline):
     def has_change_permission(self, request, obj=None):
         return False
 
-class ProjectAdmin(admin.ModelAdmin):
+# projects is Import/Export enabled!
+class ProjectAdmin(ImportMixin, admin.ModelAdmin):
     icon = '<i class="material-icons">work</i>'
     fieldsets = [
         (None,{'fields': [
@@ -74,6 +76,13 @@ class ProjectAdmin(admin.ModelAdmin):
         ),
     ]
     inlines = [ServiceConnectionInlineExisting, ServiceConnectionInlineAdd]
+
+    def queryset(self, request):
+        qs = super(EntryAdmin, self).queryset(request)
+        if request.user.is_superuser:
+            return qs
+        else:
+            return qs.filter(is_archived=False)
 
 admin.site.register(Project, ProjectAdmin)
 

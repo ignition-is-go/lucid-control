@@ -189,6 +189,10 @@ class TemplateServiceConnection(models.Model):
         blank=True,
         default=""
     )
+    is_messenger = models.BooleanField(
+        default=False,
+        verbose_name = "Messenger Channel",
+    )
 
     class Meta():
         verbose_name ="Template Project"

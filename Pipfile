@@ -4,9 +4,11 @@ url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
+
 [requires]
 
 python = "2.7"
+
 
 [dev-packages]
 
@@ -42,3 +44,4 @@ slacker = "*"
 waitress = "*"
 whitenoise = "*"
 werkzeug = "*"
+django-import-export = "*"

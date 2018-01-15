@@ -58,7 +58,8 @@ def update_user_timezones():
             )
             logger.debug("Creating task %s and assigning to %s", task, user)
             user.daily_task = task
-            user.save()
+            # we save at the end now
+            # user.save()
 
         else:
             # just update the schedule
@@ -67,6 +68,9 @@ def update_user_timezones():
             # save the schedule
             user.daily_task.crontab.save()
             logger.debug("Updating existing task %s for %s", user.daily_task, user)
+        
+        user.timezone = tz
+        user.save()
         
         logger.info("Updated %s's checkin time to %s (%s)",
             user, user_time, server_time)       

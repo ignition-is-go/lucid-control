@@ -4,6 +4,8 @@ from __future__ import unicode_literals
 import arrow
 import math
 
+import pytz
+
 from django.db import models
 from django.db.models import Sum, Count, Q, Case, When
 from django.contrib.auth.models import User
@@ -15,7 +17,7 @@ TIME_OFF_TYPES = [
     ('flex', 'Flex')
 ]
 
-
+TIMEZONES = [(tz, tz) for tz in pytz.all_timezones]
 
 class Profile(models.Model):
     '''
@@ -30,6 +32,11 @@ class Profile(models.Model):
     slack_user = models.CharField(
         max_length=50,
         blank=False,
+    )
+    timezone = models.CharField(
+        max_length=200,
+        blank=True,
+        choices=TIMEZONES,
     )
     daily_task = models.OneToOneField(
         PeriodicTask,
@@ -46,12 +53,10 @@ class Profile(models.Model):
     def __str__(self):
         return self.user.get_username()
 
-
     def days(self, time_off_type):
         '''
         determines the number of available days of *time_off_type*
         '''
-
         filters = dict(
             # flex days are good for 1 year
             flex=Q(date__gte=arrow.now().shift(years=-1).date()),
