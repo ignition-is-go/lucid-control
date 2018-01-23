@@ -118,10 +118,11 @@ def send_workday_checkin(self, user_profile_id):
             logger.warn("Couldn't wipe old message %s", today.slack_message_ts, exc_info=True)
             pass
 
-    # TODO: Update this to show the running totals for each type of day off
+    # Get the available options, based on the workday
     option_set = WorkdayOption.objects.filter(is_active=True).order_by('sort_order')
-    
+    # format the options into an actions list for the message attachment
     actions = [option.as_json(user=user) for option in option_set]
+    
     try:
         obj = slacker_instance.chat.post_message(
             channel="@{}".format(user.slack_user),

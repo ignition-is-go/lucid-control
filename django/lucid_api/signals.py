@@ -9,7 +9,7 @@ handles :
 from __future__ import unicode_literals
 import logging
 
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 
 from .models import Project, ServiceConnection, TemplateProject
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 logger.info("Setting up signals!")
 
 # @receiver(post_save, sender=Project)
-def execute_after_create_project(sender, instance, created, raw, using, update_fields, *args, **kwargs):
+def execute_after_save_project(sender, instance, created, raw, using, update_fields, *args, **kwargs):
     '''
     Handles automation on creation or change of a project
     '''
@@ -78,15 +78,22 @@ def execute_after_create_project(sender, instance, created, raw, using, update_f
 
     
 post_save.connect(
-    execute_after_create_project, 
+    execute_after_save_project, 
     sender=Project,
-    dispatch_uid="template_project_setup")
+    dispatch_uid="project_listener")
 
-logger.info("Connected template project handler")
+# pre-delete signal to archive project before deletion
+@receiver(pre_delete, sender=Project, dispatch_uid='project_archive_cleanup')
+def cleanup_project_on_delete( sender, instance, created, raw, using, update_fields, *args, **kwargs):
+    '''
+    archives a project before deleting
+    '''
+    instance.is_archived = True
+    instance.save()
 
 # Auto create new service connections if identifier is blank
 @receiver(post_save, sender=ServiceConnection, dispatch_uid="service_signals")
-def execute_after_create_service(sender, instance, created, raw, using, update_fields, *args, **kwargs):
+def execute_after_save_service(sender, instance, created, raw, using, update_fields, *args, **kwargs):
     if created:
         # make a new connection only when we create new instances
         logger.info( "Got signal to create service: %s=%s", instance.service_name, instance.identifier)

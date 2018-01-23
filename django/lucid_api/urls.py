@@ -4,8 +4,9 @@ from . import views
 
 
 urlpatterns = [
-    url(r'^projects/$', views.project_list),
-    url(r'^projects/(?P<pk>[0-9]+)$', views.project_detail),
+    url(r'^$', views.api_root, name="root"),
+    url(r'^projects/$', views.ProjectList.as_view(), name="project_list"),
+    url(r'^projects/(?P<pk>[0-9]+)$', views.ProjectDetail.as_view(), name="project_detail"),
     # Slack command handlers
     url(
         r'^slack/action-response/$', 

@@ -4,60 +4,42 @@ import logging
 import os
 import simplejson as json
 
+from django.http import Http404
 from django.http.response import JsonResponse, HttpResponse
-from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework import generics, permissions
+from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.reverse import reverse_lazy
 from .models import Project
 from .serializers import ProjectSerializer
 from .handlers.slack_handler import send_confirmation, check_confirmation
 from .tasks import execute_slash_command
 
+######################
+# REST API
+######################
 
-@api_view(['GET', 'POST'])
-def project_list(request, format=None):
-    """
-    List all projects, or create a new project.
-    """
-    if request.method == 'GET':
-        snippets = Project.objects.all()
-        serializer = ProjectSerializer(snippets, many=True)
-        return Response(serializer.data)
+@api_view(['GET'])
+@permission_classes((permissions.IsAuthenticated,))
+def api_root(request, format=None):
+    '''
+    Root of the API for docs
+    '''
 
-    elif request.method == 'POST':
-        serializer = ProjectSerializer(data=request.data)
-        if serializer.is_valid():
-            project = serializer.save()
-            # kick off celery task here
-            # TODO: does this work? 
-            # create.delay(project.title)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({
+        'projects': reverse_lazy('api:project_list', request=request, format=format),
+    })
 
-@api_view(['GET', 'PUT', 'DELETE'])
-def project_detail(request, pk, format=None):
-    """
-    Retrieve, update or delete a  project.
-    """
-    try:
-        project = Project.objects.get(pk=pk)
-    except Project.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+class ProjectList(generics.ListCreateAPIView):
+    queryset = Project.objects.all()
+    serializer_class = ProjectSerializer
+    permission_classes = (permissions.DjangoModelPermissions,)
 
-    if request.method == 'GET':
-        serializer = ProjectSerializer(project)
-        return Response(serializer.data)
-
-    elif request.method == 'PUT':
-        serializer = SnippetSerializer(project, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    elif request.method == 'DELETE':
-        project.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+class ProjectDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Project.objects.all()
+    serializer_class = ProjectSerializer
+    permission_classes = (permissions.DjangoModelPermissions,)
 
 
 ###########################

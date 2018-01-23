@@ -17,7 +17,7 @@ from django.conf.urls import include, url
 from django.contrib import admin
 
 urlpatterns = [
-    url(r'^api/', include('lucid_api.urls')),
-    url(r'^admin/', admin.site.urls),
-    url(r'^checkin/', include('checkin.urls'))
+    url(r'^api/', include('lucid_api.urls', namespace='api')),
+    url(r'^', admin.site.urls),
+    url(r'^checkin/', include('checkin.urls', namespace='checkin'))
 ]

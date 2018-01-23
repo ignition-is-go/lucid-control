@@ -45,3 +45,4 @@ waitress = "*"
 whitenoise = "*"
 werkzeug = "*"
 django-import-export = "*"
+django-constance = {extras = ["database"]}

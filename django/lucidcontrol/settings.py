@@ -53,7 +53,7 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 
 INSTALLED_APPS = [
-    'material.theme.blue',
+    'material.theme.bluegrey',
     'material',
     'material.frontend',
     'material.admin',
@@ -68,6 +68,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_celery_beat',
     'import_export',
+    'constance',
+    'constance.backends.database',
 ]
 
 MIDDLEWARE = [
@@ -123,6 +125,14 @@ DATABASES = {
 
 # Import-Export settings
 IMPORT_EXPORT_USE_TRANSACTIONS = True
+
+# Constance for live settings
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
+
+CONSTANCE_CONFIG = {
+    'THE_ANSWER': (42, 'Answer to the Ultimate Question of Life, '
+                       'The Universe, and Everything'),
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
