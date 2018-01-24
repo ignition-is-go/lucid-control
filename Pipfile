@@ -1,0 +1,47 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+
+[requires]
+
+python = "2.7"
+
+
+[dev-packages]
+
+pylint = "==1.7.1"
+pytest = "==3.1.2"
+randomwords = "==0.2.1"
+
+
+[packages]
+
+amqp = "==2.2.2"
+anyjson = "==0.3.3"
+arrow = "==0.10.0"
+billiard = "==3.5.0.3"
+celery = ">4<5"
+dj-database-url = "==0.4.2"
+django = "<2"
+django-celery-beat = "==1.1.0"
+django-material = "==1.1.1"
+djangorestframework = "==3.7.3"
+dropbox = "==7.2.1"
+ftrack-python-api = "*"
+google-api-python-client = "==1.6.3"
+google-auth = "==1.2.1"
+google-auth-oauthlib = "==0.2.0"
+"jinja2" = "==2.9.4"
+"psycopg2" = "==2.7.3.2"
+pycrypto = "==2.6.1"
+pytz = "==2017.3"
+pyxero = "*"
+simplejson = "==3.11.1"
+slacker = "*"
+waitress = "*"
+whitenoise = "*"
+django-import-export = "*"
+django-constance = {extras = ["database"]}
