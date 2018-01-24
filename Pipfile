@@ -43,6 +43,5 @@ simplejson = "==3.11.1"
 slacker = "*"
 waitress = "*"
 whitenoise = "*"
-werkzeug = "*"
 django-import-export = "*"
 django-constance = {extras = ["database"]}

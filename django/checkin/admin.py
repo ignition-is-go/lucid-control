@@ -93,12 +93,6 @@ class WorkdayAdmin(admin.ModelAdmin):
 
     list_display = ('__str__', 'get_response')
 
-    # permissions
-    def has_add_permission(self, request):
-        return False
-    # def has_delete_permission(self, request, obj=None):
-    #     return False
-
     # disable adding more response types
     def get_formset(self, request, obj=None, **kwargs):
         """

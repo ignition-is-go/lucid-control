@@ -12,7 +12,7 @@ import os
 import re
 import logging
 import datetime
-from werkzeug.urls import url_fix
+import copy
 
 from django.apps import apps
 from celery.utils.log import get_task_logger
@@ -22,6 +22,8 @@ class Service(service_template.ServiceTemplate):
     _pretty_name = "Dropbox"
     _DEFAULT_REGEX = re.compile(r'^(?P<typecode>[A-Za-z])-(?P<project_id>\d{4})-(?P<project_title>[^\/]+)\/(?P<connection_name>.+)')
     _DEFAULT_FORMAT = "{typecode}-{project_id:04d}-{title}/{connection_name}"
+
+    FILESAFE_REGEX = r'[\\/:*?\"<>|]+'
 
     def __init__(self):
 
@@ -179,7 +181,7 @@ class Service(service_template.ServiceTemplate):
         # do the default one but replace spaces
         slug = super(Service, self)._format_slug(connection).replace(" ", "-")
         # remove non-filesafe chars
-        re.sub(r'[\\/:*?\"<>|]+','',slug)
+        re.sub(FILESAFE_REGEX,'',slug)
 
         # prepend the root, using the active unless is_archived
         if connection.is_archived:
@@ -190,6 +192,14 @@ class Service(service_template.ServiceTemplate):
         slug = self._join_path(root, slug).lower()
 
         return slug
+
+    def _get_parent_folder(self, connection):
+        '''
+        get the parent folder of the connection
+        '''
+        parent_conn = copy.deepcopy(connection)
+        parent_conn.connection_name = ''
+        
 
 
     def _join_path(self, *args):
