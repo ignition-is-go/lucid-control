@@ -92,16 +92,33 @@ def execute_slash_command(command, arg, channel):
 
     logger.info("Executing slash command: %s '%s' from channel %s",command, arg, channel)
 
-    if command.lower() == "create":
+    if command.lower() == ServiceAction.CREATE:
         # for create, we don't care about the initial channel, just the name of the new channel
         new_project = Project(
             title=arg
         )
         new_project.save()
+        return
     
+    # other than create, we determine the project to act on by finding the slack channel
+    try:
+        project = Project.objects.get(services__identifier=channel, services__service_name="slack")
+    except Project.DoesNotExist:
+        # this was called from a project we don't have an id for it
+        return
+
     # TODO: rename and archive commands
-    
-    return
+    if command.lower() == ServiceAction.RENAME:
+        # Rename
+        project.title = arg
+        project.save()
+        return
+
+    if command.lower() == ServiceAction.ARCHIVE:
+        # archive
+        project.is_archived = True
+        project.save()
+        return
 
 @shared_task(bind=True, max_retries=3)
 def message_project(task, project_id, message_text, action=False, attachments=None, as_user=False, user=None):

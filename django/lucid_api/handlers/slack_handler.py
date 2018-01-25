@@ -27,7 +27,8 @@ def send_confirmation(slack_message, url_command):
 
     url = slack_message['response_url']
     title = slack_message.get('text', 'this project')
-    command = url_command
+    if not title or len(title) == 0:
+        title="this project"
 
     slack.respond_to_url(url, ephemeral=True, attachments=[{
         "title": "Confirm that you would like to {} {}?".format(command, title),
@@ -47,7 +48,7 @@ def send_confirmation(slack_message, url_command):
                 "style": "danger"
             }
         ],
-        "callback_id": command,
+        "callback_id": url_command,
         "attachment_type": "default"
     }])
 
