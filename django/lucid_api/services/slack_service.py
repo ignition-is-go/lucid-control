@@ -431,9 +431,9 @@ class Service(service_template.ServiceTemplate):
         except slacker.Error as err:
             # failed to invite user group and bot
             self._logger.error(
-                "Error inviting the proper people to %s because slacker.Error: %s",
+                "Error inviting the proper people to %s",
                 connection,
-                err
+                exc_info=True
                 )
             raise SlackServiceError(
                 "Could not invite usergroup to %s, Slack API error: %s",

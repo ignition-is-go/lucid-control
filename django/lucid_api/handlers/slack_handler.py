@@ -26,16 +26,11 @@ def send_confirmation(slack_message, url_command):
     slack = SlackService()
 
     url = slack_message['response_url']
-    title = slack_message.get('text', ' ')
+    title = slack_message.get('text', 'this project')
     command = url_command
 
     slack.respond_to_url(url, ephemeral=True, attachments=[{
         "title": "Confirm that you would like to {} {}?".format(command, title),
-        # "fields": [
-        #     {
-        #         "title": "Project Name",
-        #         "value": title
-        #     }],
         "actions": [
             {
                 "name": title,
