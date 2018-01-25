@@ -181,7 +181,7 @@ class Service(service_template.ServiceTemplate):
         # do the default one but replace spaces
         slug = super(Service, self)._format_slug(connection).replace(" ", "-")
         # remove non-filesafe chars
-        re.sub(FILESAFE_REGEX,'',slug)
+        re.sub(self.FILESAFE_REGEX,'',slug)
 
         # prepend the root, using the active unless is_archived
         if connection.is_archived:
@@ -197,9 +197,14 @@ class Service(service_template.ServiceTemplate):
         '''
         get the parent folder of the connection
         '''
-        parent_conn = copy.deepcopy(connection)
-        parent_conn.connection_name = ''
+        meta = self._dbx.files_get_metadata(connection.identifier)
+
+        # first count the number of slashes in the current connection name
+        slash_count = connection.connection_name..rstrip().rstrip("/").count("/")
+
         
+        
+
 
 
     def _join_path(self, *args):
