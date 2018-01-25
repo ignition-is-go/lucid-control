@@ -408,13 +408,15 @@ class Service(service_template.ServiceTemplate):
             self._logger.error("Error inviting the Lucid Control Bot to the Slack Channel %s because slacker.Error: %s", connection, err)
             raise SlackServiceError("Could not invite Lucid Control Bot to channel %s, Slack API error: %s", connection, err.message)
 
-    def _invite_usergroup(self, channel):
+    def _invite_usergroup(self, connection):
         '''
         invite the slack usergroup to the channel
         '''
         try:
+            group = os.environ.get('SLACK_INVITE_USERGROUP')
             # try to invite the user group and the bot
-            if os.environ['SLACK_INVITE_USERGROUP'] is not "" :
+            if group is not "" :
+                self._logger.debug("Using %s", group)
                 invite_group_response = self._slack_team.usergroups.update(
                     usergroup=os.environ['SLACK_INVITE_USERGROUP'],
                     channel=connection.identifier,
@@ -429,12 +431,12 @@ class Service(service_template.ServiceTemplate):
         except slacker.Error as err:
             # failed to invite user group and bot
             self._logger.error(
-                "Error inviting the proper people to the Slack Channel for project # %s because slacker.Error: %s",
+                "Error inviting the proper people to %s",
                 connection,
-                err
+                exc_info=True
                 )
             raise SlackServiceError(
-                "Could not invite usergroup to channel %s, Slack API error: %s",
+                "Could not invite usergroup to %s, Slack API error: %s",
                 connection,
                 err.message
                 )
