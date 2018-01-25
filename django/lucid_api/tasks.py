@@ -103,19 +103,23 @@ def execute_slash_command(command, arg, channel):
     # other than create, we determine the project to act on by finding the slack channel
     try:
         project = Project.objects.get(services__identifier=channel, services__service_name="slack")
+        logger.info("Determined project is %s", project)
     except Project.DoesNotExist:
         # this was called from a project we don't have an id for it
+        logger.error("Couldn't identify project for channel %s")
         return
 
     # TODO: rename and archive commands
     if command.lower() == ServiceAction.RENAME:
         # Rename
+        logger.info("Renaming %s to %s", project, arg)
         project.title = arg
         project.save()
         return
 
     if command.lower() == ServiceAction.ARCHIVE:
         # archive
+        logger.info("Archiving %s", project)
         project.is_archived = True
         project.save()
         return
