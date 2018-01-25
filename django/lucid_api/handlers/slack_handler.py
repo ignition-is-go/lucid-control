@@ -12,7 +12,7 @@ from ..services.slack_service import Service as SlackService
 
 logger = logging.getLogger(__name__)
 
-def send_confirmation(slack_message, url_command):
+def send_confirmation(slack_message, command):
     ''' 
     send a confirmation for the command which was issued
     
@@ -48,7 +48,7 @@ def send_confirmation(slack_message, url_command):
                 "style": "danger"
             }
         ],
-        "callback_id": url_command,
+        "callback_id": command,
         "attachment_type": "default"
     }])
 
