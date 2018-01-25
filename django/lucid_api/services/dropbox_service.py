@@ -200,7 +200,7 @@ class Service(service_template.ServiceTemplate):
         meta = self._dbx.files_get_metadata(connection.identifier)
 
         # first count the number of slashes in the current connection name
-        slash_count = connection.connection_name..rstrip().rstrip("/").count("/")
+        slash_count = connection.connection_name.rstrip(" ").rstrip("/").count("/")
 
         
         
