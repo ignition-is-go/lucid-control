@@ -13,6 +13,9 @@ class DayOffInline(admin.StackedInline):
     extra=0
     verbose_name="Day Off"
     verbose_name_plural="Days Off"
+
+    ordering = ('-date',)
+
     def get_formset(self, request, obj=None, **kwargs):
         """
         Override the formset function in order to remove the add and change buttons beside the foreign key pull-down
@@ -55,33 +58,6 @@ class WorkdayOptionAdmin(admin.ModelAdmin):
 
 admin.site.register(WorkdayOption, WorkdayOptionAdmin) 
 
-# class WorkdayResponseInline(admin.StackedInline):
-#     model=WorkdayResponse
-#     extra=0
-#     verbose_name="Response"
-#     verbose_name_plural="Responses"
-
-#     # def has_add_permission(self, request):
-#     #     return False
-#     def has_edit_permission(self, request, obj=None):
-#         return False
-#     # def has_delete_permission(self, request, obj=None):
-#     #     return False
-
-#     def get_formset(self, request, obj=None, **kwargs):
-#         """
-#         Override the formset function in order to remove the add and change buttons beside the foreign key pull-down
-#         menus in the inline.
-#         """
-#         formset = super(WorkdayResponseInline, self).get_formset(request, obj, **kwargs)
-#         form = formset.form
-#         widget = form.base_fields['response'].widget
-#         widget.can_add_related = False
-#         widget.can_change_related = False
-#         return formset
-    
-#     def get_readonly_fields(self, request, obj=None):
-#         return self.readonly_fields + ('timestamp',)
 
 class WorkdayAdmin(admin.ModelAdmin):
     icon='<i class="material-icons">update</i>'
