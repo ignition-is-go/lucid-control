@@ -89,8 +89,8 @@ def send_workday_checkin(self, user_profile_id):
     # create the checkin, or use the existing one
     today, created = Workday.objects.get_or_create(
         user=user,
-        date=arrow.now().date(),
-    )
+        date=arrow.now(tz=user.timezone).date(),
+        )
     logger.debug("%s workday #%s :: %s", 
         "Created" if created else "Got",
         today.id, today)
@@ -235,10 +235,13 @@ def close_out_workday(self, workday_id):
     '''
     try:
         today = Workday.objects.get(pk=workday_id)
+        user = today.user
+
     except Workday.DoesNotExist:
         logger.error("Workday #%s doesn't exist...", workday_id, exc_info=True)
         raise Workday.DoesNotExist
-    
+
+    # check to see if the user has responded
     if not isinstance(today.response, WorkdayOption):
         # we don't have a response
 
@@ -263,6 +266,27 @@ def close_out_workday(self, workday_id):
 
         today.response = option
         today.save()
+
+        slack = slacker.Slacker(os.environ.get('LUCILLE_BOT_TOKEN'))
+
+        response = slack.chat.update(
+            ts=today.slack_message_ts,
+            text="",
+            channel=user.slack_user,
+            attachments=[{
+                "text" : "{icon}Since you didn't respond within 12 hours I've marked you as *{status}* on *{date}*".format(
+                    status=status, 
+                    date=arrow.get(today.date).format("ddd, MMM D, YYYY"), 
+                    icon=status.emoji
+                    ),
+                "mrkdwn_in": ["text"],
+                "actions": []
+            }]
+            )
+
+    # user has checked in today.
+    # let's see if they've worked over the last 7 days
+    # and if so, issue them a bonus flex day
     else:
         # user has checked in today.
         # let's see if they've worked over the last 7 days
@@ -287,6 +311,7 @@ def close_out_workday(self, workday_id):
         if working_count % 7 == 0 and working_count > 6:
             issue_flex_day(user_id=today.user.id, note="For working 7 days straight")
 
+
 @shared_task(bind=True)
 def issue_flex_day(self, note=None, user_id=None):
     '''
@@ -298,11 +323,13 @@ def issue_flex_day(self, note=None, user_id=None):
     '''
 
     if user_id:
-        users = Profile.objects.get(pk=user_id)
+        users = Profile.objects.filter(pk=user_id)
     else:
         users = Profile.objects.filter(is_active=True)
 
     today=arrow.utcnow().date()
+
+    slack = slacker.Slacker(os.environ.get("LUCILLE_BOT_TOKEN"))
 
     for user in users:
         # issue flex day
@@ -313,5 +340,13 @@ def issue_flex_day(self, note=None, user_id=None):
             amount=1,
             note="Automatically issued from 'issue_flex_day'. {}".format(note),
         )
+
         logger.info("Flex day added for %s on %s",user,today )
+        slack.chat.me_message(
+            user.slack_user,
+            "added a flex day for *{}*. {}".format(
+                today,
+                note
+            )
+        )
 
