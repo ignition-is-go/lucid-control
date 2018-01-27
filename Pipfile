@@ -12,9 +12,9 @@ python = "2.7"
 
 [dev-packages]
 
-pylint = "==1.7.1"
-pytest = "==3.1.2"
-randomwords = "==0.2.1"
+pylint = "*"
+pytest = "*"
+randomwords = "*"
 
 
 [packages]
