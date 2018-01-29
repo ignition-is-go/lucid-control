@@ -7,7 +7,7 @@ name = "pypi"
 
 [requires]
 
-python = "2.7"
+python_version = "2.7"
 
 
 [dev-packages]
@@ -25,7 +25,7 @@ arrow = "==0.10.0"
 billiard = "==3.5.0.3"
 celery = ">4<5"
 dj-database-url = "==0.4.2"
-django = "<2"
+django = "==1.11.9"
 django-celery-beat = "==1.1.0"
 django-material = "==1.1.1"
 djangorestframework = "==3.7.3"
