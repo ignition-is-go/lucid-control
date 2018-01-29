@@ -13,6 +13,7 @@ import re
 import logging
 import datetime
 import copy
+import unicodedata
 
 from django.apps import apps
 from celery.utils.log import get_task_logger
