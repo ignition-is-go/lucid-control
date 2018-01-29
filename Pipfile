@@ -38,10 +38,10 @@ google-auth-oauthlib = "==0.2.0"
 "psycopg2" = "==2.7.3.2"
 pycrypto = "==2.6.1"
 pytz = "==2017.3"
-pyxero = "*"
 simplejson = "==3.11.1"
 slacker = "*"
 waitress = "*"
 whitenoise = "*"
 django-import-export = "*"
 django-constance = {extras = ["database"]}
+pyxero = {git = "https://github.com/tauri-tec/pyxero"}
