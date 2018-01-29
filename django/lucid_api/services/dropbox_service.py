@@ -13,7 +13,6 @@ import re
 import logging
 import datetime
 import copy
-import unicodedata
 
 from django.apps import apps
 from celery.utils.log import get_task_logger
@@ -222,7 +221,6 @@ class Service(service_template.ServiceTemplate):
         value = os.path.normcase(value)
 
         # replace invalid characters with self.illegal_character_substitute
-        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore')
         value = re.sub('[^\w\.-]', self.illegal_character_substitute, value)
         return unicode(value.strip().lower())
 
