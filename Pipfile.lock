@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "7de1c04eb7fc1beb3e3b39caf0e165c1c8a61bcb4b56d496327b5baea88cc848"
+            "sha256": "90a21ab3a04a8fb66971828f250bc9353216f1a0056c000286a464b33693d79a"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -383,7 +383,8 @@
             "version": "==2017.3"
         },
         "pyxero": {
-            "git": "https://github.com/tauri-tec/pyxero"
+            "git": "https://github.com/tauri-tec/pyxero",
+            "version": "0.8.1"
         },
         "pyyaml": {
             "hashes": [
@@ -564,7 +565,7 @@
                 "sha256:4ba998e881f285c1d1b73f5b6e3766539b4e162320f9589334400c5ddc35198c",
                 "sha256:31f235852f88edc1558d428d890663c49eb4514ffec9f3650e7f3c9e4a12e36f"
             ],
-            "markers": "python_version == '2.7'",
+            "markers": "python_version < '3.4'",
             "version": "==1.4"
         },
         "colorama": {

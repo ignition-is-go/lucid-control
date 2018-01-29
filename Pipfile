@@ -44,4 +44,4 @@ waitress = "*"
 whitenoise = "*"
 django-import-export = "*"
 django-constance = {extras = ["database"]}
-pyxero = {git = "https://github.com/tauri-tec/pyxero"}
+pyxero = {version = "==0.8.1", git = "https://github.com/tauri-tec/pyxero"}
