@@ -24,6 +24,7 @@ class Service(service_template.ServiceTemplate):
     _DEFAULT_FORMAT = "{typecode}-{project_id:04d}-{title}/{connection_name}"
 
     FILESAFE_REGEX = r'[\\/:*?\"<>|]+'
+    illegal_character_substitute = "-"
 
     def __init__(self):
 
@@ -43,7 +44,7 @@ class Service(service_template.ServiceTemplate):
         slug = self._format_slug(connection)
         root = os.environ.get('DROPBOX_APP_ROOT')
 
-        self._logger.info('Attempting to create Dropbox folder %s/%s', root, slug)
+        self._logger.info('Attempting to create Dropbox folder %s', root, slug)
                 
         try:
             # make the folder
@@ -179,9 +180,8 @@ class Service(service_template.ServiceTemplate):
     def _format_slug(self, connection,):
         '''Correctly formats  the slug for drobox'''
         # do the default one but replace spaces
-        slug = super(Service, self)._format_slug(connection).replace(" ", "-")
-        # remove non-filesafe chars
-        re.sub(self.FILESAFE_REGEX,'',slug)
+        slug = super(Service, self)._format_slug(connection)
+        slug = self._sanitize_path(slug)
 
         # prepend the root, using the active unless is_archived
         if connection.is_archived:
@@ -189,22 +189,20 @@ class Service(service_template.ServiceTemplate):
         else:
             root = os.environ.get("DROPBOX_APP_ROOT")
 
-        slug = self._join_path(root, slug).lower()
+        slug = self._join_path(root, slug)
 
         return slug
 
     def _get_parent_folder(self, connection):
         '''
         get the parent folder of the connection
+
+        TODO: finish this!
         '''
         meta = self._dbx.files_get_metadata(connection.identifier)
 
         # first count the number of slashes in the current connection name
         slash_count = connection.connection_name.rstrip(" ").rstrip("/").count("/")
-
-        
-        
-
 
 
     def _join_path(self, *args):
@@ -212,6 +210,20 @@ class Service(service_template.ServiceTemplate):
         fixed_path = os.path.join(*args).replace("\\","/")
         self._logger.debug("Path is= %s",fixed_path)
         return fixed_path
+
+
+    def _sanitize_path(self, value):
+        '''
+        sanitizes a path for use in Dropbox
+        '''
+
+        # fix slashes
+        value = os.path.normcase(value)
+
+        # replace invalid characters with self.illegal_character_substitute
+        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore')
+        value = re.sub('[^\w\.-]', self.illegal_character_substitute, value)
+        return unicode(value.strip().lower())
 
     
     # TODO: Need to figure out how this gets used
