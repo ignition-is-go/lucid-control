@@ -66,18 +66,19 @@ class Service(service_template.ServiceTemplate):
             # create the channel first
             create_response = self._slack_team.channels.create(name=slug)
             channel = create_response.body['channel']
+
             create_success = bool(create_response.body['ok'])
-            
-            connection.identifier = channel['id']
+
             if create_success:
+                self._logger.info("Successfully created channel for %s", slug)
                 connection.state_message = "Created successfully!"
+                connection.identifier = channel['id']
             else:
                 connection.state_message = "Creation issue."
             connection.save()
 
             self._logger.debug("Slack Create Response: %s", create_response.body)
 
-            self._logger.info("Successfully created channel for %s", slug)
 
         except slacker.Error as err:
             if slacker.Error.message == "is_archived":
@@ -97,6 +98,10 @@ class Service(service_template.ServiceTemplate):
                 except slacker.Error as err2:
                     self._logger.error("Another slack error: %s", err2.message)
                     raise SlackServiceError("Channel {} could not be created (is one already archived?)".format(slug))
+
+            elif slacker.Error.message == "name_taken":
+                # somehow the channel was already created but we didn't save the id
+                pass
 
             # whoops!
             self._logger.error("Error Creating Slack Channel for project # %s: %s", slug, err)
@@ -419,7 +424,7 @@ class Service(service_template.ServiceTemplate):
                 self._logger.debug("Using %s", group)
                 invite_group_response = self._slack_team.usergroups.update(
                     usergroup=os.environ['SLACK_INVITE_USERGROUP'],
-                    channel=connection.identifier,
+                    channels=connection.identifier,
                 )
                 self._logger.info("Successfully invited usergroup channel %s", connection)
                 
