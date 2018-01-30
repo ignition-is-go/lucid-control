@@ -144,7 +144,7 @@ class Service(service_template.ServiceTemplate):
             connection.save()
             raise GroupsServiceError('Unable to rename group %s to %s', project_id, new_title)
 
-    def archive(self, project_id):
+    def archive(self, service_connection_id):
         '''
 
         Archives an existing google group. (Read: Change archiveOnly to true.)
@@ -154,9 +154,6 @@ class Service(service_template.ServiceTemplate):
         :return: True or False
         :type bool:
         '''
-
-        self._logger.info("Started Archive Google Group for Project ID %s", project_id)
-
         # 1. get info from database
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         
@@ -164,6 +161,8 @@ class Service(service_template.ServiceTemplate):
             connection = ServiceConnection.objects.get(pk=service_connection_id)
             project = connection.project
             group_name = self._format_email_name(connection)
+            self._logger.info("Started Archive Google Group for %s", group_name)
+
         except Exception as err:
             self._logger.error("Group with project ID %s does not exist.", project_id, exc_info=True)
             raise GroupsServiceError("Can't archive, no project ID # %s", project_id)
