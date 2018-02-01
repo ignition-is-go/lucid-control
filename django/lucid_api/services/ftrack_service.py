@@ -207,7 +207,7 @@ class Service(service_template.ServiceTemplate):
             bool: Success or not
         '''
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
-        connection = ServiceConnection.objects.get(pk=service_connection_id).select_related("project")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
         self._logger.info('Archiving ftrack project for %s', project )
 
@@ -220,7 +220,37 @@ class Service(service_template.ServiceTemplate):
             connection.state_message = "Archived successfully!"
             connection.save()
             # log it
-            self._logger.debug('Status for project %s has been set to %s.', project_id, project['status'])
+            self._logger.info('Status for project %s has been set to %s.', project_id, project['status'])
+        except ftrack_api.exception.ServerError or \
+            ftrack_api.exception.OperationError or \
+            ftrack_api.exception.ConnectionClosedError as err:
+            self._logger.error("Couldn't archive %s", connection, exc_info=True)
+            # log the state on the connection
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
+            # raising the error will cause the task to be retried
+            raise err
+
+    def unarchive(self, service_connection_id):
+        '''
+        un-archives the ftrack project
+        '''
+
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        connection = ServiceConnection.objects.get(pk=service_connection_id)
+        project = connection.project
+        self._logger.info('Unarchiving ftrack project for %s', project )
+
+        try:
+            # archive in ftrack
+            ft_project = self._server.get("Project", connection.identifier)
+            ft_project['status'] = 'active'
+            self._server.commit()
+            # update the db
+            connection.state_message = "Unarchived successfully!"
+            connection.save()
+            # log it
+            self._logger.info('Status for project %s has been set to %s.', project_id, project['status'])
         except ftrack_api.exception.ServerError or \
             ftrack_api.exception.OperationError or \
             ftrack_api.exception.ConnectionClosedError as err:
