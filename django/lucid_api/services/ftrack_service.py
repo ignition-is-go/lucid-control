@@ -118,27 +118,6 @@ class Service(service_template.ServiceTemplate):
             except:
                 self._logger.warn("Couldn't set project_id custom attribute for %s", connection)
 
-            # add default components:
-            # TODO: Add default items from sample project
-
-            # sale = self._server.create('Sale', {
-            #     'name': 'Sale',
-            #     'parent': project
-            # })
-            # self._logger.debug('Created sales item in %s', project['full_name'])
-
-            # project_management = self._server.create('ProjectManagement', {
-            #     'name': 'Management',
-            #     'parent': project
-            # })
-            # self._logger.debug('Created project management item in %s', project['full_name'])
-
-            # schedule = self._server.create('Schedule', {
-            #     'name': 'Schedule',
-            #     'parent': project
-            # })
-            # self._logger.debug('Created schedule item in %s', project['full_name'])
-
             self._server.commit()
 
             # save the reference to the db
@@ -155,6 +134,35 @@ class Service(service_template.ServiceTemplate):
             connection.save()
             # raising the error will cause the task to be retried
             raise err
+        
+        # TODO: Setup function for standard ftrack template.
+        # try:
+        #     setup_template_project
+        # except:
+        #     pass
+
+    # Setup a template project.
+    def setup_template_project()
+        # add default components:
+        # TODO: Add default items from sample project
+
+        # sale = self._server.create('Sale', {
+        #     'name': 'Sale',
+        #     'parent': project
+        # })
+        # self._logger.debug('Created sales item in %s', project['full_name'])
+
+        # project_management = self._server.create('ProjectManagement', {
+        #     'name': 'Management',
+        #     'parent': project
+        # })
+        # self._logger.debug('Created project management item in %s', project['full_name'])
+
+        # schedule = self._server.create('Schedule', {
+        #     'name': 'Schedule',
+        #     'parent': project
+        # })
+        # self._logger.debug('Created schedule item in %s', project['full_name'])
 
     def rename(self, service_connection_id):
         '''
