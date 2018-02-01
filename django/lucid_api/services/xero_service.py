@@ -106,7 +106,7 @@ class Service(service_template.ServiceTemplate):
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
 
-        self._logger.info("Attempting to archive Xero category for #%s", project_id)
+        self._logger.info("Attempting to archive Xero category for #%s", project)
 
         try:
             response = self._xero.TCShow.options.delete(connection.identifier)[0]
