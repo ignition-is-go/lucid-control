@@ -7,14 +7,14 @@ name = "pypi"
 
 [requires]
 
-python = "2.7"
+python_version = "2.7"
 
 
 [dev-packages]
 
-pylint = "==1.7.1"
-pytest = "==3.1.2"
-randomwords = "==0.2.1"
+pylint = "*"
+pytest = "*"
+randomwords = "*"
 
 
 [packages]
@@ -25,7 +25,7 @@ arrow = "==0.10.0"
 billiard = "==3.5.0.3"
 celery = ">4<5"
 dj-database-url = "==0.4.2"
-django = "<2"
+django = "==1.11.9"
 django-celery-beat = "==1.1.0"
 django-material = "==1.1.1"
 djangorestframework = "==3.7.3"
@@ -38,10 +38,12 @@ google-auth-oauthlib = "==0.2.0"
 "psycopg2" = "==2.7.3.2"
 pycrypto = "==2.6.1"
 pytz = "==2017.3"
-pyxero = "*"
 simplejson = "==3.11.1"
 slacker = "*"
 waitress = "*"
 whitenoise = "*"
 django-import-export = "*"
 django-constance = {extras = ["database"]}
+pyxero = {git = "https://github.com/tauri-tec/pyxero"}
+cryptography = "==1.3.1"
+pyjwt = "==1.4.0"

@@ -12,7 +12,7 @@ from ..services.slack_service import Service as SlackService
 
 logger = logging.getLogger(__name__)
 
-def send_confirmation(slack_message, url_command):
+def send_confirmation(slack_message, command):
     ''' 
     send a confirmation for the command which was issued
     
@@ -27,7 +27,8 @@ def send_confirmation(slack_message, url_command):
 
     url = slack_message['response_url']
     title = slack_message.get('text', 'this project')
-    command = url_command
+    if not title or len(title) == 0:
+        title="this project"
 
     slack.respond_to_url(url, ephemeral=True, attachments=[{
         "title": "Confirm that you would like to {} {}?".format(command, title),

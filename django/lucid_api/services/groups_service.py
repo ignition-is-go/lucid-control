@@ -134,17 +134,17 @@ class Service(service_template.ServiceTemplate):
                 body=grp_info
                 ).execute()
 
-            self._logger.debug("Renamed Group ID %s to %s", project_id, slug)
+            self._logger.debug("Renamed %s to %s", connection, slug)
 
             connection.state_message = "Renamed successfully!"
             connection.save()
         except GroupsServiceError as err:
-            self._logger.error('Unable to rename group %s to %s', project_id, new_title)
+            self._logger.error('Unable to rename group %s to %s', connection.identifier, new_title)
             connection.state_message = "Unable to rename: {}".format(err)
             connection.save()
-            raise GroupsServiceError('Unable to rename group %s to %s', project_id, new_title)
+            raise GroupsServiceError('Unable to rename group %s to %s', connection, new_title)
 
-    def archive(self, project_id):
+    def archive(self, service_connection_id):
         '''
 
         Archives an existing google group. (Read: Change archiveOnly to true.)
@@ -154,9 +154,6 @@ class Service(service_template.ServiceTemplate):
         :return: True or False
         :type bool:
         '''
-
-        self._logger.info("Started Archive Google Group for Project ID %s", project_id)
-
         # 1. get info from database
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         
@@ -164,9 +161,11 @@ class Service(service_template.ServiceTemplate):
             connection = ServiceConnection.objects.get(pk=service_connection_id)
             project = connection.project
             group_name = self._format_email_name(connection)
+            self._logger.info("Started Archive for %s", connection)
+
         except Exception as err:
-            self._logger.error("Group with project ID %s does not exist.", project_id, exc_info=True)
-            raise GroupsServiceError("Can't archive, no project ID # %s", project_id)
+            self._logger.error("Couldn't get service connection %s from DB", service_connection_id, exc_info=True)
+            raise GroupsServiceError("Can't archive connection %s", service_connection_id)
         
         grp_settings = self._group.groups()
 
@@ -184,13 +183,13 @@ class Service(service_template.ServiceTemplate):
 
             connection.state_message = "Archived successfully!"
             connection.save()
-            self._logger.info("Archived group %s.", group_name)
+            self._logger.info("Archived %s.", connection)
             
         except GroupsServiceError as err:
-            self._logger.error("Unable to archive Google Group with ID # %s.", project_id)
+            self._logger.error("Unable to archive %s.", connection, exc_info=True)
             connection.state_message = "Unable to archive : {}".format(err)
             connection.save()
-            raise GroupsServiceError("Ack! Can't archive ID # %s because: %s", project_id, err.message)
+            raise GroupsServiceError("Ack! Can't archive %s: %s", connection, err.message)
         
 
     def _format_slug(self, connection):
