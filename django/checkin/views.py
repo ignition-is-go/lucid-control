@@ -44,6 +44,7 @@ def action_response(request):
                 func = getattr(tasks, callback)
                 func.delay(slack_data)
                 return HttpResponse("")
+            
             except ValueError:
                 # bad callback, return 400
                 return HttpResponseBadRequest()
@@ -103,7 +104,49 @@ def roll_call(request):
         #     )],
         # )
 
+def set_timezone(request):
+    '''
+    does a roll call of today's checkins
+    '''
 
+    try:
+        validate_slack(request.POST['token'])
+    except InvalidSlackToken as e:
+        return HttpResponse(e.message)
+    else:
+        # verified it's slack!
+        # for getting local timezone, for now defaulting to PT
+        # slack = slacker.Slacker(os.environ.get("SLACK_APP_TEAM_TOKEN"))
+        # user_data = slack.users.info(user.slack_user)
+        # tz = user_data.body['user']['tz']
+        today = Workday.objects.filter(date=arrow.now('America/Los_Angeles').date())
+        
+        fields = []
+        fallback = ""
+        for checkin in today:
+            name = checkin.user.user.get_full_name() or checkin.user.user.__str__()
+            status = checkin.current_status.__str__()
+            fields.append(
+                {
+                    'title': name,
+                    'value': status,
+                    'short': True
+                }
+            )
+            fallback="|{}:{}\r".format(name, status)
+
+        message = dict(
+            text = "",
+            attachments = [dict(
+                fallback=fallback,
+                fields=fields
+            )],
+            response_type="ephemeral",
+            parse=True,
+            as_user=True
+        )
+
+        return JsonResponse(message)
         
 
 def test(request, user):

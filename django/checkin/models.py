@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import datetime
+
 import arrow
 import math
 
@@ -32,11 +34,18 @@ class Profile(models.Model):
     slack_user = models.CharField(
         max_length=50,
         blank=False,
+        verbose_name="Slack Member ID",
+        help_text="This should be something like <strong>U1ADJNUJX</strong>"
     )
     timezone = models.CharField(
         max_length=200,
         blank=True,
         choices=TIMEZONES,
+    )
+    start_time = models.TimeField(
+        verbose_name="Workday Start Time",
+        blank=False,
+        default=datetime.time(9,1)
     )
     daily_task = models.OneToOneField(
         PeriodicTask,
@@ -300,6 +309,9 @@ class DayOff(models.Model):
     timestamp = models.DateTimeField(
         auto_now_add=True
     )
+
+    def __str__(self):
+        return "{s.type} day for {s.user} on {s.date}".format(s=self)
 
 # class EffortLog(models.Model):
 #     '''
