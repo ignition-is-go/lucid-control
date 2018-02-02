@@ -32,6 +32,15 @@ class ProfileAdmin(admin.ModelAdmin):
     icon='<i class="material-icons">assignment_ind</i>'
 
     inlines = (DayOffInline,)
+    fieldsets = [
+        (None, {
+            'fields': [
+                'user',
+                'slack_user',
+                'is_active'
+            ]
+        })
+    ]
 
     # days off
 

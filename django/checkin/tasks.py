@@ -8,6 +8,7 @@ from django_celery_beat.models import PeriodicTask, CrontabSchedule
 from django.conf import settings
 
 import slacker
+import ftrack_api
 import arrow
 
 from celery.utils.log import get_task_logger
@@ -35,7 +36,11 @@ def update_user_timezones():
         user_data = slack.users.info(user.slack_user)
         tz = user_data.body['user']['tz']
         # sets checkin for 9am in that timezone
-        user_time = arrow.now(tz).replace(hour=9,minute=1,second=0)
+        user_time = arrow.now(tz).replace(
+            hour=user.start_time.hour,
+            minute=user.start_time.minute,
+            second=user.start_time.second)
+             
         # shift post time to now
         server_time = user_time.to(settings.CELERY_TIMEZONE)
 
@@ -86,10 +91,14 @@ def send_workday_checkin(self, user_profile_id):
     slacker_instance = slacker.Slacker(os.environ.get("LUCILLE_BOT_TOKEN"))
     user = Profile.objects.get(pk=user_profile_id)
 
+    # see if the user can be accounted for today
+    option, projects = check_user_status(user)
+
     # create the checkin, or use the existing one
     today, created = Workday.objects.get_or_create(
         user=user,
         date=arrow.now(tz=user.timezone).date(),
+        response=option,
         )
     logger.debug("%s workday #%s :: %s", 
         "Created" if created else "Got",
@@ -151,7 +160,6 @@ def send_workday_checkin(self, user_profile_id):
         else:
             logger.error("Slack message failed: %s", obj.body)
 
-        #TODO: setup end-of-day closeout task here
         closeout_time = arrow.now().shift(hours=+12)
 
         close_out_workday.apply_async((today.id,), eta=closeout_time.datetime)
@@ -233,6 +241,9 @@ def close_out_workday(self, workday_id):
     '''
     closes out a workday
     '''
+    logger = get_task_logger(__name__)
+
+    # get workday
     try:
         today = Workday.objects.get(pk=workday_id)
         user = today.user
@@ -240,6 +251,9 @@ def close_out_workday(self, workday_id):
     except Workday.DoesNotExist:
         logger.error("Workday #%s doesn't exist...", workday_id, exc_info=True)
         raise Workday.DoesNotExist
+
+    else:
+        logger.info("Closing out %s", today)
 
     # check to see if the user has responded
     if not isinstance(today.response, WorkdayOption):
@@ -275,9 +289,9 @@ def close_out_workday(self, workday_id):
             channel=user.slack_user,
             attachments=[{
                 "text" : "{icon}Since you didn't respond within 12 hours I've marked you as *{status}* on *{date}*".format(
-                    status=status, 
+                    status=option, 
                     date=arrow.get(today.date).format("ddd, MMM D, YYYY"), 
-                    icon=status.emoji
+                    icon=option.emoji
                     ),
                 "mrkdwn_in": ["text"],
                 "actions": []
@@ -333,7 +347,7 @@ def issue_flex_day(self, note=None, user_id=None):
 
     for user in users:
         # issue flex day
-        flex_day = DayOff.objects.get_or_create(
+        flex_day, created = DayOff.objects.get_or_create(
             user=user,
             date=today,
             type='flex',
@@ -342,11 +356,120 @@ def issue_flex_day(self, note=None, user_id=None):
         )
 
         logger.info("Flex day added for %s on %s",user,today )
-        slack.chat.me_message(
+        slack.chat.post_message(
             user.slack_user,
-            "added a flex day for *{}*. {}".format(
-                today,
+            ":bowtie: added a *{}*. {}".format(
+                flex_day,
                 note
-            )
+            ),
+            as_user=True,
         )
 
+
+def check_user_status(user, when=None):
+    '''
+    checks the user's status with the various apis
+
+    ###Args:
+    - `user`: a checkin.Profile model object
+    - `when` __optional__: an Arrow time to check status for
+
+    ##Returns:
+    A tuple, consisting of (`status`, `project`) where:
+    - `status`: a checkin.WorkdayOption for the user for today. `None` if the user cannot be accounted for.
+    - `projects`: array of the the primary key of a the project which a user is working on, if applicable
+    '''
+    logger = get_task_logger(__name__)
+    if logger is None:
+        import logging
+        logger = logging.getLogger(__name__)
+
+    logger.info("Checking user status for %s", user)
+
+    # figure some time stuff real quick like
+    # use the time we're supplied, if given
+    if isinstance(when, arrow.Arrow): 
+        now = when
+    else:
+        now = arrow.now(tz=user.timezone)
+    
+    today = now.replace(hour=user.start_time.hour, minute=user.start_time.minute)
+    # this is being called before the day's checkin, so count it on the day before
+    if now.time() < user.start_time:
+        today = today.shift(days=-1)
+
+    # ftrack, for days on-site
+    try: 
+        ftrack = ftrack_api.Session()
+        
+        # get user
+        try:
+            ft_user = ftrack.query("User where email is '{}'".format(user.user.email)).one()
+        except:
+            logger.error("Couldn't retrieve ftrack user for %s", user, exc_info=True)
+            raise IOError("Couldn't get user")
+        
+        # check for tasks
+        try:
+            query = "Task where "\
+            "type.name like '%On Site%' and "\
+            "assignments any (resource.id = '{id}') and "\
+            "start_date <= '{next_check}' and "\
+            "end_date >= '{last_check}'".format(
+                id=ft_user['id'],
+                next_check=today.shift(days=+1),
+                last_check=today
+                )
+
+            logger.debug(query)
+
+            tasks = ftrack.query(query)
+
+        except:
+            logger.error("Had an error querying ftrack for tasks. %s", query, exc_info=True)
+            raise IOError("Query failed")
+
+        if len(tasks) > 0:
+            # user has on-site tasks today!
+            try:
+                option = WorkdayOption.objects.filter(time_off_type=None,name="Working")[0]
+            except:
+                # something has happened to the default working option!
+                logger.error("Couldn't find the default working option. Is it not called Working anymore?")
+                raise AttributeError("Couldn't find default working option")
+            
+            # let's figure out which project(s) it is
+            projects = []
+            try:
+                for task in tasks:
+                    projects.append(int(task['project']['custom_attributes']['project_id']))
+            except: 
+                # ok to fail for now
+                pass 
+
+            return (option, projects)
+        
+        else:
+            logger.error("No tasks found in ftrack for %s on %s", user, today, exc_info=True)
+                
+    except:
+        # should I do something here? just protecting to make sure all services run
+        pass
+
+    # TODO: check xero for vacation!
+
+    # user cannot be accounted for
+    return (None, [])
+
+def test_check_status():
+    '''
+    kyle's test
+    '''
+    import logging 
+    logging.basicConfig(level=logging.DEBUG)
+    kyle = Profile.objects.get(pk=1)
+    day = arrow.get("2018-03-13T12:00:00-08:00")
+
+    option, projects = check_user_status(kyle, when=day)
+    print option
+    print projects
