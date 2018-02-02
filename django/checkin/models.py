@@ -307,11 +307,15 @@ class DayOff(models.Model):
         null=True,
     )
     timestamp = models.DateTimeField(
-        auto_now_add=True
+        auto_now=True
     )
 
     def __str__(self):
         return "{s.type} day for {s.user} on {s.date}".format(s=self)
+
+    class Meta():
+        verbose_name = "Day Off"
+        verbose_name_plural = "Days Off"
 
 # class EffortLog(models.Model):
 #     '''

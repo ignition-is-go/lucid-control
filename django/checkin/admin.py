@@ -28,6 +28,19 @@ class DayOffInline(admin.StackedInline):
         widget.can_change_related = False
         return formset
 
+class DayOffAdmin(admin.ModelAdmin):
+    '''
+    Days off list
+    '''
+    model=DayOff
+    icon='<i class="material-icons">nature_people</i>'
+
+    ordering = ('-date',)
+
+    list_display = ('date', 'user', 'type','amount', 'note')
+    list_filter = ('user', 'type', 'date', 'note')
+    
+
 class ProfileAdmin(admin.ModelAdmin):
     icon='<i class="material-icons">assignment_ind</i>'
 
@@ -60,13 +73,9 @@ class ProfileAdmin(admin.ModelAdmin):
     # list view
     list_display = ('__str__', 'available_flex_days', 'available_vacation_days', 'available_sick_days')
 
-admin.site.register(Profile, ProfileAdmin)
-
 
 class WorkdayOptionAdmin(admin.ModelAdmin):
     icon='<i class="material-icons">playlist_add_check</i>'
-
-admin.site.register(WorkdayOption, WorkdayOptionAdmin) 
 
 
 class WorkdayAdmin(admin.ModelAdmin):
@@ -108,4 +117,10 @@ class WorkdayAdmin(admin.ModelAdmin):
             return read_only
         return self.readonly_fields
 
+
+# Register in order of usefullness
+
 admin.site.register(Workday, WorkdayAdmin)
+admin.site.register(DayOff,DayOffAdmin)
+admin.site.register(Profile, ProfileAdmin)
+admin.site.register(WorkdayOption, WorkdayOptionAdmin) 
