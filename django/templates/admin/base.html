@@ -1,0 +1,10 @@
+{% extends 'admin/base.html'%}
+{% load i18n admin_urls %}
+{% block sidenav_items %}
+    {{ block.super }}
+    <hr />
+    <li><a class="collapsible-header" href="{% url 'api:root' %}"><i class="material-icons">device_hub</i>Lucid API Docs</a></li>
+{% endblock %}
+{% block submit_row %}
+    <button type="submit" class="waves-effect waves-light btn white-text" name="_continue">{% trans 'Save and Continue' %}</button>
+{% endblock %}

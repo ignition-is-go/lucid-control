@@ -8,9 +8,13 @@ env.json
 .vscode/settings.json
 *.log
 .env
+venv/
 
 interact.py
 Procfile.local
 run.py
 ngrok*
 
+
+*.sqlite3
+staging_data.json
