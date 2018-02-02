@@ -37,6 +37,7 @@ class ProfileAdmin(admin.ModelAdmin):
             'fields': [
                 'user',
                 'slack_user',
+                'start_time',
                 'is_active'
             ]
         })
