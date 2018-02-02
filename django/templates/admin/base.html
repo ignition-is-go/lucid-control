@@ -1,5 +1,7 @@
 {% extends 'admin/base.html'%}
 {% load i18n admin_urls %}
+{% load static %}
+{% block favicon %}<link href="{% static 'favicon.ico' %}" rel="icon" type="image/x-icon" />{% endblock %}
 {% block sidenav_items %}
     {{ block.super }}
     <hr />

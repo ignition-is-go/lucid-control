@@ -84,7 +84,7 @@ class Project(DirtyFieldsMixin, models.Model):
     def message(self, message, **kwargs):
         '''used by celery tasks to send messages to the project.
 
-        TODO: implement as slack message
+        
         '''
         
         for service in self.services.filter(is_messenger=True):
@@ -159,7 +159,7 @@ class ServiceConnection(DirtyFieldsMixin, models.Model):
         return response
 
     def __str__(self):
-        return "{s.service_name}::{s.project} - {s.connection_name}".format(s=self)
+        return ":{s.service_name}::{s.project} - {s.connection_name}".format(s=self)
 
     class Meta():
         verbose_name="Service Connection"
