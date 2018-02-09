@@ -233,6 +233,9 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_ENABLE_UTC = True
 CELERYBEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
 
+# checkin bot
+CHECK_IN_BOT_TOKEN = os.environ.get('LUCILLE_BOT_TOKEN')
+
 # logging
 
 LOG_LEVEL = str(os.environ.get('LOG_LEVEL',"info"))

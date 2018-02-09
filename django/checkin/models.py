@@ -187,13 +187,9 @@ class WorkdayOption(models.Model):
         if user is not None and self.time_off_type is not None:
             accrued, used = user.days(self.time_off_type)
             remaining = accrued - used
-            if remaining <= 0:
-                # no more of this day type available, return no JSON option
-                return None
-            else:
-                action_button['text'] += " ({:0.0f})".format(
-                    math.floor(accrued-used)
-                    )
+            action_button['text'] += " ({:0.0f})".format(
+                math.floor(accrued-used)
+                )
 
         if self.require_confirmation:
             action_button['confirm']=dict(
@@ -227,13 +223,9 @@ class Workday(models.Model):
         related_name="workdays",
     )
     scheduled = models.DateTimeField(
-        help_text="timestamp from when the checkin was scheduled",
+        help_text="When the workday was created",
         auto_now_add=True,
         blank=False,
-    )
-    is_posted = models.BooleanField(
-        help_text="Whether the check-in has been sent",
-        default=False,
     )
     last_action = models.DateTimeField(
         verbose_name="Last Action Time",

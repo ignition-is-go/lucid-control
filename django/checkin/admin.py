@@ -5,6 +5,7 @@ import logging
 from django.contrib import admin
 
 from .models import Workday, WorkdayOption, Profile, DayOff
+import tasks 
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +37,10 @@ class DayOffAdmin(admin.ModelAdmin):
     icon='<i class="material-icons">nature_people</i>'
 
     ordering = ('-date',)
+    date_hierarchy = "date"
 
     list_display = ('date', 'user', 'type','amount', 'note')
-    list_filter = ('user', 'type', 'date', 'note')
+    list_filter = ('user', 'type', 'note')
     
 
 class ProfileAdmin(admin.ModelAdmin):
@@ -80,6 +82,8 @@ class WorkdayOptionAdmin(admin.ModelAdmin):
 
 class WorkdayAdmin(admin.ModelAdmin):
     icon='<i class="material-icons">update</i>'
+
+    ordering = ('-date',)
     date_hierarchy = "date"
     
     def get_response(self, obj):
@@ -87,6 +91,18 @@ class WorkdayAdmin(admin.ModelAdmin):
     get_response.short_description = "Response"
 
     list_display = ('__str__', 'get_response')
+    list_filter = ('user', 'response')
+
+    fieldsets = [
+        (None, {
+            'fields': [
+                'date',
+                'user',
+                'response',
+                'last_action'
+            ]
+        })
+    ]
 
     # disable adding more response types
     def get_formset(self, request, obj=None, **kwargs):
@@ -117,6 +133,17 @@ class WorkdayAdmin(admin.ModelAdmin):
             return read_only
         return self.readonly_fields
 
+    def reissue_checkin(model_admin, request, queryset):
+        for day in queryset:
+            tasks.send_slack_checkin.delay(day.id, ":spiral_calendar_pad: Check in for *{today}*" )
+    reissue_checkin.short_description = "Re-issue checkin for selected workdays"
+
+    def force_closeout_workday(model_admin, request, queryset):
+        for day in queryset:
+            tasks.close_out_workday.delay(day.id)
+    force_closeout_workday.short_description = "Force close selected workdays"
+
+    actions = [reissue_checkin, force_closeout_workday]
 
 # Register in order of usefullness
 

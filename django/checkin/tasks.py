@@ -92,81 +92,37 @@ def send_workday_checkin(self, user_profile_id):
     user = Profile.objects.get(pk=user_profile_id)
 
     # see if the user can be accounted for today
-    option, projects = check_user_status(user)
+    predetermined_response, projects = check_user_status(user)
 
     # create the checkin, or use the existing one
     today, created = Workday.objects.get_or_create(
         user=user,
         date=arrow.now(tz=user.timezone).date(),
-        response=option,
+        response=predetermined_response,
         )
+    
     logger.debug("%s workday #%s :: %s", 
         "Created" if created else "Got",
         today.id, today)
     
-    today_str = today.date_arrow.format("ddd, MMM D, YYYY")
-    checkin_str = today.date_arrow.format("MM/DD/YY")
+    if predetermined_response is None:
+        # the user couldn't be accounted for, so ask them
+        send_slack_checkin.delay(
+            today.id, 
+            ":spiral_calendar_pad: Check in for *{today}*",
+            show_options=True
+        )
+    else:
+        # the user is accounted for, so let them know
+        send_slack_response_confirmation.delay(
+            today.id,
+            "{response.emoji}I've marked you as *{response}* on *{today}*"
+        )
 
-    # If the message has been posted before, wipe it clean
-    if len(today.slack_message_ts) > 0:
-        try:
-            ims = slacker_instance.im.list().body['ims']
-            for im in ims:
-                if im['user'] == user.slack_user:
-                    channel = im['id']
-                    break
-            
-            logger.debug("Channel should be %s", channel)
-            obj = slacker_instance.chat.update(
-                channel=channel,
-                text="_Check-in for {} was re-issued!_".format(today_str),
-                attachments=[],
-                ts=today.slack_message_ts,
-            )
-        except:
-            logger.warn("Couldn't wipe old message %s", today.slack_message_ts, exc_info=True)
-            pass
+    closeout_time = arrow.now().shift(hours=+12)
 
-    # Get the available options, based on the workday
-    option_set = WorkdayOption.objects.filter(is_active=True).order_by('sort_order')
-    # format the options into an actions list for the message attachment
-    actions = [option.as_json(user=user) for option in option_set]
-    
-    try:
-        obj = slacker_instance.chat.post_message(
-            channel="@{}".format(user.slack_user),
-            text="",
-            as_user=True,
-            attachments=[{
-                        #"pretext": "What's your status today?",
-                        "text" : ":spiral_calendar_pad: Check in for *{}*".format(today_str),
-                        "mrkdwn_in": ["text"],
-                        "fallback": "Time to check in!",
-                        "callback_id": "{callback}={id}".format(
-                            callback="handle_workday",
-                            id=today.id,
-                            ),
-                        "color": "#3AA3E3",
-                        "attachment_type": "default",
-                        "actions": actions
-                        }]
-            )
+    close_out_workday.apply_async((today.id,), eta=closeout_time.datetime)
 
-        if obj.body['ok']:
-            logger.info("Slack message successful")
-            today.is_posted = True
-            today.slack_message_ts = obj.body['ts']
-            today.save()
-        else:
-            logger.error("Slack message failed: %s", obj.body)
-
-        closeout_time = arrow.now().shift(hours=+12)
-
-        close_out_workday.apply_async((today.id,), eta=closeout_time.datetime)
-
-    except slacker.Error as e:
-        logger.error("Slack API Error:", exc_info=True)
-        raise self.retry(exc=e, countdown=5)
 
 @shared_task(bind=True)
 def handle_workday(self, data):
@@ -189,18 +145,6 @@ def handle_workday(self, data):
     logger.debug("Slack action: %s", data['actions'][0])
     logger.debug("Status is object type: %s", type(status))
 
-    #  THIS IS FOR THE OLD WorkdayResponse method... 
-    #  TODO: remove once safe
-    # # store the response in the DB
-    # response, created = WorkdayResponse.objects.get_or_create(
-    #     workday=today,
-    #     response=WorkdayOption.objects.get(pk=status_id),
-    #     slack_action_ts=data['action_ts']
-    # )
-    # logger.debug("%s response #%s :: %s", 
-    #     "Created" if created else "Got",
-    #     response.id, response)
-
     # store the response
     try:
         today.response=status
@@ -210,30 +154,10 @@ def handle_workday(self, data):
         logger.error("Couldn't set response!", exc_info=True)
         self.retry(exc=e)
 
-    slack = slacker.Slacker(os.environ.get('LUCILLE_BOT_TOKEN'))
-
-    try:
-        update_response = slack.chat.update(
-            ts=original_ts,
-            text="",
-            channel=channel,
-            attachments=[{
-                "text" : "{icon} Thanks! I've marked you as *{status}* on *{date}*".format(
-                    status=status, 
-                    date=checkin_date, 
-                    icon=status.emoji
-                    ),
-                "mrkdwn_in": ["text"],
-                "actions": []
-            }]
-            )
-        logger.debug(update_response.body)
-
-    except:
-        logger.error("Couldn't update the Slack interactive message", exc_info=True)
-    
- 
-    pass
+    send_slack_response_confirmation(
+        today.id,
+        "{response.emoji} Thanks! I've marked you as *{response}* on *{today}*"
+    )
 
 
 @shared_task(bind=True)
@@ -281,21 +205,10 @@ def close_out_workday(self, workday_id):
         today.response = option
         today.save()
 
-        slack = slacker.Slacker(os.environ.get('LUCILLE_BOT_TOKEN'))
-
-        response = slack.chat.update(
-            ts=today.slack_message_ts,
-            text="",
-            channel=user.slack_user,
-            attachments=[{
-                "text" : "{icon}Since you didn't respond within 12 hours I've marked you as *{status}* on *{date}*".format(
-                    status=option, 
-                    date=arrow.get(today.date).format("ddd, MMM D, YYYY"), 
-                    icon=option.emoji
-                    ),
-                "mrkdwn_in": ["text"],
-                "actions": []
-            }]
+        send_slack_response_confirmation.delay(
+            today.id,
+            "{response.emoji} Since you didn't respond within 12 hours, "\
+            "I've marked you as *{response}* on *{today}*"
             )
 
     # user has checked in today.
@@ -323,7 +236,22 @@ def close_out_workday(self, workday_id):
         
         # now modulo divide by 7. every 7th day working they get a bonus.
         if working_count % 7 == 0 and working_count > 6:
-            issue_flex_day(user_id=today.user.id, note="For working 7 days straight")
+            issue_flex_day.delay(user_id=today.user.id, note="For working 7 days straight")
+    
+    # check to see if the user still has clickable options, if so, get rid of them
+    slack = get_slack()
+    try:
+        today_post = slack.channels.history(
+            get_user_channel_id(today.user),
+            latest=today.slack_message_ts
+        )
+    except:
+        logger.warn("Couldn't find today's post to clean up!", exc_info=True)
+    else:
+        if today_post.body['attachments']:
+            pass
+
+
 
 
 @shared_task(bind=True)
@@ -364,6 +292,161 @@ def issue_flex_day(self, note=None, user_id=None):
             ),
             as_user=True,
         )
+
+
+@shared_task(bind=True, retry_backoff=True)
+def send_slack_checkin(self, today_id, text, show_options=True):
+    '''
+    sends the user a checkin message via slack
+
+    ##Args:
+    -`today`: a checkin.models.Workday primary key
+    -`text`: a string to supply to the slack post. {today} will be replaced with the date
+    '''
+    logger = get_task_logger(__name__)
+
+    try:
+        today = Workday.objects.get(pk=today_id)
+    except Workday.DoesNotExist:
+        logger.error("Cannot send slack checkin for workday %d, it does not exist!", today_id)
+        return False
+
+    today_str = today.date_arrow.format("ddd, MMM D, YYYY")
+
+    slack = get_slack()
+
+    # If the message has been posted before, wipe it clean
+    if len(today.slack_message_ts) > 0:
+        try:
+            obj = slack.chat.update(
+                channel=get_user_channel_id(today.user),
+                text="_Check-in for {} was re-issued!_".format(today_str),
+                attachments=[],
+                ts=today.slack_message_ts,
+            )
+        except:
+            logger.warn("Couldn't wipe old message %s", today.slack_message_ts, exc_info=True)
+            pass
+
+    # handle geting options if needed
+    if show_options:
+        # Get the available options, based on the workday
+        option_set = WorkdayOption.objects.filter(is_active=True).order_by('sort_order')
+        # format the options into an actions list for the message attachment
+        actions = [option.as_json(user=today.user) for option in option_set]
+    else:
+        actions = None
+    
+    try:
+        obj = slack.chat.post_message(
+            channel="@{}".format(today.user.slack_user),
+            text="",
+            as_user=True,
+            attachments=[{
+                        #"pretext": "What's your status today?",
+                        "text" : text.format(today=today_str),
+                        "mrkdwn_in": ["text"],
+                        "fallback": text.format(today=today_str),
+                        "callback_id": "{callback}={id}".format(
+                            callback="handle_workday",
+                            id=today.id,
+                            ),
+                        "color": "#3AA3E3",
+                        "attachment_type": "default",
+                        "actions": actions
+                        }]
+            )
+
+        if obj.body['ok']:
+            logger.info("Slack message successful")
+            today.slack_message_ts = obj.body['ts']
+            today.save()
+        else:
+            logger.error("Slack message failed: %s", obj.body)
+
+    except slacker.Error as e:
+        logger.error("Slack API Error:", exc_info=True)
+        raise self.retry(exc=e, countdown=5)
+
+
+@shared_task(bind=True, retry_backoff=True)
+def send_slack_response_confirmation(self, today_id, text):
+    '''
+    sends the user a confirmation of their response for the day.
+    uses post_message if no original message has been sent
+
+    ##Args:
+    - `today`: a checkin.models.Workday primary key
+    - `text`: a string to supply to the slack post. 
+    -- {today} will be replaced with the date
+    -- {response} is the WorkdayOption object
+    '''
+    logger = get_task_logger(__name__)
+
+    try:
+        today = Workday.objects.get(pk=today_id)
+    except Workday.DoesNotExist:
+        logger.error("Cannot send slack checkin for workday %d, it does not exist!", today_id)
+        return False
+
+    today_str = today.date_arrow.format("ddd, MMM D, YYYY")
+
+    attachment_data = [{
+        "text" : text.format(
+            response=today.response, 
+            today=today_str, 
+            ),
+        "mrkdwn_in": ["text"],
+        "actions": []
+    }]
+
+    try:
+        slack = get_slack()
+        if today.slack_message_ts is not None:
+            update_response = slack.chat.update(
+                ts=today.slack_message_ts,
+                text="",
+                channel=get_user_channel_id(today.user),
+                attachments=attachment_data
+                )
+            logger.debug(update_response.body)
+        else:
+            message_response = slack.chat.post_message(
+                channel=today.user.slack_user,
+                text="",
+                attachments=attachment_data
+            )
+
+    except AttributeError:
+        # thrown if we can't find the user im channel to update the message
+        pass
+    except Exception as e:
+        logger.error("Couldn't update the Slack interactive message", exc_info=True)
+        raise self.retry(exc=e, countdown=5)
+
+
+def get_user_channel_id(user):
+    ''' gets the channel id associated with a user'''
+    logger=get_task_logger(__name__)
+    slack = get_slack()
+
+    # get the list of IMs and loop through it to find the user
+    ims = slack.im.list().body['ims']
+    for im in ims:
+        if im['user'] == user.slack_user:
+            channel = im['id']
+            break
+    else:
+        logger.error("Couldn't find the IM channel for %s", user, exc_info=True)
+        raise AttributeError("Couldn't find that channel")
+    
+    logger.debug("Channel should be %s", channel)
+    return channel
+
+
+def get_slack():
+    '''gets a slacker instance'''
+    return slacker.Slacker(settings.CHECK_IN_BOT_TOKEN)
 
 
 def check_user_status(user, when=None):
@@ -460,16 +543,3 @@ def check_user_status(user, when=None):
 
     # user cannot be accounted for
     return (None, [])
-
-def test_check_status():
-    '''
-    kyle's test
-    '''
-    import logging 
-    logging.basicConfig(level=logging.DEBUG)
-    kyle = Profile.objects.get(pk=1)
-    day = arrow.get("2018-03-13T12:00:00-08:00")
-
-    option, projects = check_user_status(kyle, when=day)
-    print option
-    print projects
