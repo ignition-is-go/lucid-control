@@ -112,69 +112,66 @@ class Service(service_template.ServiceTemplate):
     
     def archive(self, service_connection_id):
         '''
-        Archives the folder by moving the project folder into the archive root. 
-        Also checks to see if it has already been archived and avoids the duplication of effort.
-    
+        We don't do anything on dropbox archive now.
+
+        TODO: add dropbox metadata for archive
         '''
-        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
-        connection = ServiceConnection.objects.get(pk=service_connection_id)
-        project = connection.project
+        pass
+        # ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+        # connection = ServiceConnection.objects.get(pk=service_connection_id)
+        # project = connection.project
 
-        # slug will generate the correct target folder based on whether or not the connection is archived
-        slug = self._format_slug(connection)
+        # # slug will generate the correct target folder based on whether or not the connection is archived
+        # slug = self._format_slug(connection)
 
-        # remove the connection.connection_name from the slug to get the target project folder
-        target_folder = slug.rstrip("/"+connection.connection_name.lower())
-        self._logger.debug("Target archive folder is %s", target_folder)
+        # # remove the connection.connection_name from the slug to get the target project folder
+        # target_folder = slug.rstrip("/"+connection.connection_name.lower())
+        # self._logger.debug("Target archive folder is %s", target_folder)
 
-        meta = self._dbx.files_get_metadata(connection.identifier)
+        # meta = self._dbx.files_get_metadata(connection.identifier)
 
-        if target_folder in meta.path_lower:
-            # this folder has already been moved to the target folder
-            return
+        # if target_folder in meta.path_lower:
+        #     # this folder has already been moved to the target folder
+        #     return
         
-        else:
-            try:
-                # get the project folder by stripping connection.connection_name from the path
-                project_folder = meta.path_lower.rstrip("/"+connection.connection_name.lower())
-                # move project folder to the target folder
-                response = self._dbx.files_move(project_folder, target_folder)
+        # else:
+        #     try:
+        #         # get the project folder by stripping connection.connection_name from the path
+        #         project_folder = meta.path_lower.rstrip("/"+connection.connection_name.lower())
+        #         # move project folder to the target folder
+        #         response = self._dbx.files_move(project_folder, target_folder)
 
-                if target_folder not in response.path_lower:
-                    # folder hasn't moved to the correct spot
-                    raise DropboxServiceError("Archive failed")
+        #         if target_folder not in response.path_lower:
+        #             # folder hasn't moved to the correct spot
+        #             raise DropboxServiceError("Archive failed")
                 
-                connection.state_message = "{} Success!".format("Archive" if connection.is_archived else "Unarchive")
-                connection.save()
+        #         connection.state_message = "{} Success!".format("Archive" if connection.is_archived else "Unarchive")
+        #         connection.save()
 
-            except DropboxServiceError as err:
-                self._logger.error("Couldn't move folder %s to %s", connection.identifier, slug, exc_info=True)
-                connection.state_message = "Error: {}".format(err)
-                connection.save()
-                raise err
+        #     except DropboxServiceError as err:
+        #         self._logger.error("Couldn't move folder %s to %s", connection.identifier, slug, exc_info=True)
+        #         connection.state_message = "Error: {}".format(err)
+        #         connection.save()
+        #         raise err
             
-            except dropbox.exceptions.InternalServerError or dropbox.exceptions.HttpError as err:
-                self._logger.error("Dropbox Error!", exc_info=True)
-                connection.state_message = "Error: {}".format(err)
-                connection.save()
-                raise err
+        #     except dropbox.exceptions.InternalServerError or dropbox.exceptions.HttpError as err:
+        #         self._logger.error("Dropbox Error!", exc_info=True)
+        #         connection.state_message = "Error: {}".format(err)
+        #         connection.save()
+        #         raise err
 
-            except Exception as err:
-                self._logger.error("Non-retry error:", exc_info=True)
-                connection.state_message = "Error: {}".format(err)
-                connection.save()
+        #     except Exception as err:
+        #         self._logger.error("Non-retry error:", exc_info=True)
+        #         connection.state_message = "Error: {}".format(err)
+        #         connection.save()
 
     def unarchive(self, service_connection_id):
         '''
-        Unarchives the folder by moving the project folder into the active root using self.archive
-        
-        *With Dropbox, unarchiving is the same logic as archiving,
-        but we move into a different root folder, as determined by the archive state
-        on the service connection. So, we just redirect this to the archive method!*
+        Don't do anything!
 
+        TODO: Add dropbox metadata
         '''
-        self._logger.info('Attempting to unarchive Dropbox folder via rename...')
-        self.archive(service_connection_id)
+        pass
 
 
     def _format_slug(self, connection,):
@@ -219,10 +216,22 @@ class Service(service_template.ServiceTemplate):
 
         # fix slashes
         value = os.path.normcase(value)
+        value = value.replace("\\","/")
 
         # replace invalid characters with self.illegal_character_substitute
-        value = re.sub('[^\w\.-]', self.illegal_character_substitute, value)
-        return unicode(value.strip().lower())
+        value = re.sub('[^\w\.-^/]', self.illegal_character_substitute, value)
+
+        # deduplicate the illegal_character_substitute
+        try:
+            value = re.sub(
+                '{}+'.format(self.illegal_character_substitute),
+                self.illegal_character_substitute,
+                value
+                )
+        except:
+            pass
+
+        return value.strip().lower()
 
     
     # TODO: Need to figure out how this gets used

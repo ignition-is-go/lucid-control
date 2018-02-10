@@ -18,3 +18,9 @@ ngrok*
 
 *.sqlite3
 staging_data.json
+
+\.pytest_cache/
+
+lucid_api_oldtesssssts/
+
+lucid_api_tests/

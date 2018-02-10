@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "dd447a6f334e56ca87b2009891b2f1650837de5b7db797fb9365b16410f3fd4f"
+            "sha256": "f8bf6ebf5f5d80b5a3c00bd05c33f813b4cab02d002d7d5f8da1786bba907a2d"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -653,7 +653,7 @@
                 "sha256:f0b0e4eba956de51238e17573b7087e852dfe9854afd2e9c873f73fc0ca0a6dd",
                 "sha256:9d98697f088eb1b0fa451391f91afb5e3ebde16bbdb272819fd091151fda4f1a"
             ],
-            "markers": "python_version < '3.4'",
+            "markers": "python_version == '2.7'",
             "version": "==1.5"
         },
         "colorama": {
@@ -779,6 +779,12 @@
                 "sha256:038ccc5a9daa1b1b0eb739ab7dce54e495811eca5ea3af4815a2a3ac45152309"
             ],
             "version": "==3.1.2"
+        },
+        "pytest-pythonpath": {
+            "hashes": [
+                "sha256:f3d46b0a8276e856f7dc4f70ca97b88be6fbcf52d57ce36e35057d502388265e"
+            ],
+            "version": "==0.7.2"
         },
         "randomwords": {
             "hashes": [

@@ -13,9 +13,10 @@ python_version = "2.7"
 [dev-packages]
 
 pylint = "*"
-pytest = "*"
 randomwords = "*"
 pytest-django = "*"
+pytest = "*"
+pytest-pythonpath = "*"
 
 
 [packages]
