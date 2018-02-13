@@ -42,13 +42,19 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'p$t$je+)lah9bwozfj(w%n(6z!%vm*5mj0cj3wxk(foe4-p#&u'
+SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["control.lucidsf.net", "lucidcontrol.herokuapp.com"]
 
+# https security
+SECURE_SSL_REDIRECT = True # [1]
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
 
 # Application definition
 
@@ -122,6 +128,8 @@ db_from_env = dj_database_url.config(env=key, conn_max_age=500)
 DATABASES = {
     'default': db_from_env
 }
+
+CONN_MAX_AGE = 90
 
 # Import-Export settings
 IMPORT_EXPORT_USE_TRANSACTIONS = True
