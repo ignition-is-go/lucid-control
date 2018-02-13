@@ -20,3 +20,12 @@ def test_sanitize_but_keep_url_slash(dropbox):
 
     assert result=="/root/fwd-slash-folder/backslash-folder/one-with-issues.ext"
 
+def test_sanitize_remove_final_slash(dropbox):
+    '''
+    test the dropbox sanitizer function to ensure it returns the correct format
+    '''
+    assert isinstance(dropbox, Service)
+    initial = r'/root/folder/'
+    result = dropbox._sanitize_path(initial)
+
+    assert result=="/root/folder"

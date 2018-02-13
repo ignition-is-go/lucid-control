@@ -231,6 +231,8 @@ class Service(service_template.ServiceTemplate):
         except:
             pass
 
+        value = value.rstrip("/")
+
         return value.strip().lower()
 
     
