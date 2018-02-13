@@ -3,8 +3,6 @@
 # wait for PSQL server to start
 sleep 10
 
-pip show pyxero
-
 cd /app/django  
 # prepare init migration
 python manage.py makemigrations
