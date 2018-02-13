@@ -9,5 +9,7 @@ python manage.py makemigrations
 # migrate db, so we have the latest db schema
 python manage.py migrate
 
+python manage.py collectstatic --noinput
+
 # run waitress
 waitress-serve --port=$PORT lucidcontrol.wsgi:application
