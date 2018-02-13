@@ -190,17 +190,6 @@ class Service(service_template.ServiceTemplate):
 
         return slug
 
-    def _get_parent_folder(self, connection):
-        '''
-        get the parent folder of the connection
-
-        TODO: finish this!
-        '''
-        meta = self._dbx.files_get_metadata(connection.identifier)
-
-        # first count the number of slashes in the current connection name
-        slash_count = connection.connection_name.rstrip(" ").rstrip("/").count("/")
-
 
     def _join_path(self, *args):
         '''Fixes paths to uniformly linux style'''
