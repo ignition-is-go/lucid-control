@@ -42,9 +42,8 @@ class Service(service_template.ServiceTemplate):
         project = connection.project
 
         slug = self._format_slug(connection)
-        root = os.environ.get('DROPBOX_APP_ROOT')
 
-        self._logger.info('Attempting to create Dropbox folder %s', root, slug)
+        self._logger.info('Attempting to create Dropbox folder %s', slug)
                 
         try:
             # make the folder
