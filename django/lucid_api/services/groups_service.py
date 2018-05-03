@@ -49,7 +49,7 @@ class Service(service_template.ServiceTemplate):
         slug = self._format_slug(connection)
 
         grp_info = {
-            "email" : "{}@lucidsf.com".format(slug), # email address for the group
+            "email" : "{}@lucid.rocks".format(slug), # email address for the group
             "name" : self._format_email_name(connection), # group name
             "description" : "Group Email for {}".format(slug), # group description
         }
@@ -295,10 +295,10 @@ class Service(service_template.ServiceTemplate):
     
     def list_employees(self):
         '''
-        Get a list of employees (members of the employees@lucidsf.com group)
+        Get a list of employees (members of the employees@lucid.rocks group)
         '''
         employee = self._admin.members()
-        l = employee.list(groupKey='employees@lucidsf.com').execute()
+        l = employee.list(groupKey='employees@lucid.rocks').execute()
         
         response = [r['email'] for r in l['members']]
         return response
@@ -309,7 +309,7 @@ class Service(service_template.ServiceTemplate):
         credentials = ServiceAccountCredentials.from_json_keyfile_dict(
             json.loads(os.environ['GOOGLE_SERVICE_AUTH'].replace("'", "\"")),
             scopes=scopes)
-        credentials = credentials.create_delegated('developer@lucidsf.com')
+        credentials = credentials.create_delegated('developer@lucid.rocks')
         # http = credentials.authorize(httplib2.Http())
         service = discovery.build('admin', 'directory_v1', credentials=credentials)
 
@@ -321,7 +321,7 @@ class Service(service_template.ServiceTemplate):
         credentials = ServiceAccountCredentials.from_json_keyfile_dict(
             json.loads(os.environ['GOOGLE_SERVICE_AUTH'].replace("'", "\"")),
             scopes=scopes)
-        credentials = credentials.create_delegated('developer@lucidsf.com')
+        credentials = credentials.create_delegated('developer@lucid.rocks')
         http = credentials.authorize(httplib2.Http())
         service = discovery.build('groupssettings', 'v1', credentials=credentials)
 
