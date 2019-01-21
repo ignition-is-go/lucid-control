@@ -16,6 +16,7 @@ for service_class in services.__all__:
 
 SERVICE_LIST = sorted(SERVICE_LIST)
 
+
 class DirtyFieldsMixin(object):
     def __init__(self, *args, **kwargs):
         super(DirtyFieldsMixin, self).__init__(*args, **kwargs)
@@ -29,6 +30,8 @@ class DirtyFieldsMixin(object):
         return dict([(key, value) for key, value in self._original_state.iteritems() if value != new_state[key]])
 
 # Create your models here.
+
+
 class ProjectType(models.Model):
     '''Lucid project types'''
     character_code = models.CharField(
@@ -57,7 +60,7 @@ class ProjectType(models.Model):
         return self.description
 
     class Meta:
-        verbose_name="Project Type"
+        verbose_name = "Project Type"
 
 
 class Project(DirtyFieldsMixin, models.Model):
@@ -69,7 +72,7 @@ class Project(DirtyFieldsMixin, models.Model):
         default="P",
     )
     title = models.CharField(
-        verbose_name="Project Title", 
+        verbose_name="Project Title",
         max_length=200
     )
     is_archived = models.BooleanField(
@@ -84,16 +87,14 @@ class Project(DirtyFieldsMixin, models.Model):
     def message(self, message, **kwargs):
         '''used by celery tasks to send messages to the project.
 
-        
         '''
-        
+
         for service in self.services.filter(is_messenger=True):
             service.send(message, **kwargs)
-            
 
     class Meta:
-        verbose_name="Project"
-        verbose_name_plural="Projects"
+        verbose_name = "Project"
+        verbose_name_plural = "Projects"
 
 
 class ServiceConnection(DirtyFieldsMixin, models.Model):
@@ -110,7 +111,7 @@ class ServiceConnection(DirtyFieldsMixin, models.Model):
         choices=SERVICE_LIST,
         blank=False
     )
-    # connection name is only necessary to disambiguate multiple connections to 
+    # connection name is only necessary to disambiguate multiple connections to
     # the same service per project (slack? i dunno, maybe I'm planning too hard)
     connection_name = models.CharField(
         max_length=200,
@@ -150,10 +151,10 @@ class ServiceConnection(DirtyFieldsMixin, models.Model):
 
         *If this is not a messenger service, raise AttributeError*
         '''
-        
+
         if not self.is_messenger:
             raise AttributeError("Not a messenger connection")
-        
+
         response = self.service.message(self.identifier, message, **kwargs)
 
         return response
@@ -162,10 +163,14 @@ class ServiceConnection(DirtyFieldsMixin, models.Model):
         return ":{s.service_name}::{s.project} - {s.connection_name}".format(s=self)
 
     class Meta():
-        verbose_name="Service Connection"
+        verbose_name = "Service Connection"
+
 
 class TemplateProject(models.Model):
     ''' This model is used to define the template that is used to create new projects'''
+
+    objects = models.Manager()
+
     def __str__(self):
         return "Template Project"
 
@@ -182,7 +187,7 @@ class TemplateServiceConnection(models.Model):
         choices=SERVICE_LIST
     )
 
-    # connection name is only necessary to disambiguate multiple connections to 
+    # connection name is only necessary to disambiguate multiple connections to
     # the same service per project (slack? i dunno, maybe I'm planning too hard)
     connection_name = models.CharField(
         max_length=200,
@@ -191,9 +196,11 @@ class TemplateServiceConnection(models.Model):
     )
     is_messenger = models.BooleanField(
         default=False,
-        verbose_name = "Messenger Channel",
+        verbose_name="Messenger Channel",
     )
 
+    objects = models.Manager()
+
     class Meta():
-        verbose_name ="Template Project"
+        verbose_name = "Template Project"
         verbose_name_plural = "Template Project"
