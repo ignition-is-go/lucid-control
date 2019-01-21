@@ -1,32 +1,35 @@
-version: '2'
+version: '3'
 
 services:
   # postgres sql db
-  # db:
-  #   image: postgres:9.4
-  #   hostname: db
-  #   environment:
-  #     - POSTGRES_USER=postgres
-  #     - POSTGRES_PASSWORD=postgres
-  #     - POSTGRES_DB=postgres
-  #   ports:
-  #     - "5432:5432"
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: prisma
+      POSTGRES_PASSWORD: prisma
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    networks: 
+      - internal
 
   # Redis
-  # redis:
-  #   image: redis:2.8.19
-  #   hostname: redis
+  redis:
+    image: redis:2.8.19
+    networks:
+      - internal
   
   # # RabbitMQ
-  # rabbit:
-  #   hostname: rabbit
-  #   image: rabbitmq:3.6.0
-  #   environment:
-  #     - RABBIT_MQ_DEFAULT_USER=admin
-  #     - RABBIT_MQ_DEFAULT_PASS=mypass
-  #   ports:
-  #     -"5672:5672" # we forward this port because its useful for debugging
-  #     -"15672:15672" # here we can access rabbitmq management plugin
+  rabbit:
+    image: rabbitmq
+    environment:
+      RABBIT_MQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBIT_MQ_DEFAULT_PASS: ${RABBIT_PASS}
+    ports:
+      -"5672:5672" # we forward this port because its useful for debugging
+      -"15672:15672" # here we can access rabbitmq management plugin
+    networks: 
+      - internal
 
   # Django
   web:
@@ -36,12 +39,15 @@ services:
     hostname: web
     command: /app/run_web.sh
     environment:
-      - PORT=8000
+      PORT: 8000
     volumes:
       - .:/app
     ports:
       - "8000:8000"
       - "8001:80"
+    networks: 
+      - internal
+      - proxy
 
   
   # Celery worker
@@ -52,6 +58,9 @@ services:
     command: /app/run_celery.sh
     volumes:
       - .:/app
+    networks: 
+      - internal
+
 
   # Celery beat
   beat:
@@ -61,3 +70,15 @@ services:
     command: /app/run_beat.sh
     volumes:
       - .:/app
+    networks: 
+      - internal
+
+volumes:
+  postgres:
+  mongo:
+
+networks: 
+  proxy:
+    external: true
+  internal:
+    external: false
