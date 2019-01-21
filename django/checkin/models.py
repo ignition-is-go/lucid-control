@@ -231,10 +231,10 @@ class Workday(models.Model):
         auto_now_add=True,
         blank=False,
     )
-    is_posted = models.BooleanField(
-        help_text="Whether the check-in has been sent",
-        default=False,
-    )
+    # is_posted = models.BooleanField(
+    #     help_text="Whether the check-in has been sent",
+    #     default=False,
+    # )
     last_action = models.DateTimeField(
         verbose_name="Last Action Time",
         auto_now=True,
