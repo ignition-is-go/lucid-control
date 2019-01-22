@@ -13,7 +13,7 @@ RUN pipenv install --deploy --system
 RUN adduser --disabled-password --gecos '' myuser  
 
 # copy the app here
-COPY . .
+COPY . /app/
 
 RUN chmod 0766 run_*.sh
 
