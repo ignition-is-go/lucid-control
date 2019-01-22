@@ -26,3 +26,4 @@ lucid_api_oldtesssssts/
 lucid_api_tests/
 
 django/staticfiles
+celerybeat*
