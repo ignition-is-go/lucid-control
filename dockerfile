@@ -14,3 +14,7 @@ RUN pipenv install --deploy --system
 
 # copy the app here
 COPY . .
+
+RUN chmod 0766 run_*.sh
+
+CMD [ "sh run_web.sh" ]
