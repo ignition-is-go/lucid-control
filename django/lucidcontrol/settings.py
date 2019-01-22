@@ -24,7 +24,7 @@ if not IS_HEROKU and not os.environ.get("DATABASE_URL"):
     import re
     import os
 
-    with open('../.env','r') as fp:
+    with open('../.env', 'r') as fp:
         document = fp.read()
 
         # regex search for key and values in the .env file and assign to variables
@@ -45,16 +45,18 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get("DEBUG", False)
 
-ALLOWED_HOSTS = ["control.lucidsf.net", "lucidcontrol.herokuapp.com"]
+ALLOWED_HOSTS = ["control.lucidsf.net", "lucidcontrol.herokuapp.com",
+                 "localhost", "0.0.0.0",
+                 "control.apps.lucid.rocks"]
 
 # https security
-SECURE_SSL_REDIRECT = True # [1]
+SECURE_SSL_REDIRECT = not DEBUG  # [1]
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
 
 # Application definition
 
@@ -194,45 +196,45 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Celery Settings
 ###################
 
-CELERY_BROKER_URL = os.environ.get('CLOUDAMQP_URL' )
+CELERY_BROKER_URL = os.environ.get('CLOUDAMQP_URL')
 BROKER_URL = CELERY_BROKER_URL
 
 # We don't want to have dead connections stored on rabbitmq, so we have to negotiate using heartbeats
-BROKER_HEARTBEAT = '?heartbeat=30'  
-if not BROKER_URL.endswith(BROKER_HEARTBEAT):  
+BROKER_HEARTBEAT = '?heartbeat=30'
+if not BROKER_URL.endswith(BROKER_HEARTBEAT):
     BROKER_URL += BROKER_HEARTBEAT
 
-BROKER_POOL_LIMIT = 1  
+BROKER_POOL_LIMIT = 1
 BROKER_CONNECTION_TIMEOUT = 10
 
 # Celery configuration
 
 # configure queues, currently we have only one
-CELERY_DEFAULT_QUEUE = 'default'  
-CELERY_QUEUES = (  
+CELERY_DEFAULT_QUEUE = 'default'
+CELERY_QUEUES = (
     Queue('default', Exchange('default'), routing_key='default'),
 )
 
 # Sensible settings for celery
-CELERY_ALWAYS_EAGER = False  
-CELERY_ACKS_LATE = True  
-CELERY_TASK_PUBLISH_RETRY = True  
+CELERY_ALWAYS_EAGER = False
+CELERY_ACKS_LATE = True
+CELERY_TASK_PUBLISH_RETRY = True
 CELERY_DISABLE_RATE_LIMITS = False
 
 # By default we will ignore result
 # If you want to see results and try out tasks interactively, change it to False
 # Or change this setting on tasks level
-CELERY_IGNORE_RESULT = True  
-CELERY_SEND_TASK_ERROR_EMAILS = False  
+CELERY_IGNORE_RESULT = True
+CELERY_SEND_TASK_ERROR_EMAILS = False
 CELERY_TASK_RESULT_EXPIRES = 600
 
 # Set redis as celery result backend
-# CELERY_RESULT_BACKEND = 'redis://%s:%d/%d' % (REDIS_HOST, REDIS_PORT, REDIS_DB)  
+# CELERY_RESULT_BACKEND = 'redis://%s:%d/%d' % (REDIS_HOST, REDIS_PORT, REDIS_DB)
 # CELERY_REDIS_MAX_CONNECTIONS = 1
 
-CELERYD_HIJACK_ROOT_LOGGER = False  
-CELERYD_PREFETCH_MULTIPLIER = 1  
-CELERYD_MAX_TASKS_PER_CHILD = 1000  
+CELERYD_HIJACK_ROOT_LOGGER = False
+CELERYD_PREFETCH_MULTIPLIER = 1
+CELERYD_MAX_TASKS_PER_CHILD = 1000
 
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -243,20 +245,25 @@ CELERYBEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
 
 # logging
 
-LOG_LEVEL = str(os.environ.get('LOG_LEVEL',"info"))
+LOG_LEVEL = str(os.environ.get('LOG_LEVEL', "info"))
 
 if LOG_LEVEL:
-    if LOG_LEVEL.lower()[0] == 'w': LOG_LEVEL_TYPE = logging.WARN
-    if LOG_LEVEL.lower()[0] == 'e': LOG_LEVEL_TYPE = logging.ERROR
-    if LOG_LEVEL.lower()[0] == 'i': LOG_LEVEL_TYPE = logging.INFO
-    if LOG_LEVEL.lower()[0] == 'd': LOG_LEVEL_TYPE = logging.DEBUG
-    if LOG_LEVEL.lower()[0] == 'c': LOG_LEVEL_TYPE = logging.CRITICAL
+    if LOG_LEVEL.lower()[0] == 'w':
+        LOG_LEVEL_TYPE = logging.WARN
+    if LOG_LEVEL.lower()[0] == 'e':
+        LOG_LEVEL_TYPE = logging.ERROR
+    if LOG_LEVEL.lower()[0] == 'i':
+        LOG_LEVEL_TYPE = logging.INFO
+    if LOG_LEVEL.lower()[0] == 'd':
+        LOG_LEVEL_TYPE = logging.DEBUG
+    if LOG_LEVEL.lower()[0] == 'c':
+        LOG_LEVEL_TYPE = logging.CRITICAL
 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'handlers':{
-        'console':{
+    'handlers': {
+        'console': {
             'class': 'logging.StreamHandler'
         },
     },
