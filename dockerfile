@@ -16,5 +16,3 @@ RUN adduser --disabled-password --gecos '' myuser
 COPY . /app/
 
 RUN chmod 0766 run_*.sh
-
-CMD [ "sh run_web.sh" ]
