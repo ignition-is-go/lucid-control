@@ -19,15 +19,15 @@ services:
     networks:
       - internal
   
-  # # RabbitMQ
+  # RabbitMQ
   rabbit:
     image: rabbitmq
     environment:
       RABBIT_MQ_DEFAULT_USER: ${RABBIT_USER}
       RABBIT_MQ_DEFAULT_PASS: ${RABBIT_PASS}
     ports:
-      -"5672:5672" # we forward this port because its useful for debugging
-      -"15672:15672" # here we can access rabbitmq management plugin
+      - "5672:5672" # we forward this port because its useful for debugging
+      - "15672:15672" # here we can access rabbitmq management plugin
     networks: 
       - internal
 
