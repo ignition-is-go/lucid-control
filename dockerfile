@@ -9,5 +9,8 @@ COPY Pipfile ./
 RUN pip install pipenv
 RUN pipenv install --deploy --system
 
-# create unprivileged user
-RUN adduser --disabled-password --gecos '' myuser  
+# # create unprivileged user
+# RUN adduser --disabled-password --gecos '' myuser  
+
+# copy the app here
+COPY . .
