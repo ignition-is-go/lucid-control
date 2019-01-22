@@ -1,12 +1,15 @@
 {% extends 'admin/base.html'%}
 {% load i18n admin_urls %}
 {% load static %}
-{% block favicon %}<link href="{% static 'favicon.ico' %}" rel="icon" type="image/x-icon" />{% endblock %}
+{% block favicon %}
+<link href="{% static 'favicon.ico' %}" rel="icon" type="image/x-icon" />{% endblock %}
 {% block sidenav_items %}
-    {{ block.super }}
-    <hr />
-    <li><a class="collapsible-header" href="{% url 'api:root' %}"><i class="material-icons">device_hub</i>Lucid API Docs</a></li>
+{{ block.super }}
+<hr />
+<li><a class="collapsible-header" href="{% url 'api:root' %}"><i class="material-icons">device_hub</i>Lucid API Docs</a></li>
+<li><a class="collapsible-header" href="{% url 'periodic-tasks-status' %}"><i class="material-icons">alarm_on</i>Periodic
+		Task Status</a></li>
 {% endblock %}
 {% block submit_row %}
-    <button type="submit" class="waves-effect waves-light btn white-text" name="_continue">{% trans 'Save and Continue' %}</button>
+<button type="submit" class="waves-effect waves-light btn white-text" name="_continue">{% trans 'Save and Continue' %}</button>
 {% endblock %}

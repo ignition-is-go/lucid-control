@@ -43,3 +43,4 @@ django-constance = {extras = ["database"]}
 pyxero = {git = "https://github.com/tauri-tec/pyxero"}
 cryptography = "==1.3.1"
 pyjwt = "==1.4.0"
+django-celerybeat-status = "*"

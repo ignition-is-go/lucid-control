@@ -48,7 +48,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", False)
 
 ALLOWED_HOSTS = ["control.lucidsf.net", "lucidcontrol.herokuapp.com",
-                 "localhost", "0.0.0.0",
+                 "localhost", "0.0.0.0", "127.0.0.1",
                  "control.apps.lucid.rocks"]
 
 # https security
@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'import_export',
     'constance',
     'constance.backends.database',
+    'celerybeat_status',
 ]
 
 MIDDLEWARE = [
