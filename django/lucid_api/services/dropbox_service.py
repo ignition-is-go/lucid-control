@@ -189,7 +189,7 @@ class Service(service_template.ServiceTemplate):
         if connection.is_archived:
             root = os.path.join(
                 os.environ.get("DROPBOX_APP_ARCHIVE"),
-                datetime.datetime.now().year
+                '{:d}'.format(datetime.datetime.now().year)
             )
         else:
             root = os.environ.get("DROPBOX_APP_ROOT")
