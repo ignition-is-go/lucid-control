@@ -133,8 +133,6 @@ DATABASES = {
 
 CONN_MAX_AGE = 90
 
-# Import-Export settings
-IMPORT_EXPORT_USE_TRANSACTIONS = True
 
 # Constance for live settings
 CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
