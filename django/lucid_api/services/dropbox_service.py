@@ -69,7 +69,7 @@ class Service(service_template.ServiceTemplate):
 
     def rename(self, service_connection_id):
         '''
-        renames dropbox folder 
+        renames dropbox folder
         '''
 
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
@@ -126,26 +126,27 @@ class Service(service_template.ServiceTemplate):
 
         # slug will generate the correct target folder based on whether or not the connection is archived
         slug = self._format_slug(connection)
-
+        self._logger.debug('slug is: %s', slug)
         # remove the connection.connection_name from the slug to get the target project folder
-        target_folder = slug.rstrip("/"+connection.connection_name.lower())
+        target_folder = slug
         self._logger.debug("Target archive folder is %s", target_folder)
 
         meta = self._dbx.files_get_metadata(connection.identifier)
 
-        if target_folder in meta.path_lower:
+        if target_folder in meta.path_display:
             # this folder has already been moved to the target folder
+            self._logger.warn("folder already exists in target")
             return
 
         else:
-            try:
-                # get the project folder by stripping connection.connection_name from the path
-                project_folder = meta.path_lower.rstrip(
-                    "/"+connection.connection_name.lower())
-                # move project folder to the target folder
-                response = self._dbx.files_move(project_folder, target_folder)
+            self._logger.info(
+                "Attempting to move [%s] to [%s]", meta.path_display, target_folder)
 
-                if target_folder not in response.path_lower:
+            try:
+                response = self._dbx.files_move(
+                    meta.path_display, target_folder)
+
+                if target_folder not in response.path_display:
                     # folder hasn't moved to the correct spot
                     raise DropboxServiceError("Archive failed")
 
@@ -171,13 +172,34 @@ class Service(service_template.ServiceTemplate):
                 connection.state_message = "Error: {}".format(err)
                 connection.save()
 
+        # check to see if project folder is now empty
+        try:
+            project_folder = meta.path_display.rstrip(
+                connection.connection_name).rstrip('/')
+            self._logger.info(
+                "Checking to see if [%s] is empty", project_folder)
+
+            project_folder_contents = self._dbx.files_list_folder(
+                project_folder)
+
+            if len(project_folder_contents.entries) == 0:
+                self._logger.info("Project folder is empty, deleting...")
+                self._dbx.files_delete(project_folder)
+
+                self._logger.info('Project folder archive complete')
+
+        except Exception as err:
+            self._logger.error("Non-retry error:", exc_info=True)
+            connection.state_message = "Error: {}".format(err)
+            connection.save()
+
     def unarchive(self, service_connection_id):
         '''
         Restore the folder to the lucid projects folder
-
+        This is the same action as archiving, and the status of the connection yeilds the correct target already
         TODO: Add dropbox metadata
         '''
-        pass
+        self.archive(service_connection_id)
 
     def _format_slug(self, connection,):
         '''Correctly formats  the slug for drobox'''
