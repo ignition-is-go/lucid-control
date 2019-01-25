@@ -14,6 +14,7 @@ pipelines:
           - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD $DOCKER_REGISTRY_URL
           - docker build -t $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:staging -t $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:$BITBUCKET_COMMIT .
           - docker push $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:staging
+          - docker push $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:$BITBUCKET_COMMIT
     - step:
         name: docker deploy production
         trigger: manual
