@@ -67,7 +67,7 @@ class ServiceConnectionInlineAdd(admin.StackedInline):
 # projects is Import/Export enabled!
 
 
-class ProjectAdmin():
+class ProjectAdmin(admin.ModelAdmin):
     icon = '<i class="material-icons">work</i>'
 
     def is_active(self, obj=None):
