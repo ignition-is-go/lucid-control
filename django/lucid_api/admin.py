@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from django.contrib import admin
-from import_export.admin import ImportMixin, ImportExportActionModelAdmin
+
 
 from .models import Project, ProjectType, ServiceConnection, TemplateProject, TemplateServiceConnection
 # Register your models here.
@@ -13,10 +13,9 @@ class ServiceConnectionInlineExisting(admin.StackedInline):
     extra = 0
     verbose_name_plural = "Existing Service Connections"
 
-
     fieldsets = [
         (None, {
-            'fields':[
+            'fields': [
                 'service_name',
                 'connection_name',
                 'identifier',
@@ -29,15 +28,16 @@ class ServiceConnectionInlineExisting(admin.StackedInline):
 
     def get_readonly_fields(self, request, obj=None):
         read_only = ['state_message']
-        
+
         if obj:
             # we're not creating, just updating
             read_only.append('service_name')
-        
+
         return self.readonly_fields + tuple(read_only)
 
     def has_add_permission(self, request):
         return False
+
 
 class ServiceConnectionInlineAdd(admin.StackedInline):
     model = ServiceConnection
@@ -46,7 +46,7 @@ class ServiceConnectionInlineAdd(admin.StackedInline):
 
     fieldsets = [
         (None, {
-            'fields':[
+            'fields': [
                 'service_name',
                 'connection_name',
                 'identifier',
@@ -58,14 +58,16 @@ class ServiceConnectionInlineAdd(admin.StackedInline):
 
     def get_readonly_fields(self, request, obj=None):
         read_only = ['state_message']
-        
+
         return self.readonly_fields + tuple(read_only)
 
     def has_change_permission(self, request, obj=None):
         return False
 
 # projects is Import/Export enabled!
-class ProjectAdmin(ImportExportActionModelAdmin):
+
+
+class ProjectAdmin():
     icon = '<i class="material-icons">work</i>'
 
     def is_active(self, obj=None):
@@ -76,15 +78,15 @@ class ProjectAdmin(ImportExportActionModelAdmin):
     is_active.boolean = True
 
     list_display = ('id', 'title', 'is_active')
-    list_display_links = ('id','title')
+    list_display_links = ('id', 'title')
     list_filter = ('is_archived',)
 
     fieldsets = [
-        (None,{'fields': [
+        (None, {'fields': [
             'type_code',
             'title',
             'is_archived'
-            ]}
+        ]}
         ),
     ]
     inlines = [ServiceConnectionInlineExisting, ServiceConnectionInlineAdd]
@@ -96,18 +98,23 @@ class ProjectAdmin(ImportExportActionModelAdmin):
         else:
             return qs.filter(is_archived=False)
 
+
 admin.site.register(Project, ProjectAdmin)
 
+
 class ProjectTypeAdmin(admin.ModelAdmin):
-    icon='<i class="material-icons">menu</i>'
+    icon = '<i class="material-icons">menu</i>'
+
 
 admin.site.register(ProjectType, ProjectTypeAdmin)
 
-#### TEMPLATE PROJECT STUFF
+# TEMPLATE PROJECT STUFF
+
 
 class TemplateServiceConnectionInline(admin.StackedInline):
     model = TemplateServiceConnection
     extra = 0
+
 
 class TemplateProjectAdmin(admin.ModelAdmin):
     ''' for the template project editing '''
@@ -129,5 +136,6 @@ class TemplateProjectAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         # disable delete
         return False
+
 
 admin.site.register(TemplateProject, TemplateProjectAdmin)

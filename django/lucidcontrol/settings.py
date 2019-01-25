@@ -75,7 +75,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_celery_beat',
-    'import_export',
     'constance',
     'constance.backends.database',
     'celerybeat_status',
