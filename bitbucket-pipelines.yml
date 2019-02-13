@@ -4,6 +4,22 @@ pipelines:
   branches:
     master:
     - step:
+        name: docker deploy to production
+        trigger: automatic
+        deployment: production
+        services:
+          - docker
+        script:
+          - echo "Logging into docker repo at $DOCKER_REGISTRY_URL"
+          - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD $DOCKER_REGISTRY_URL
+          - docker build -t $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:latest -t $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:$BITBUCKET_COMMIT .
+          - docker push $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:latest
+          - docker push $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:$BITBUCKET_COMMIT
+          - echo "Deploying to production"
+          - ssh lucid@apps.lucid.rocks 'git archive --remote=git@bitbucket.org:lucidcreative/lucid-apps-docker.git master deploy.sh | sh'
+
+    dev:
+    - step:
         name: docker deploy to staging
         trigger: automatic
         deployment: staging
@@ -15,17 +31,3 @@ pipelines:
           - docker build -t $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:staging -t $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:$BITBUCKET_COMMIT .
           - docker push $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:staging
           - docker push $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:$BITBUCKET_COMMIT
-    - step:
-        name: docker deploy production
-        trigger: manual
-        deployment: production
-        services:
-          - docker
-        script:
-          - echo "Logging into docker repo at $DOCKER_REGISTRY_URL"
-          - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD $DOCKER_REGISTRY_URL
-          - docker pull $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:$BITBUCKET_COMMIT
-          - docker tag $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:$BITBUCKET_COMMIT $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:latest
-          - docker push $DOCKER_REGISTRY_URL/$BITBUCKET_REPO_SLUG:latest
-          - echo "Deploying to production"
-          - ssh lucid@apps.lucid.rocks 'git archive --remote=git@bitbucket.org:lucidcreative/lucid-apps-docker.git master deploy.sh | sh'
