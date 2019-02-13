@@ -77,10 +77,12 @@ class Service(service_template.ServiceTemplate):
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
+        self._logger('creating lucille project for %s - %s', project.id, project.name)
         try:
             result = self._client.execute(
                 self._upsert_mutation.format(p=project))
 
+            self._logger.debug('received result from lucille: %s', result.upsertProject)
             connection.identifier = result.id
             connection.state_message = "Success: Lucille project id: {}".format(
                 result.id)
