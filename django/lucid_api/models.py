@@ -184,7 +184,12 @@ class TemplateServiceConnection(models.Model):
     service_name = models.CharField(
         max_length=200,
         verbose_name="Service Name",
-        choices=SERVICE_LIST
+		choices=SERVICE_LIST,
+        # choices=[
+		# 	('dropbox_service', 'Dropbox'),
+		# 	('ftrack_service', 'Ftrack'),
+		# 	('groups_service', 'Google Groups')
+		# ]
     )
 
     # connection name is only necessary to disambiguate multiple connections to
