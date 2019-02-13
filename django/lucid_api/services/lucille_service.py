@@ -24,41 +24,41 @@ class Service(service_template.ServiceTemplate):
     _pretty_name = "Lucille Service"
 
     _upsert_mutation = '''
-	mutation {
-		upsertProject(
-			lucidId: {p.id}
-			name: {p.title}
-			typeCode: {p.type_code}
-			}
-			
-		){
-			id
-			slug
-		}
-	}
-	'''
+    mutation {
+        upsertProject(
+            lucidId: {p.id}
+            name: {p.title}
+            typeCode: {p.type_code}
+            }
+            
+        ){
+            id
+            slug
+        }
+    }
+    '''
 
-	_archive_mutation = '''
-	mutation {
-		archiveProject(
-			lucidId: {p.id}
-		){
-			id
-			openForTimeLogging
-		}
-	}
-	'''
+    _archive_mutation = '''
+    mutation {
+        archiveProject(
+            lucidId: {p.id}
+        ){
+            id
+            openForTimeLogging
+        }
+    }
+    '''
 
-	_unarchive_mutation = '''
-	mutation {
-		unarchiveProject(
-			lucidId: {p.id}
-		){
-			id
-			openForTimeLogging
-		}
-	}
-	'''
+    _unarchive_mutation = '''
+    mutation {
+        unarchiveProject(
+            lucidId: {p.id}
+        ){
+            id
+            openForTimeLogging
+        }
+    }
+    '''
     def __init__(self):
         '''
         create graphql client
@@ -92,15 +92,15 @@ class Service(service_template.ServiceTemplate):
                 'Error creating project in Lucille: %s', e, exc_info=True)
             raise e
 
-	def rename(self, service_connection_id):
-		'''
-		same as create
-		'''
+    def rename(self, service_connection_id):
+        '''
+        same as create
+        '''
 
-		self.create(service_connection_id)
+        self.create(service_connection_id)
 
-	def archive(self, service_connection_id):
-		ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+    def archive(self, service_connection_id):
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
         try:
@@ -108,15 +108,15 @@ class Service(service_template.ServiceTemplate):
                 self._archive_mutation.format(p=project))
 
             connection.identifier = result.id
-			if not result.openForTimeLogging
-				connection.state_message = "Success: No longer able to log time on Lucille project id: {}".format(
-					result.id)
-				connection.save()
-			else:
-				connection.state_message = "FAILED: {}".format(
-					result)
-				connection.save()
-				raise LucilleException('Project did not disable time logging')
+            if not result.archiveProject.openForTimeLogging:
+                connection.state_message = "Success: No longer able to log time on Lucille project id: {}".format(
+                    result.id)
+                connection.save()
+            else:
+                connection.state_message = "FAILED: {}".format(
+                    result)
+                connection.save()
+                raise LucilleException('Project did not disable time logging')
             self._logger.info(
                 'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, result.id)
         except e as Exception:
@@ -124,30 +124,30 @@ class Service(service_template.ServiceTemplate):
                 'Error creating project in Lucille: %s', e, exc_info=True)
             raise e
 
-	def unarchive(self, service_connection_id):
-		ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
+    def unarchive(self, service_connection_id):
+        ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
         try:
             result = self._client.execute(
                 self._unarchive_mutation.format(p=project))
 
-			if result.openForTimeLogging
-				connection.state_message = "Success: Now able to log time on Lucille project id: {}".format(
-					result.id)
-				connection.save()
-			else:
-				connection.state_message = "FAILED: {}".format(
-					result)
-				connection.save()
-				raise LucilleException('Project did not enable time logging')
+            if result.unarchiveProject.openForTimeLogging:
+                connection.state_message = "Success: Now able to log time on Lucille project id: {}".format(
+                    result.id)
+                connection.save()
+            else:
+                connection.state_message = "FAILED: {}".format(
+                    result)
+                connection.save()
+                raise LucilleException('Project did not enable time logging')
             self._logger.info(
                 'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, result.id)
         except e as Exception:
             self._logger.error(
                 'Error creating project in Lucille: %s', e, exc_info=True)
             raise e
-		 
+         
 
 class LucilleException( service_template.ServiceException):
-	pass
+    pass

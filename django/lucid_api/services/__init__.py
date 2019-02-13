@@ -17,5 +17,5 @@ __all__ = [
     "groups_service",
     "slack_service",
     "xero_service",
-	"lucille_service",
+    "lucille_service",
 ]
