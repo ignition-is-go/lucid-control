@@ -74,6 +74,7 @@ class Service(service_template.ServiceTemplate):
         '''
         Creates project using gql on lucille
         '''
+        self._logger.debug('getting ServiceConnection id=%s', service_connection_id)
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
