@@ -27,41 +27,41 @@ class Service(service_template.ServiceTemplate):
     _pretty_name = "Lucille Service"
 
     _upsert_mutation = '''
-    mutation {
+    mutation {{
         upsertProject(
-            lucidId: {p.id}
-            name: {p.title}
-            typeCode: {p.type_code}
-            }
-            
-        ){
+            lucidId: {p[id]}
+            name: {p[title]}
+            typeCode: {p[type_code]}
+        )
+        {{
             id
             slug
-        }
-    }
+        }}
+    }}
     '''
 
     _archive_mutation = '''
-    mutation {
+    mutation {{
         archiveProject(
-            lucidId: {p.id}
-        ){
+            lucidId: {p[id]}
+        ){{
             id
             openForTimeLogging
-        }
-    }
+        }}
+    }}
     '''
 
     _unarchive_mutation = '''
-    mutation {
+    mutation {{
         unarchiveProject(
-            lucidId: {p.id}
-        ){
+            lucidId: {p[id]}
+        ){{
             id
             openForTimeLogging
-        }
-    }
+        }}
+    }}
     '''
+	
     def __init__(self):
         '''
         create graphql client
