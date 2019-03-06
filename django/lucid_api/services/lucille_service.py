@@ -14,6 +14,7 @@ import logging
 
 from django.conf import settings
 from graphqlclient import GraphQLClient
+from celery.utils.log import get_task_logger
 
 
 class Service(service_template.ServiceTemplate):
