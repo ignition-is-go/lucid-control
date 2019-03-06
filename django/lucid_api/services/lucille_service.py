@@ -81,7 +81,7 @@ class Service(service_template.ServiceTemplate):
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
-        self._logger('creating lucille project for %s - %s', project.id, project.title)
+        self._logger.info('creating lucille project for %s - %s', project.id, project.title)
         try:
             result = self._client.execute(
                 self._upsert_mutation.format(p=project))
