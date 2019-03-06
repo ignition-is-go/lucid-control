@@ -93,7 +93,7 @@ class Service(service_template.ServiceTemplate):
             connection.save()
             self._logger.info(
                 'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, result.id)
-        except e as Exception:
+        except Exception as e:
             self._logger.error(
                 'Error creating project in Lucille: %s', e, exc_info=True)
             raise e
@@ -125,7 +125,7 @@ class Service(service_template.ServiceTemplate):
                 raise LucilleException('Project did not disable time logging')
             self._logger.info(
                 'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, result.id)
-        except e as Exception:
+        except Exception as e:
             self._logger.error(
                 'Error creating project in Lucille: %s', e, exc_info=True)
             raise e
@@ -149,7 +149,7 @@ class Service(service_template.ServiceTemplate):
                 raise LucilleException('Project did not enable time logging')
             self._logger.info(
                 'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, result.id)
-        except e as Exception:
+        except Exception as e:
             self._logger.error(
                 'Error creating project in Lucille: %s', e, exc_info=True)
             raise e
