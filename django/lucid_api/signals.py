@@ -11,6 +11,7 @@ import logging
 
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
+from django.db import transaction
 
 from .models import Project, ServiceConnection, TemplateProject
 from .tasks import service_task, ServiceAction
@@ -114,11 +115,12 @@ def execute_after_save_service(sender, instance, created, raw, using, update_fie
                     instance.service_name, instance.identifier)
         # if the identifier has been provided, we don't need to create it
         if instance.identifier == "":
-            # send celery the creation task
-            service_task.delay(
-                ServiceAction.CREATE,
-                instance.id
-            )
+            # send celery the creation task, only after the transaction
+			transaction.on_commit( 
+				lambda: service_task.delay(
+					ServiceAction.CREATE,
+					instance.id
+            	))
 
     else:
 
@@ -132,10 +134,11 @@ def execute_after_save_service(sender, instance, created, raw, using, update_fie
         if "connection_name" in changed_fields:
             logger.info("Got connection RENAME signal on %s", instance)
             # iterate through all services and perform the action
-            service_task.delay(
-                ServiceAction.RENAME,
-                instance.id
-            )
+            transaction.on_commit( 
+				lambda: service_task.delay(
+					ServiceAction.RENAME,
+					instance.id
+				))
 
         # ARCHIVE/UNARCHIVE CASE
         if "is_archived" in changed_fields:
@@ -143,17 +146,19 @@ def execute_after_save_service(sender, instance, created, raw, using, update_fie
                 # ARCHIVE CASE
                 logger.info("Got ARCHIVE signal on %s", instance)
                 # iterate through all services and perform the action
-                service_task.delay(
-                    ServiceAction.ARCHIVE,
-                    instance.id
-                )
+                transaction.on_commit( 
+					lambda: service_task.delay(
+						ServiceAction.ARCHIVE,
+						instance.id
+					))
 
             else:
                 # UNARCHIVE CASE
                 logger.info("Got UNARCHIVE signal on %s", instance)
                 # iterate through all services and perform the action
-                service_task.delay(
-                    ServiceAction.UNARCHIVE,
-                    instance.id
-                )
+                transaction.on_commit( 
+					lambda: service_task.delay(
+						ServiceAction.UNARCHIVE,
+						instance.id
+					))
     return
