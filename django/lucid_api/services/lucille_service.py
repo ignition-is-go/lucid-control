@@ -14,6 +14,8 @@ import logging
 
 from django.conf import settings
 from graphqlclient import GraphQLClient
+
+from django.apps import apps
 from celery.utils.log import get_task_logger
 
 
