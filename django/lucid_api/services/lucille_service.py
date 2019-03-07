@@ -10,6 +10,7 @@ import service_template
 import re
 import os
 import sys
+import json
 import logging
 
 from django.conf import settings
@@ -29,9 +30,9 @@ class Service(service_template.ServiceTemplate):
     _upsert_mutation = '''
     mutation {{
         upsertProject(
-            lucidId: {p[id]}
-            name: {p[title]}
-            typeCode: {p[type_code]}
+            lucidId: {p.id}
+            name: "{p.title}"
+            typeCode: "{p.type_code.chr}"
         )
         {{
             id
@@ -43,7 +44,7 @@ class Service(service_template.ServiceTemplate):
     _archive_mutation = '''
     mutation {{
         archiveProject(
-            lucidId: {p[id]}
+            lucidId: {p.id}
         ){{
             id
             openForTimeLogging
@@ -54,14 +55,14 @@ class Service(service_template.ServiceTemplate):
     _unarchive_mutation = '''
     mutation {{
         unarchiveProject(
-            lucidId: {p[id]}
+            lucidId: {p.id}
         ){{
             id
             openForTimeLogging
         }}
     }}
     '''
-	
+
     def __init__(self):
         '''
         create graphql client
@@ -77,22 +78,29 @@ class Service(service_template.ServiceTemplate):
         '''
         Creates project using gql on lucille
         '''
-        self._logger.debug('getting ServiceConnection id=%s', service_connection_id)
+        self._logger.debug('getting ServiceConnection id=%s',
+                           service_connection_id)
         ServiceConnection = apps.get_model("lucid_api", "ServiceConnection")
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
-        self._logger.info('creating lucille project for %s - %s', project.id, project.title)
+        self._logger.info('creating lucille project for %s - %s',
+                          project.id, project.title)
         try:
+            # send the upsert mutation, with variables subbed in
+            self._logger.debug('preparing mutation:\n%s',
+                               self._upsert_mutation.format(p=project))
             result = self._client.execute(
                 self._upsert_mutation.format(p=project))
 
-            self._logger.debug('received result from lucille: %s', result.upsertProject)
-            connection.identifier = result.id
+            # parse the result as json
+            data = json.loads(result)['data']['upsertProject']
+            self._logger.debug('received result from lucille: %s', data)
+            connection.identifier = data['id']
             connection.state_message = "Success: Lucille project id: {}".format(
-                result.id)
+                data['id'])
             connection.save()
             self._logger.info(
-                'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, result.id)
+                'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, data['id'])
         except Exception as e:
             self._logger.error(
                 'Error creating project in Lucille: %s', e, exc_info=True)
@@ -110,21 +118,25 @@ class Service(service_template.ServiceTemplate):
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
         try:
+            self._logger.debug('preparing mutation:\n%s',
+                               self._archive_mutation.format(p=project))
+
             result = self._client.execute(
                 self._archive_mutation.format(p=project))
 
-            connection.identifier = result.id
-            if not result.archiveProject.openForTimeLogging:
-                connection.state_message = "Success: No longer able to log time on Lucille project id: {}".format(
-                    result.id)
+            data = json.loads(result)['data']['archiveProject']
+
+            if not data['openForTimeLogging']:
+                connection.state_message = "Success: time logging disabled on Lucille project id: {}".format(
+                    data['id'])
                 connection.save()
             else:
                 connection.state_message = "FAILED: {}".format(
-                    result)
+                    data)
                 connection.save()
                 raise LucilleException('Project did not disable time logging')
             self._logger.info(
-                'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, result.id)
+                'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, data['id'])
         except Exception as e:
             self._logger.error(
                 'Error creating project in Lucille: %s', e, exc_info=True)
@@ -135,25 +147,30 @@ class Service(service_template.ServiceTemplate):
         connection = ServiceConnection.objects.get(pk=service_connection_id)
         project = connection.project
         try:
+            self._logger.debug('preparing mutation:\n%s',
+                               self._unarchive_mutation.format(p=project))
+
             result = self._client.execute(
                 self._unarchive_mutation.format(p=project))
 
-            if result.unarchiveProject.openForTimeLogging:
+            data = json.loads(result)['data']['unarchiveProject']
+
+            if data['openForTimeLogging']:
                 connection.state_message = "Success: Now able to log time on Lucille project id: {}".format(
-                    result.id)
+                    data['id'])
                 connection.save()
             else:
                 connection.state_message = "FAILED: {}".format(
-                    result)
+                    data)
                 connection.save()
                 raise LucilleException('Project did not enable time logging')
             self._logger.info(
-                'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, result.id)
+                'Successfully created project %s-%s in lucille (id:%s)', project.id, project.title, data['id'])
         except Exception as e:
             self._logger.error(
                 'Error creating project in Lucille: %s', e, exc_info=True)
             raise e
-         
 
-class LucilleException( service_template.ServiceException):
+
+class LucilleException(service_template.ServiceException):
     pass
